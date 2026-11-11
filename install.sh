@@ -14,8 +14,97 @@ SYS="$REPO/system"                         # system file templates
 USER_NAME="$(whoami)"
 USER_HOME="$HOME"
 VENV="$USER_HOME/pwnagotchi-venv"
+DISPLAY_PROFILE="${FENNEC_DISPLAY:-}"
 
-echo "==> Fennec: installing for user '$USER_NAME'"
+select_display_profile() {
+    if [ -z "$DISPLAY_PROFILE" ]; then
+        if [ -t 0 ]; then
+            echo ""
+            echo "==> Select the display profile:"
+            echo "    1) Waveshare 3.5-inch RPi LCD (C) (SPI touchscreen)"
+            echo "    2) HDMI display (kiosk)"
+            echo "    3) Headless (network browser only)"
+            read -r -p "Profile [1]: " selection
+            case "$selection" in
+                ""|1) DISPLAY_PROFILE="waveshare35c" ;;
+                2)    DISPLAY_PROFILE="hdmi" ;;
+                3)    DISPLAY_PROFILE="headless" ;;
+                *)    echo "Invalid display profile."; exit 1 ;;
+            esac
+        else
+            DISPLAY_PROFILE="waveshare35c"
+        fi
+    fi
+
+    case "$DISPLAY_PROFILE" in
+        waveshare35c|hdmi|headless) ;;
+        *)
+            echo "Unsupported FENNEC_DISPLAY value: $DISPLAY_PROFILE"
+            echo "Use waveshare35c, hdmi, or headless."
+            exit 1
+            ;;
+    esac
+}
+
+configure_kiosk() {
+    local xinit_source="$1"
+
+    sudo cp "$SYS/Xwrapper.config" /etc/X11/Xwrapper.config
+    sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+    sudo sed "s/__USER__/$USER_NAME/" "$SYS/getty-autologin.conf" \
+        | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
+
+    cp "$xinit_source" "$USER_HOME/.xinitrc"
+    chmod +x "$USER_HOME/.xinitrc"
+    if ! grep -q "Fennec: start the kiosk display" "$USER_HOME/.bash_profile" 2>/dev/null; then
+        cat "$SYS/bash_profile_kiosk" >> "$USER_HOME/.bash_profile"
+    fi
+}
+
+configure_waveshare35c() {
+    local boot_config overlay_dir driver_dir
+
+    echo "==> Configuring Waveshare 3.5-inch RPi LCD (C)..."
+    boot_config=/boot/firmware/config.txt
+    [ -f "$boot_config" ] || boot_config=/boot/config.txt
+    overlay_dir=/boot/firmware/overlays
+    [ -d "$overlay_dir" ] || overlay_dir=/boot/overlays
+    driver_dir="$(mktemp -d)"
+
+    wget -q --show-progress -O "$driver_dir/Waveshare35c.zip" \
+        https://files.waveshare.com/wiki/common/Waveshare35c.zip
+    unzip -q -j "$driver_dir/Waveshare35c.zip" waveshare35c.dtbo -d "$driver_dir"
+    sudo install -m 644 "$driver_dir/waveshare35c.dtbo" \
+        "$overlay_dir/waveshare35c.dtbo"
+    rm -rf "$driver_dir"
+
+    if [ -f "$boot_config" ] && ! grep -q "dtoverlay=waveshare35c" "$boot_config"; then
+        sudo tee -a "$boot_config" > /dev/null <<'EOF'
+
+# --- Fennec: Waveshare 3.5-inch RPi LCD (C) ---
+disable_splash=1
+dtparam=spi=on
+dtoverlay=waveshare35c
+EOF
+    fi
+
+    sudo mkdir -p /etc/X11/xorg.conf.d
+    sudo cp "$SYS/display-profiles/waveshare35c/99-fennec-lcd.conf" \
+        /etc/X11/xorg.conf.d/99-fennec-lcd.conf
+    sudo cp "$SYS/display-profiles/waveshare35c/99-fennec-touch.conf" \
+        /etc/X11/xorg.conf.d/99-fennec-touch.conf
+    configure_kiosk "$SYS/xinitrc"
+}
+
+configure_hdmi() {
+    echo "==> Configuring HDMI kiosk display..."
+    sudo rm -f /etc/X11/xorg.conf.d/99-fennec-lcd.conf \
+        /etc/X11/xorg.conf.d/99-fennec-touch.conf
+    configure_kiosk "$SYS/display-profiles/hdmi/xinitrc"
+}
+
+select_display_profile
+echo "==> Fennec: installing for user '$USER_NAME' (display: $DISPLAY_PROFILE)"
 
 # --- 1. System packages ---
 echo "==> Installing apt packages..."
@@ -28,7 +117,8 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark dnsmasq \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev \
-    chromium xserver-xorg xinit xserver-xorg-legacy
+    chromium curl unzip xserver-xorg xinit xserver-xorg-legacy \
+    xserver-xorg-video-fbdev xserver-xorg-input-evdev
 
 # dnsmasq (Vigie DNS capture): Fennec starts its own dnsmasq instance on demand
 # during a Watch. Disable the system service so it never holds port 53 and never
@@ -196,44 +286,25 @@ sudo sed -e "s/__USER__/$USER_NAME/g" -e "s#__REPO__#$REPO#g" "$SYS/fennec.servi
 sudo systemctl daemon-reload
 sudo systemctl enable fennec
 
-# --- 12. Waveshare 3.5" (C) touchscreen + kiosk display ---
-# Reference 480x320 screen on the GPIO header, driven by the device-tree overlay
-# waveshare35c (ILI9486 driver on /dev/fb0, no fbcp since no HDMI is connected).
-# Fennec is displayed in a Chromium kiosk started at boot: auto-login on the
-# tty1 console -> startx -> ~/.xinitrc -> chromium.
-echo "==> Configuring the touchscreen and the kiosk..."
-
-# a) Screen overlay in the boot config.txt (idempotent)
-BOOTCFG=/boot/firmware/config.txt
-[ -f "$BOOTCFG" ] || BOOTCFG=/boot/config.txt
-if [ -f "$BOOTCFG" ] && ! grep -q "waveshare35c" "$BOOTCFG"; then
-    sudo tee -a "$BOOTCFG" > /dev/null <<'EOF'
-
-# --- Fennec: Waveshare 3.5" (C) touchscreen ---
-disable_splash=1
-dtparam=spi=on
-dtoverlay=waveshare35c
-EOF
-fi
-
-# b) VT rights to start X outside a graphical session
-sudo cp "$SYS/Xwrapper.config" /etc/X11/Xwrapper.config
-
-# c) Automatic login on the tty1 console (adapted to the user)
-sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
-sudo sed "s/__USER__/$USER_NAME/" "$SYS/getty-autologin.conf" \
-    | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
+# --- 12. Display profile ---
+case "$DISPLAY_PROFILE" in
+    waveshare35c)
+        configure_waveshare35c
+        ;;
+    hdmi)
+        configure_hdmi
+        ;;
+    headless)
+        echo "==> Headless mode selected; skipping local kiosk configuration."
+        ;;
+esac
 sudo systemctl daemon-reload
-
-# d) Start X on tty1 login, then Chromium in kiosk mode
-cp "$SYS/xinitrc" "$USER_HOME/.xinitrc"
-chmod +x "$USER_HOME/.xinitrc"
-if ! grep -q "exec startx" "$USER_HOME/.bash_profile" 2>/dev/null; then
-    cat "$SYS/bash_profile_kiosk" >> "$USER_HOME/.bash_profile"
-fi
 
 echo ""
 echo "==> Installation complete."
-echo "    Reboot once to enable SPI, the screen and the kiosk:  sudo reboot"
-echo "    On reboot, Fennec starts on its own and shows on the touchscreen."
-echo "    Network access if needed:  http://<Pi-IP>:5000/"
+if [ "$DISPLAY_PROFILE" = "headless" ]; then
+    echo "    Fennec is available on the local network: http://<Pi-IP>:5000/"
+else
+    echo "    Reboot once to enable the selected display profile: sudo reboot"
+    echo "    Fennec will start automatically after reboot."
+fi
