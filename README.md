@@ -39,7 +39,7 @@ Only use this tool on networks you own or have written permission to test. Any o
 ## Hardware
 
 - Raspberry Pi 5
-- 3.5" touchscreen (Waveshare 480x320 reference)
+- Display profile selected during installation: Waveshare 3.5-inch RPi LCD (C), HDMI kiosk, or headless
 - USB Wi-Fi adapter with monitor mode (tested with an Alfa AWUS036AXM, MediaTek MT7921AU chipset)
 - Optional: VK-162 USB GPS module (for the Carte / wardriving module)
 - microSD card, 32 GB or more, Raspberry Pi OS 64-bit (desktop)
@@ -48,15 +48,36 @@ The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapt
 
 ## Installation
 
-A single command on a freshly flashed Pi:
+Install on a freshly flashed Pi:
 
     git clone https://github.com/florians7474/fennec.git
     cd fennec
     ./install.sh
 
-The script is idempotent and adapts to any user. It installs the system packages (including nmap), enables SPI (needed by Bjorn's e-paper display), sets up Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli, installs Bjorn in its own venv from a pinned requirements file that works on Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and rockyou from SecLists), generates a random bettercap password, and configures all systemd services. It also installs Fennec as a systemd service and sets up the Waveshare 3.5" touchscreen end to end: the SPI overlay, X, and a Chromium kiosk that starts Fennec full-screen at boot. No sensitive data is stored in the repository.
+The installer asks for a display profile before it starts. The default is the
+Waveshare 3.5-inch RPi LCD (C), which is the reference portable build. Set
+`FENNEC_DISPLAY` to automate the choice:
 
-Reboot once after the install. On boot the touchscreen comes up on its own and Fennec starts as a service, showing the interface full-screen in a Chromium kiosk.
+    FENNEC_DISPLAY=waveshare35c ./install.sh
+    FENNEC_DISPLAY=hdmi ./install.sh
+    FENNEC_DISPLAY=headless ./install.sh
+
+| Profile | Result |
+|---|---|
+| `waveshare35c` | Downloads the Waveshare overlay, enables SPI, configures the framebuffer, X11 kiosk, and calibrated ADS7846 touch input. |
+| `hdmi` | Starts Fennec in a Chromium kiosk on an HDMI display. |
+| `headless` | Does not configure a local display; use Fennec from a browser on the local network. |
+
+The script is idempotent and adapts to any user. It installs the system packages
+(including nmap), enables SPI (needed by Bjorn's e-paper display), sets up
+Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli,
+installs Bjorn in its own venv from a pinned requirements file that works on
+Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and
+rockyou from SecLists), generates a random bettercap password, and configures
+all systemd services. No sensitive data is stored in the repository.
+
+Reboot once after the install when using a local display. Fennec then starts as
+a service and opens automatically in the selected kiosk profile.
 
 ## Usage
 
