@@ -19,8 +19,8 @@ only applies to Wi-Fi.
 ### Owned / final build
 - Raspberry Pi 5, Raspberry Pi OS 64-bit desktop (hostname fennec, user florian)
 - Screen: Waveshare 3.5" RPi LCD (C), resistive touch, 480x320, high-speed SPI
-  (the UI is built at 480x320, fits without rework; the SPI overlay waveshare35c
-  and the Chromium kiosk are set up by install.sh — see Install below)
+  (the reference portable display profile; install.sh downloads its overlay,
+  configures the framebuffer, kiosk, and calibrated touch input — see Install below)
 - Wi-Fi USB adapter (monitor mode, required — Pi 5 built-in chip can't do it):
   Alfa AWUS036AXM (MediaTek MT7921AU), plugs straight into USB. Auto-detected
   by Fennec (first wlan* whose phy advertises monitor mode), no config needed.
@@ -218,13 +218,13 @@ SecLists). Fennec itself is installed as a systemd service (enabled at boot),
 and the Waveshare 3.5" touchscreen is set up end to end so it lights up on its
 own on a fresh Pi.
 Notes:
-- Touchscreen + kiosk: the installer adds the overlay waveshare35c (+ dtparam=spi=on)
-  to /boot/firmware/config.txt, installs chromium + X (xserver-xorg, xinit,
-  xserver-xorg-legacy), writes /etc/X11/Xwrapper.config for VT rights, auto-logs in
-  on tty1 (getty override) -> startx -> ~/.xinitrc, which waits for :5000 then opens
-  Chromium in kiosk mode. No fbcp: with no HDMI the SPI screen is /dev/fb0 directly.
-  The touch is not calibrated (resistive panel works as-is). Reboot once for the
-  overlay + kiosk to take effect.
+- Display profiles: the installer asks which display to configure, or reads
+  FENNEC_DISPLAY (waveshare35c, hdmi, or headless). The Waveshare 3.5-inch RPi
+  LCD (C) profile downloads the vendor overlay, enables SPI, configures its /dev/fb0
+  framebuffer for X11, calibrates the ADS7846 touch input, and starts the Chromium
+  kiosk through tty1 auto-login. The HDMI profile starts the same kiosk without SPI
+  configuration. Headless mode keeps only the network interface. Reboot once after
+  installation when using a local display.
 - Fennec service: system/fennec.service runs app.py as the install user with
   FENNEC_DEBUG=0, enabled at boot (WorkingDirectory = the repo folder).
 - On Raspberry Pi OS Trixie, routerkeygen's qmake may default to Qt6; if the
