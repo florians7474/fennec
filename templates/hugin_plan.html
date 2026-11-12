@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Plan</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .barre { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+             background:#161b22; border-bottom:1px solid #30363d; }
+    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .titre { font-size:15px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dl { background:#8b7fd4; color:#1a1230; border:none; border-radius:8px; font-size:12px;
+          font-weight:600; padding:7px 12px; text-decoration:none; white-space:nowrap; }
+    .corps { flex:1 1 auto; overflow:auto; padding:10px 12px; }
+    .meta { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; margin-bottom:8px;
+            word-break:break-all; }
+    pre { font-family:ui-monospace,Consolas,monospace; font-size:11px; line-height:1.5; white-space:pre-wrap;
+          color:#b9a7f5; background:#010409; border:1px solid #30363d; border-radius:8px; padding:10px; }
+    .run { font-size:12px; color:#c9d1d9; margin-top:10px; line-height:1.5; }
+    .run code { background:#161b22; border:1px solid #30363d; border-radius:5px; padding:1px 5px;
+                font-family:ui-monospace,Consolas,monospace; color:#8b7fd4; }
+    .warn { margin-top:10px; font-size:11px; color:#e3b341; }
+  </style>
+</head>
+<body>
+  <div class="barre">
+    <a class="retour" href="/hugin">&larr;</a>
+    <div class="titre">Plan</div>
+    <a class="dl" href="/hugin/plan?module={{ module|urlencode }}&amp;ip={{ ip|urlencode }}&amp;cve={{ cve|urlencode }}&amp;dl=1">Download .rc</a>
+  </div>
+
+  <div class="corps">
+    <div class="meta">{{ module }} → {{ ip }}{% if cve %} · {{ cve }}{% endif %}</div>
+    <pre>{{ rc }}</pre>
+    <div class="run">Run it on your Metasploit machine:<br><code>msfconsole -r {{ module.replace('/', '_') }}.rc</code><br>or paste the lines into <code>msfconsole</code>.</div>
+    <div class="warn">⚠ Lab use only, on targets you are explicitly authorized to test.</div>
+  </div>
+</body>
+</html>

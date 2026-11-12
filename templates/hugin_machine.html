@@ -56,6 +56,8 @@
              background:#1b1442; color:#b9a7f5; border:1px solid #3a2e6b; }
     .mtype.exploit { background:#3a1518; color:#ff7b72; border-color:#6e2f36; }
     .mrank { font-size:10px; color:#8b949e; white-space:nowrap; }
+    .planbtn { font-size:11px; font-weight:700; padding:5px 9px; border-radius:6px; white-space:nowrap;
+               text-decoration:none; background:#8b7fd4; color:#1a1230; font-family:ui-monospace,monospace; }
   </style>
 </head>
 <body>
@@ -135,10 +137,10 @@
           <div class="mod">
             <div class="mname">
               <div class="mtitle">{{ mod.name }}</div>
-              <div class="mfull">{{ mod.fullname }}</div>
+              <div class="mfull">{{ mod.fullname }} · {{ mod.rank }}</div>
             </div>
             <span class="mtype {{ mod.type }}">{{ mod.type }}</span>
-            <span class="mrank">{{ mod.rank }}</span>
+            <a class="planbtn" href="/hugin/plan?module={{ mod.fullname|urlencode }}&amp;ip={{ m.ip|urlencode }}&amp;cve={{ r.cve|urlencode }}">.rc</a>
           </div>
           {% endfor %}
         {% else %}

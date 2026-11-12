@@ -838,6 +838,24 @@ def hugin_msf_disconnect():
     hugin_msf.clear_config()
     return redirect(url_for("hugin_msf_page"))
 
+@app.route("/hugin/plan")
+def hugin_plan():
+    module = request.args.get("module", "")
+    ip = request.args.get("ip", "")
+    cve = request.args.get("cve", "")
+    if not hugin.module_in_index(module):
+        abort(404)
+    machine = next((m for m in hugin.read_machines() if m["ip"] == ip), None)
+    if not machine:
+        abort(404)
+    rc = hugin.build_rc(module, ip, machine.get("hostname", ""), cve)
+    if request.args.get("dl") == "1":
+        from flask import Response
+        fname = module.replace("/", "_") + ".rc"
+        return Response(rc, mimetype="text/plain",
+                        headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+    return render_template("hugin_plan.html", module=module, ip=ip, cve=cve, rc=rc)
+
 @app.route("/hugin/files")
 def hugin_files():
     return render_template("hugin_files.html", groups=hugin.list_files())

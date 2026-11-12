@@ -311,6 +311,48 @@ def load_msf_index():
     return _msf_cache
 
 
+_msf_modules_set = None
+
+
+def module_in_index(fullname):
+    """Whether a module fullname is one Hugin knows (from the CVE index).
+    Guards the plan generator against arbitrary input."""
+    global _msf_modules_set
+    if _msf_modules_set is None:
+        s = set()
+        for mods in load_msf_index().get("by_cve", {}).values():
+            for m in mods:
+                s.add(m["f"])
+        _msf_modules_set = s
+    return fullname in _msf_modules_set
+
+
+def build_rc(module, ip, hostname="", cve=""):
+    """A Metasploit resource script (.rc) pre-filled for a target.
+
+    This only writes a text plan; it runs nothing. The operator reviews and
+    runs it themselves, in an authorized lab.
+    """
+    lines = [
+        "# Fennec / Hugin - Metasploit resource script",
+        "# Lab use only, on explicitly authorized targets.",
+        "# Review 'show options' before running.",
+        f"# Target: {ip}" + (f" ({hostname})" if hostname else ""),
+    ]
+    if cve:
+        lines.append(f"# Reference: {cve}")
+    lines += [
+        "",
+        f"use {module}",
+        f"set RHOSTS {ip}",
+        "# set RPORT <port>   # set the service port if the default is wrong",
+        "# show options       # check required options first",
+        "run",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def correlate_machine(machine):
     """Metasploit modules matching the CVEs Bjorn found on this device.
 
