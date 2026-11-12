@@ -216,9 +216,14 @@
       }
     });
     // Tap outside a field and outside the keyboard closes it.
+    // Test by geometry, not kb.contains(e.target): tapping a key can rebuild
+    // the rows (shift / layer change) and detach the tapped element, which
+    // would then look "outside" and wrongly close the keyboard.
     document.addEventListener("mousedown", function (e) {
       if (!kb || kb.classList.contains("fk-hidden")) return;
-      if (kb.contains(e.target)) return;
+      var r = kb.getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right &&
+          e.clientY >= r.top && e.clientY <= r.bottom) return;
       if (wanted(e.target)) return;
       hide();
     });
