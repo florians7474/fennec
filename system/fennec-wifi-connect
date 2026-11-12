@@ -16,6 +16,12 @@ if [ -z "$SSID" ] || [ -z "$BSSID" ]; then
     exit 2
 fi
 
+# Refresh the scan so the target SSID is current; nmcli refuses "connect" to a
+# network it has not seen recently (e.g. when the interface is already on
+# another SSID). Ignore a "scanning too soon" error, then let the scan settle.
+nmcli device wifi rescan ifname "$IFACE" 2>/dev/null || true
+sleep 3
+
 if [ -n "$KEY" ]; then
     exec nmcli device wifi connect "$SSID" password "$KEY" bssid "$BSSID" ifname "$IFACE"
 else
