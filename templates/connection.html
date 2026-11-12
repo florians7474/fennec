@@ -54,12 +54,12 @@
   <div class="liste">
     {% if reseaux %}
       {% for r in reseaux %}
-      <div class="ligne {{ 'actuel' if actuel and actuel.bssid == r.bssid }}">
+      <div class="ligne {{ 'actuel' if r.connected }}">
         <div class="infos">
           <div class="rnom">{{ r.nom }}</div>
           <div class="rbssid">{{ r.bssid }}</div>
         </div>
-        {% if actuel and actuel.bssid == r.bssid %}
+        {% if r.connected %}
           <span class="badge">Connected</span>
           <a class="btn stop" href="/connection/stop">Disconnect</a>
         {% elif r.connectable %}

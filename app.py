@@ -720,14 +720,17 @@ def connection():
     reseaux = load_whitelist()
     ssid_act, bssid_act = wifi_active()
     connus = known_wifi_profiles()
+    actuel = None
     for r in reseaux:
         # Connectable if we hold a key, or the Pi already knows this network.
         r["connectable"] = bool(r.get("cle")) or (r.get("nom") in connus)
-    actuel = None
-    if bssid_act:
-        actuel = next((r for r in reseaux if r["bssid"].upper() == bssid_act.upper()), None)
-        if not actuel:
-            actuel = {"nom": ssid_act or "Wi-Fi", "bssid": bssid_act}
+        # Match the live Wi-Fi by SSID: a multi-band network answers on several
+        # BSSIDs, so the associated BSSID may differ from the whitelisted one.
+        r["connected"] = bool(ssid_act) and r.get("nom") == ssid_act
+        if r["connected"]:
+            actuel = r
+    if ssid_act and not actuel:
+        actuel = {"nom": ssid_act, "bssid": bssid_act, "connected": True}
     return render_template("connection.html", reseaux=reseaux, actuel=actuel,
                            err=request.args.get("err"))
 
