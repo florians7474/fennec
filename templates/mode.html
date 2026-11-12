@@ -16,6 +16,7 @@
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .tete { width:28px; height:28px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
     .pastille { width:9px; height:9px; border-radius:50%; background:#5a6673; }
     .pastille.on { background:#2ea043; box-shadow:0 0 6px #2ea043; }
@@ -45,6 +46,7 @@
 <body>
   <div class="barre">
     <a class="retour" href="/">&larr;</a>
+    <img class="tete" src="/static/{{ cle }}.png" alt="" onerror="this.style.display='none'">
     <div class="titre">{{ infos.nom }}</div>
     <span class="pastille {{ 'on' if actif }}"></span>
     {% if actif %}
