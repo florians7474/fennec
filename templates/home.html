@@ -124,7 +124,8 @@
     <img src="/static/fennec.png" alt="">
     <div class="marque">Fennec</div>
     <div class="sp"></div>
-    <a class="conn {{ 'ok' if connection.type }}" href="/connection">
+    <a id="conn-badge" class="conn {{ 'ok' if connection.type }}" href="/connection">
+      <span id="conn-ico" style="display:inline-flex;align-items:center">
       {% if connection.type == 'ethernet' %}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/><rect x="15" y="17" width="6" height="4" rx="1"/>
@@ -135,7 +136,8 @@
         <path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="0.6"/>
       </svg>
       {% endif %}
-      <span>{{ connection.nom }}</span>
+      </span>
+      <span id="conn-nom">{{ connection.nom }}</span>
     </a>
     <a class="reglages" href="/whitelist" title="Allowed networks">
       <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -273,6 +275,28 @@
       }
       knob.addEventListener('pointerup', end);
       knob.addEventListener('pointercancel', end);
+    })();
+  </script>
+  <script>
+    // The kiosk never reloads the home, so refresh the connection badge live.
+    (function(){
+      var ETH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/><rect x="15" y="17" width="6" height="4" rx="1"/><path d="M12 7v3M6 17v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>';
+      var WIFI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="0.6"/></svg>';
+      var badge = document.getElementById('conn-badge');
+      var ico = document.getElementById('conn-ico');
+      var nom = document.getElementById('conn-nom');
+      if (!badge) return;
+      function refresh(){
+        fetch('/connection/state', {cache:'no-store'})
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            ico.innerHTML = (d.type === 'ethernet') ? ETH : WIFI;
+            nom.textContent = d.nom || 'Offline';
+            badge.classList.toggle('ok', !!d.type);
+          })
+          .catch(function(){});
+      }
+      setInterval(refresh, 8000);
     })();
   </script>
 </body>

@@ -766,6 +766,11 @@ def connection_stop():
         pass
     return redirect(url_for("connection"))
 
+@app.route("/connection/state")
+def connection_state_json():
+    """Live connection for the header badge (polled by the kiosk home page)."""
+    return jsonify(connection_state())
+
 # ---------- Vigie ----------
 
 @app.route("/vigie")
