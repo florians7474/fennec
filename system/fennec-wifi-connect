@@ -16,11 +16,13 @@ if [ -z "$SSID" ] || [ -z "$BSSID" ]; then
     exit 2
 fi
 
-# Refresh the scan so the target SSID is current; nmcli refuses "connect" to a
-# network it has not seen recently (e.g. when the interface is already on
-# another SSID). Ignore a "scanning too soon" error, then let the scan settle.
+# An associated interface stays locked on its current AP's channel and can see
+# neither scan nor join another SSID (even on the same band). Free it first,
+# then rescan all bands so the target SSID is current before connecting.
+nmcli device disconnect "$IFACE" 2>/dev/null || true
+sleep 1
 nmcli device wifi rescan ifname "$IFACE" 2>/dev/null || true
-sleep 3
+sleep 4
 
 if [ -n "$KEY" ]; then
     exec nmcli device wifi connect "$SSID" password "$KEY" bssid "$BSSID" ifname "$IFACE"
