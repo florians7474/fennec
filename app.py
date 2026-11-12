@@ -6,6 +6,7 @@ import atexit
 import socket
 import raton_engine
 import vigie_monitor
+import hugin
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
 
 app = Flask(__name__)
@@ -792,6 +793,12 @@ def connection_state_json():
     return jsonify(connection_state())
 
 # ---------- Vigie ----------
+
+@app.route("/hugin")
+def hugin_page():
+    return render_template("hugin.html",
+                           machines=hugin.read_machines(),
+                           stats=hugin.read_stats())
 
 @app.route("/vigie")
 def vigie():

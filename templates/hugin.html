@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Hugin</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .barre {
+      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .tete { width:28px; height:28px; }
+    .titre { font-size:16px; font-weight:600; flex:1; }
+    .bilan { flex:0 0 auto; font-size:12px; color:#8b949e; padding:9px 14px; background:#10151c; }
+    .bilan b { color:#e6edf3; }
+    .bilan .sep { color:#30363d; margin:0 6px; }
+    .bilan .vuln { color:#f0883e; font-weight:700; }
+    .liste { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
+    .ligne {
+      display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
+      background:#161b22; border:1px solid #30363d; border-radius:10px;
+    }
+    .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#6e7681; }
+    .dot.up { background:#2ea043; box-shadow:0 0 6px #2ea043; }
+    .infos { flex:1; min-width:0; }
+    .rnom { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tags { display:flex; gap:6px; flex:0 0 auto; }
+    .tag { font-size:11px; font-weight:600; padding:5px 9px; border-radius:8px;
+           background:#1b1442; color:#b9a7f5; border:1px solid #3a2e6b; white-space:nowrap; }
+    .tag.act { background:#10303a; color:#28c0d4; border-color:#1d5663; }
+    .tag.z { background:#161b22; color:#6e7681; border-color:#30363d; }
+    .vide { color:#8b949e; font-size:13px; text-align:center; margin-top:40px; line-height:1.7; }
+  </style>
+</head>
+<body>
+  <div class="barre">
+    <a class="retour" href="/">&larr;</a>
+    <svg class="tete" viewBox="0 0 24 24" fill="#b9a7f5" stroke="none" aria-hidden="true">
+      <path d="M3 7l7 1.6 7.5-3-2.6 3.6 3.6.8-4.5 2c-.2 2.6-2.4 4.6-5 4.6-.2 0-.4 0-.6 0l-1 3.4-1.6-.3.8-3.6C4.7 14.9 3 12.6 3 10c0-1 .2-2 0-3z"/>
+      <circle cx="13.6" cy="7.6" r="0.9" fill="#1c1430"/>
+    </svg>
+    <div class="titre">Hugin</div>
+  </div>
+
+  <div class="bilan">
+    {% if stats %}
+      <b>{{ stats.alive }}</b> alive<span class="sep">/</span><b>{{ stats.known }}</b> known
+      <span class="sep">·</span><b>{{ stats.open_ports }}</b> open ports
+      <span class="sep">·</span>{% if stats.vulns %}<span class="vuln">{{ stats.vulns }} vulns</span>{% else %}<b>0</b> vulns{% endif %}
+    {% else %}
+      No Bjorn data yet. Run Bjorn once, then come back.
+    {% endif %}
+  </div>
+
+  <div class="liste">
+    {% if machines %}
+      {% for m in machines %}
+      <div class="ligne">
+        <span class="dot {{ 'up' if m.alive }}"></span>
+        <div class="infos">
+          <div class="rnom">{{ m.hostname or m.ip or m.mac }}</div>
+          <div class="rbssid">{{ m.ip }}{% if m.mac %} · {{ m.mac }}{% endif %}</div>
+        </div>
+        <div class="tags">
+          <span class="tag {{ 'z' if not m.nb_ports }}">{{ m.nb_ports }} ports</span>
+          <span class="tag act {{ 'z' if not m.nb_actions }}">{{ m.nb_actions }} act</span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="vide">No device in Bjorn's results.<br>Run Bjorn on an allowed network first.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
