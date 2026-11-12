@@ -16,6 +16,17 @@ if [ -z "$SSID" ] || [ -z "$BSSID" ]; then
     exit 2
 fi
 
+# Drop any existing profile for this exact SSID: a previous failed attempt can
+# leave an incomplete one, which makes connect fail with
+# "key-mgmt property is missing". Matched on the profile's real SSID, so the
+# main network's profile is left untouched.
+while IFS= read -r _name; do
+    [ -z "$_name" ] && continue
+    if [ "$(nmcli -g 802-11-wireless.ssid connection show "$_name" 2>/dev/null)" = "$SSID" ]; then
+        nmcli connection delete "$_name" 2>/dev/null || true
+    fi
+done < <(nmcli -t -f NAME connection show)
+
 # An associated interface stays locked on its current AP's channel and can see
 # neither scan nor join another SSID (even on the same band). Free it first,
 # then rescan all bands so the target SSID is current before connecting.
