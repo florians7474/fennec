@@ -20,12 +20,12 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 | **Vigie** | Network radar + per-device traffic watch | ✅ Working |
 | **Carte** | Map of captures by GPS location | 🚧 Phase 1 |
 
-The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and opens the allowed-networks manager where you scan for networks and pick the ones you are allowed to test. A power button in the top-right opens an on-screen menu to lock the screen, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate slide-to-unlock brings the interface back.
+The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and tapping it opens the connection manager: you scan for networks, pick the ones you are allowed to test, and connect the Pi to a whitelisted Wi-Fi or disconnect it (real nmcli on the built-in interface; the key comes from the whitelist or an existing profile, and a network answering on several bands is handled by SSID). An on-screen keyboard pops up on any text field, so keys and device names can be typed on the touchscreen without a physical keyboard. A power button in the top-right opens an on-screen menu to lock the screen, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate slide-to-unlock brings the interface back.
 
 **Pwnagotchi**, **Bjorn**, **Raton** and **Vigie** are operational: automatic installation, control from the tile, and a live view inside the interface.
 
 - **Pwnagotchi** captures handshakes in the background and mirrors its head live in the tile.
-- **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile.
+- **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile. On Wi-Fi it only starts when the connected network is in your whitelist; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
 - **Raton** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
 - **Vigie** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Vigie into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts (TLS SNI and QUIC via tshark, plus every cleartext DNS query through an on-demand dnsmasq the Pi redirects port 53 to), with a persistent, timestamped history kept per network. A **Force DNS** toggle blocks DoT and the main DoH resolvers to push hardened devices back onto readable DNS, and a device running a VPN is detected and flagged (WireGuard, OpenVPN or IPsec/IKEv2 tunnel plus endpoint) instead of showing blank.
 - **Carte** plots captured handshakes on a live map using the position read at capture time (Pwnagotchi's GPS plugin writes a `.gps.json` next to each handshake when a fix is available). Markers are colour-coded by whitelist status, and tapping one adds that network to the allowed list. Phase 1 (geolocating captures) is in; full wardriving comes next.
@@ -94,6 +94,8 @@ Click or tap a tile to activate the matching module.
 - **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
 - **Raton**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
 - **Vigie**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM, tshark for SNI/QUIC and an on-demand dnsmasq for DNS, optional Force DNS against DoT/DoH, VPN detection, persistent per-network history)
+- **Connection**: joins or leaves a whitelisted Wi-Fi via nmcli on the built-in interface; keeps the USB adapter free for monitor mode
+- On-screen keyboard for the touchscreen, so any field can be filled without a physical keyboard
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 
 ## Roadmap
@@ -109,5 +111,7 @@ Click or tap a tile to activate the matching module.
 - [x] Vigie module (device radar, per-device recon, naming, and traffic watch via MITM)
 - [x] Vigie DNS capture (Pi as resolver), Force DNS against DoT/DoH, and VPN detection
 - [x] Carte module – phase 1 (geolocate captured handshakes on a live map)
-- [ ] Real Wi-Fi join/disconnect from the connection manager (nmcli)
+- [x] On-screen keyboard for the touchscreen
+- [x] Real Wi-Fi join/disconnect from the connection manager (nmcli)
+- [x] Bjorn Wi-Fi start gate (whitelisted network required on Wi-Fi, free on Ethernet)
 - [ ] Carte module – phase 2 (full wardriving: map every network, offline tiles)

@@ -40,7 +40,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
-| Connexion | Join a whitelisted network (Wi-Fi lock step 2) | Stub only (stores target in memory, no real nmcli yet) |
+| Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Carte | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
 
@@ -50,10 +50,24 @@ florian to systemctl start/stop them without a password). Only Raton is
 coded in-house.
 
 ## Connection, scan and lists
-- Header badge: shows the Pi's real connection, read live from nmcli/hostname
-  at each page load — Ethernet, Wi-Fi + SSID, or Offline. It replaces the old
-  simulated "current network" value, so it never claims a Wi-Fi when the Pi is
-  on Ethernet.
+- Header badge: shows the Pi's real connection, read live from nmcli — Ethernet,
+  Wi-Fi + SSID, or Offline. On the kiosk home it refreshes itself every few
+  seconds via /connection/state (the kiosk never reloads the page), so it follows
+  a cable being unplugged or a Wi-Fi being joined without a reload. Ethernet takes
+  priority when both are up, so it never claims a Wi-Fi when the Pi is on Ethernet.
+- Connection page (opened by the header badge): lists the whitelisted networks and
+  connects/disconnects the Pi over Wi-Fi for real, via nmcli on the built-in
+  interface (wlan0), keeping the USB adapter free for monitor mode. A network is
+  connectable when a key is stored in the whitelist or the Pi already knows it (a
+  saved profile, e.g. from imaging); otherwise its row shows "no key". Before
+  connecting, the helper clears any stale profile for that SSID, frees the
+  interface and rescans all bands (so a target on another channel/band is found).
+  The connected network is matched by SSID, so a multi-band box shows
+  Connected/Disconnect on the right row. Backed by sudo helpers
+  fennec-wifi-connect / fennec-wifi-disconnect.
+- On-screen keyboard (static/keyboard.js): a self-contained touchscreen keyboard
+  that pops up on any text field (Wi-Fi key, device rename…), since the kiosk has
+  no physical keyboard. Included on the pages that take input.
 - Allowed networks (liste_blanche.json, gitignored): the BSSID whitelist, with
   per-entry key, inline edit, and a Clear all that empties it.
 - Scan page, two tabs:
@@ -66,6 +80,10 @@ coded in-house.
   native popup (which is unusable on the kiosk touchscreen).
 - Bjorn's stopped screen names the network and /24 subnet it will scan (or asks
   to connect when offline), so the target is obvious before pressing Start.
+- Bjorn Wi-Fi start gate: Bjorn only starts on Ethernet (a cable is a deliberate
+  authorization) or when the connected Wi-Fi SSID is in the whitelist (any band of
+  that network); otherwise Start is refused with a message. Enforced in the toggle
+  route before the service is started.
 - Power button (top-right of the header): an in-page dialog offers Lock screen,
   Reboot and Shut down. Reboot/Shut down post to /power/<action>, which runs
   sudo systemctl reboot|poweroff (exact-path rules in fennec.sudoers). Lets the
@@ -247,17 +265,23 @@ Notes:
   fennec-dns-force (Force DNS: block DoT/DoH) and fennec-clear-handshakes (delete
   Pwnagotchi captures). Each is granted by an exact-path rule in fennec.sudoers,
   so no broad sudo is given.
+- Connection uses two more sudo helpers, fennec-wifi-connect (clears a stale
+  profile, frees wlan0, rescans, then nmcli connect) and fennec-wifi-disconnect,
+  granted the same exact-path way in fennec.sudoers.
+- Bjorn runs web-only here, so its e-paper helper is replaced at install time by
+  system/bjorn-epd_helper.py (copied over ~/Bjorn/epd_helper.py): a no-op stand-in
+  that never claims GPIO. Without it Bjorn aborts with "GPIO busy" because the
+  e-paper driver wants pins the Fennec touchscreen already uses.
 
 ## Dev loop
 Edited directly on the Pi and pushed from there.
 Editing any project file: nano ~/console/<file>.
 
 ## Other work left (outside Raton)
-- Wi-Fi lock step 2: make the Connexion tile real via nmcli on wlan0
-  (connect/disconnect, real state, refuse if no key and point to Raton).
-  Currently a stub that only stores the target in memory.
-- Wi-Fi lock step 3: Bjorn start gate (ethernet allowed; on Wi-Fi the connected
-  BSSID must be in the whitelist)
+- Wi-Fi lock: done. Step 2 (real Connexion via nmcli) and step 3 (Bjorn start
+  gate) are both in — see "Connection, scan and lists" above. The connection page
+  joins/leaves a whitelisted Wi-Fi for real, and Bjorn refuses to start on a
+  non-whitelisted Wi-Fi (Ethernet stays free).
 - Vigie DNS capture (v3): done. During a Watch the Pi is the network's DNS
   resolver (dnsmasq + port-53 redirect), with a Force DNS toggle against DoT/DoH
   and VPN detection (WireGuard, OpenVPN, IPsec/IKEv2). v1 (device radar) and v2
