@@ -182,19 +182,35 @@ STAGES = [
 ]
 
 def a_un_handshake(pcap, bssid=None):
-    """True if the capture holds at least one WPA handshake."""
+    """True only if the capture yields a crackable WPA hash.
+
+    Uses hcxpcapngtool (the same tool as the GPU export) and checks it wrote a
+    non-empty .hc22000. aircrack-ng's own "N handshake" count is too loose: it
+    flags partial captures that neither the local engine nor the export can
+    actually crack, so a capture could show an active Test/GPU button and then
+    fail with "No crackable handshake"."""
+    sortie = "/dev/shm/raton_hs_check.hc22000"
     try:
-        r = subprocess.run(
-            ["aircrack-ng", pcap],
+        os.remove(sortie)
+    except OSError:
+        pass
+    try:
+        subprocess.run(
+            ["hcxpcapngtool", "-o", sortie, pcap],
             capture_output=True, text=True, timeout=30,
             stdin=subprocess.DEVNULL,
         )
     except Exception:
-        return True   # en cas de doute, on laisse Raton tourner
-    for m in re.finditer(r"WPA \((\d+)\s+handshake", r.stdout or ""):
-        if int(m.group(1)) > 0:
-            return True
-    return False
+        return True   # tool missing or error: don't block, let Raton try
+    try:
+        ok = os.path.getsize(sortie) > 0
+    except OSError:
+        ok = False
+    try:
+        os.remove(sortie)
+    except OSError:
+        pass
+    return ok
 
 
 def _run(pcap, bssid, reseau, wordlist):
