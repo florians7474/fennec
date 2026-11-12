@@ -43,10 +43,11 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Carte | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
+| Hugin | Bjorn companion: surfaces Bjorn's results, CVE->Metasploit correlation, attack plans | Phases 1-2 done; phase 3 (deported Metasploit execution) in progress |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
-florian to systemctl start/stop them without a password). Only Raton is
+florian to systemctl start/stop them without a password). Raton and Hugin are
 coded in-house.
 
 ## Connection, scan and lists
@@ -226,6 +227,42 @@ short candidate is ever shown or tested.
   - optionally a one-click script (crack.sh / crack.bat) that fetches the
     wordlist if needed and launches hashcat, so there is zero manual step
 
+## Hugin — Bjorn companion
+Hugin is to Bjorn what Raton is to Pwnagotchi: it turns Bjorn's raw output into
+something readable, then adds Metasploit correlation and (deported) execution.
+Raven mascot (Odin's Huginn, "thought").
+
+### Phase 1 — surface Bjorn's results (done)
+- Reads Bjorn's own files under ~/Bjorn/data: netkb.csv (devices, ports, per-device
+  action status), livestatus.csv (global counts), and output/ (scans,
+  vulnerabilities, cracked credentials, stolen data).
+- Device list with alive state and open-port / action counts.
+- Per-device detail: open ports with service names, vulnerabilities (from
+  vulnerability_summary.csv), Bjorn actions with status and date, and the files
+  linked to that device (matched by IP/MAC), with preview and download.
+- Global file explorer by category, with text preview and secure download (paths
+  confined to Bjorn's output dir).
+
+### Phase 2 — Metasploit correlation (done; local, no Metasploit needed)
+- Ships a compact CVE->modules index (hugin_msf_index.json, ~0.5 MB) built from
+  Metasploit's module metadata. No Metasploit install, nothing running on the Pi.
+- For each CVE Bjorn found on a device, lists the candidate Metasploit modules
+  (type, rank). Flagged as correlation only, never a confirmed vulnerability.
+
+### Phase 3 — deported execution (in progress)
+Metasploit never runs on the Pi. It runs on a separate lab machine
+(msfrpcd -P <pass> -S); the Pi talks to it over the network with a small
+msgpack-RPC client (python3-msgpack).
+- Brick 1 (done, to validate live): guided connection screen — auto-detect the
+  host (nmap on port 55553), enter the RPC password, connect, live state. Config
+  stored locally in msf_config.json (gitignored).
+- Brick 2 (done): per-module attack plan — a pre-filled .rc (use + RHOSTS)
+  viewable and downloadable from each candidate module; module name validated
+  against the index.
+- Brick 3 (to do): run a module via RPC with explicit confirmation, capture the
+  result (session opened / failed) and record it; Activity screen with history.
+Lab use only, on explicitly authorized targets.
+
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
 adapts to any user/path; generates a random bettercap password; nothing
@@ -299,6 +336,11 @@ Editing any project file: nano ~/console/<file>.
 - Nomadic Wi-Fi reconnection: NetworkManager now retries autoconnect forever
   (/etc/NetworkManager/conf.d/wifi-retry.conf, installed by install.sh), so the
   Pi rejoins its network on its own when it comes back in range without a reboot.
+- Hugin phase 3: validate the RPC connection live, then build brick 3 (run a
+  module via RPC with confirmation + Activity screen). Also optional: refresh the
+  Metasploit CVE index from the upstream repo via install.sh.
+- Hugin phase 4 (later): combined Bjorn + Hugin reports, export, cross-session
+  history, and the future "Audit" orchestrator.
 
 ## Known issues
 - While Vigie's Watch (MITM) is active, all LAN traffic routes through the Pi,
