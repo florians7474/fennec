@@ -7,6 +7,7 @@ import socket
 import raton_engine
 import vigie_monitor
 import hugin
+import hugin_msf
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
 
 app = Flask(__name__)
@@ -806,6 +807,36 @@ def hugin_machine(mac):
     if not m:
         return redirect(url_for("hugin_page"))
     return render_template("hugin_machine.html", m=m)
+
+@app.route("/hugin/msf")
+def hugin_msf_page():
+    cfg = hugin_msf.load_config()
+    return render_template("hugin_msf.html", cfg=cfg, subnet=local_subnet(),
+                           default_port=hugin_msf.DEFAULT_PORT,
+                           err=request.args.get("err"))
+
+@app.route("/hugin/msf/scan")
+def hugin_msf_scan():
+    return jsonify({"hosts": hugin_msf.detect(local_subnet())})
+
+@app.route("/hugin/msf/state")
+def hugin_msf_state():
+    return jsonify(hugin_msf.state())
+
+@app.route("/hugin/msf/connect", methods=["POST"])
+def hugin_msf_connect():
+    host = request.form.get("host", "").strip()
+    port = request.form.get("port", "").strip() or hugin_msf.DEFAULT_PORT
+    password = request.form.get("password", "").strip()
+    if not host or not password:
+        return redirect(url_for("hugin_msf_page", err="Host and password are required."))
+    hugin_msf.connect(host, port, password)
+    return redirect(url_for("hugin_msf_page"))
+
+@app.route("/hugin/msf/disconnect")
+def hugin_msf_disconnect():
+    hugin_msf.clear_config()
+    return redirect(url_for("hugin_msf_page"))
 
 @app.route("/hugin/files")
 def hugin_files():

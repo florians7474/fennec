@@ -113,7 +113,7 @@ sudo apt update
 # -> preseed the debconf question to avoid the interactive prompt.
 echo "wireshark-common wireshark-common/install-setuid boolean false" | sudo debconf-set-selections
 sudo DEBIAN_FRONTEND=noninteractive apt install -y \
-    git python3-venv python3-dev python3-flask aircrack-ng bettercap golang \
+    git python3-venv python3-dev python3-flask python3-msgpack aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark dnsmasq \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev \
