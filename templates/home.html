@@ -163,6 +163,17 @@
       <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='pwnagotchi' else 'stopped' }}</div>
     </a>
 
+    <a class="app" href="/map">
+      <div class="icone map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <div class="nom">Carte</div>
+      <div class="etat"><span class="pastille"></span>soon</div>
+    </a>
+
     <a class="app {{ 'on' if actif=='cracking' }}" href="/mode/cracking">
       <div class="icone cass"><img src="/static/raton.png" alt="Raton"></div>
       <div class="nom">Raton</div>
@@ -175,27 +186,16 @@
       <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='bjorn' else 'stopped' }}</div>
     </a>
 
-    <a class="app {{ 'on' if actif=='vigie' }}" href="/vigie">
-      <div class="icone vigie"><img src="/static/vigie.png" alt="Vigie"></div>
-      <div class="nom">Vigie</div>
-      <div class="etat"><span class="pastille"></span>{{ 'watching' if actif=='vigie' else 'idle' }}</div>
-    </a>
-
     <a class="app" href="/hugin">
       <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
       <div class="nom">Hugin</div>
       <div class="etat"><span class="pastille"></span>results</div>
     </a>
 
-    <a class="app" href="/map">
-      <div class="icone map">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-          <circle cx="12" cy="10" r="3"/>
-        </svg>
-      </div>
-      <div class="nom">Carte</div>
-      <div class="etat"><span class="pastille"></span>soon</div>
+    <a class="app {{ 'on' if actif=='vigie' }}" href="/vigie">
+      <div class="icone vigie"><img src="/static/vigie.png" alt="Vigie"></div>
+      <div class="nom">Vigie</div>
+      <div class="etat"><span class="pastille"></span>{{ 'watching' if actif=='vigie' else 'idle' }}</div>
     </a>
 
   </div>
