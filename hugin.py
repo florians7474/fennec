@@ -121,6 +121,8 @@ def get_machine(mac):
         state, when = _action_status(value)
         actions.append({"name": _humanize(name), "state": state, "when": when})
     machine["actions_detail"] = actions
+    machine["vulns"] = machine_vulns(machine["ip"], machine["mac"])
+    machine["files"] = machine_files(machine["ip"], machine["mac"])
     return machine
 
 
@@ -229,3 +231,58 @@ def read_text(abs_path):
     except OSError:
         return None, False
     return data[:PREVIEW_MAX], len(data) > PREVIEW_MAX
+
+
+VULN_SUMMARY = os.path.join(OUTPUT_DIR, "vulnerabilities", "vulnerability_summary.csv")
+
+
+def machine_vulns(ip, mac):
+    """Vulnerabilities for a device, from vulnerability_summary.csv.
+    Each: {port, vulns:[...]}. Empty when Bjorn found none."""
+    out = []
+    for r in _read_csv(VULN_SUMMARY):
+        r_ip = (r.get("IP") or "").strip()
+        r_mac = (r.get("MAC Address") or "").strip()
+        if r_ip != ip and (not mac or r_mac != mac):
+            continue
+        raw = (r.get("Vulnerabilities") or "").strip()
+        vulns = [v.strip() for v in raw.split(";") if v.strip()]
+        if not vulns and not (r.get("Port") or "").strip():
+            continue
+        out.append({"port": (r.get("Port") or "").strip(), "vulns": vulns})
+    return out
+
+
+def machine_files(ip, mac):
+    """Output files that belong to a device, matched by IP or MAC in the path
+    (vuln scans, stolen data). Global files (cracked creds, network scans) stay
+    in the main explorer."""
+    base = OUTPUT_DIR
+    mac_nc = (mac or "").replace(":", "").lower()
+    ip_re = re.compile(r"(?<![0-9.])" + re.escape(ip) + r"(?![0-9])") if ip else None
+    out = []
+    for root, _dirs, files in os.walk(base):
+        for name in files:
+            rel = os.path.relpath(os.path.join(root, name), base)
+            if ip_re and ip_re.search(rel):
+                pass
+            elif mac_nc and mac_nc in rel.lower():
+                pass
+            else:
+                continue
+            try:
+                st = os.stat(os.path.join(root, name))
+            except OSError:
+                continue
+            cat_dir = rel.split(os.sep)[0]
+            out.append({
+                "rel": rel,
+                "name": name,
+                "category": FILE_CATEGORIES.get(cat_dir, cat_dir),
+                "size_h": _human_size(st.st_size),
+                "mtime": time.strftime("%Y-%m-%d %H:%M", time.localtime(st.st_mtime)),
+                "text": is_text(name),
+                "mtime_raw": st.st_mtime,
+            })
+    out.sort(key=lambda f: -f["mtime_raw"])
+    return out
