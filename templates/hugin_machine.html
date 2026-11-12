@@ -43,6 +43,19 @@
             text-decoration:none; white-space:nowrap; }
     .fbtn.view { background:#1b1442; color:#b9a7f5; border:1px solid #3a2e6b; }
     .fbtn.dl { background:#8b7fd4; color:#1a1230; }
+    .msfnote { font-size:11px; color:#8b949e; margin-bottom:8px; }
+    .cvehdr { font-size:12px; font-weight:700; color:#ff7b72; font-family:ui-monospace,Consolas,monospace;
+              margin:8px 0 5px; }
+    .mod { display:flex; align-items:center; gap:8px; padding:7px 10px; margin-bottom:5px;
+           background:#161b22; border:1px solid #30363d; border-radius:8px; }
+    .mname { flex:1; min-width:0; }
+    .mtitle { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mfull { font-size:10px; color:#8b949e; font-family:ui-monospace,Consolas,monospace;
+             white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mtype { font-size:10px; font-weight:700; padding:3px 7px; border-radius:6px; white-space:nowrap;
+             background:#1b1442; color:#b9a7f5; border:1px solid #3a2e6b; }
+    .mtype.exploit { background:#3a1518; color:#ff7b72; border-color:#6e2f36; }
+    .mrank { font-size:10px; color:#8b949e; white-space:nowrap; }
   </style>
 </head>
 <body>
@@ -110,6 +123,30 @@
       {% endfor %}
     {% else %}
       <div class="vide">No file linked to this device.</div>
+    {% endif %}
+
+    <div class="sect">Metasploit modules</div>
+    <div class="msfnote">Correlation only — a CVE match is a candidate, not a confirmed vulnerability. Index: {{ m.msf.index.modules }} modules / {{ m.msf.index.cve }} CVEs.</div>
+    {% if m.msf.nb_cve %}
+      {% for r in m.msf.cves %}
+        <div class="cvehdr">{{ r.cve }}</div>
+        {% if r.modules %}
+          {% for mod in r.modules %}
+          <div class="mod">
+            <div class="mname">
+              <div class="mtitle">{{ mod.name }}</div>
+              <div class="mfull">{{ mod.fullname }}</div>
+            </div>
+            <span class="mtype {{ mod.type }}">{{ mod.type }}</span>
+            <span class="mrank">{{ mod.rank }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="vide">No Metasploit module for this CVE.</div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <div class="vide">No CVE found by Bjorn yet. Run NmapVulnScanner on a target to populate this.</div>
     {% endif %}
   </div>
 </body>

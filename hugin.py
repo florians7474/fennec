@@ -7,6 +7,7 @@ them per device. No action is taken on the network here.
 import os
 import re
 import csv
+import json
 import time
 
 BJORN_DATA = os.path.expanduser("~/Bjorn/data")
@@ -123,6 +124,7 @@ def get_machine(mac):
     machine["actions_detail"] = actions
     machine["vulns"] = machine_vulns(machine["ip"], machine["mac"])
     machine["files"] = machine_files(machine["ip"], machine["mac"])
+    machine["msf"] = correlate_machine(machine)
     return machine
 
 
@@ -286,3 +288,55 @@ def machine_files(ip, mac):
             })
     out.sort(key=lambda f: -f["mtime_raw"])
     return out
+
+
+# --- Phase 2: Metasploit module correlation (local, no Metasploit running) ---
+
+MSF_INDEX = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "hugin_msf_index.json")
+RANK_LABELS = {0: "Manual", 100: "Low", 200: "Average", 300: "Normal",
+               400: "Good", 500: "Great", 600: "Excellent"}
+_msf_cache = None
+
+
+def load_msf_index():
+    """Load the compact CVE->modules index once, cached."""
+    global _msf_cache
+    if _msf_cache is None:
+        try:
+            with open(MSF_INDEX, encoding="utf-8") as f:
+                _msf_cache = json.load(f)
+        except (FileNotFoundError, OSError, ValueError):
+            _msf_cache = {"by_cve": {}, "modules_with_cve": 0, "cve_count": 0}
+    return _msf_cache
+
+
+def correlate_machine(machine):
+    """Metasploit modules matching the CVEs Bjorn found on this device.
+
+    Correlation only: a CVE match is a candidate, NOT a confirmed vulnerability
+    and NOT a proven exploit. Running anything is a separate, deferred step.
+    """
+    idx = load_msf_index()
+    by_cve = idx.get("by_cve", {})
+    cves = set()
+    for v in machine.get("vulns", []):
+        for s in v.get("vulns", []):
+            for c in re.findall(r"CVE-\d{4}-\d{4,7}", s, re.IGNORECASE):
+                cves.add(c.upper())
+    results = []
+    for c in sorted(cves):
+        mods = []
+        for m in by_cve.get(c, []):
+            mods.append({
+                "fullname": m["f"], "name": m["n"], "type": m["t"],
+                "rank": RANK_LABELS.get(m["r"], str(m["r"])),
+            })
+        results.append({"cve": c, "modules": mods})
+    return {
+        "cves": results,
+        "nb_cve": len(cves),
+        "nb_matched": sum(1 for r in results if r["modules"]),
+        "index": {"modules": idx.get("modules_with_cve", 0),
+                  "cve": idx.get("cve_count", 0)},
+    }
