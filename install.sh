@@ -218,6 +218,11 @@ if ! grep -q "allow_reuse_address = True" "$USER_HOME/Bjorn/webapp.py"; then
 fi
 sed -i 's/^\( *\)self.port += 1/\1__import__("time").sleep(2)/' "$USER_HOME/Bjorn/webapp.py"
 
+# Headless e-paper: Bjorn runs web-only here (its panel's GPIO pins are taken by
+# the Fennec touchscreen). Replace its e-paper helper with a no-op stand-in so it
+# never claims GPIO and never crashes with "GPIO busy".
+cp "$SYS/bjorn-epd_helper.py" "$USER_HOME/Bjorn/epd_helper.py"
+
 # Dedicated venv + Python dependencies
 if [ ! -d "$USER_HOME/bjorn-venv" ]; then
     python3 -m venv "$USER_HOME/bjorn-venv"
