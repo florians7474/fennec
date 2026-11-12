@@ -35,6 +35,8 @@
     .chargement .txt { font-size:13px; }
     @keyframes tourne { to { transform:rotate(360deg); } }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; max-width:340px; }
+    .err { max-width:340px; margin-bottom:12px; padding:8px 12px; background:#2d1518;
+           border:1px solid #6e2f36; border-radius:8px; color:#ffa198; font-size:12px; }
     .cadre { position:relative; width:480px; height:272px; overflow:hidden; background:#000; }
     .cadre iframe { position:absolute; top:0; left:0; width:820px; height:465px; border:0;
                     transform:scale(0.5854); transform-origin:top left; }
@@ -64,6 +66,7 @@
     {% elif actif %}
       <div class="vide">This mode is running.<br>Its interface will appear here once started on the Pi.</div>
     {% elif reseau_scan %}
+      {% if err %}<div class="err">{{ err }}</div>{% endif %}
       {% if reseau_scan.type %}
         <div class="vide">
           Bjorn scans the network this Pi is connected to:<br>

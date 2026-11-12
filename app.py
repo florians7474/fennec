@@ -204,6 +204,21 @@ def known_wifi_profiles():
             ssids.add(p[0])
     return ssids
 
+def bjorn_wifi_gate():
+    """Whether Bjorn may start. Ethernet = implicit authorization (physical act).
+    On Wi-Fi, allowed only if the connected SSID is in the whitelist (any band of
+    that network). Returns (ok, message)."""
+    conn = connection_state()
+    if conn["type"] == "ethernet":
+        return True, None
+    if conn["type"] == "wifi":
+        ssid_act, _ = wifi_active()
+        if ssid_act and any(r.get("nom") == ssid_act for r in load_whitelist()):
+            return True, None
+        return (False, "This Wi-Fi is not in your allowed networks. "
+                       "Connect to an allowed network first.")
+    return (False, "Not connected. Plug in Ethernet or join an allowed Wi-Fi first.")
+
 def local_ip():
     """The Pi's first non-loopback IPv4, or None."""
     try:
@@ -551,7 +566,8 @@ def mode(nom):
         reseau_scan = {"type": conn["type"], "nom": conn["nom"],
                        "sous_reseau": local_subnet()}
         return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
-                               url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan)
+                               url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan,
+                               err=request.args.get("err"))
     actif = (etat["mode_actif"] == nom)
     return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
                            url_ui=None, url_iframe=None)
@@ -569,6 +585,10 @@ def toggle(nom):
         stop(nom)
         etat["mode_actif"] = None
     else:
+        if nom == "bjorn":
+            ok, msg = bjorn_wifi_gate()
+            if not ok:
+                return redirect(url_for("mode", nom="bjorn", err=msg))
         if actuel:
             stop(actuel)
         start(nom)
