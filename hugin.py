@@ -5,6 +5,7 @@ Phase 1: read-only. Parses Bjorn's own files under ~/Bjorn/data and presents
 them per device. No action is taken on the network here.
 """
 import os
+import re
 import csv
 
 BJORN_DATA = os.path.expanduser("~/Bjorn/data")
@@ -65,6 +66,61 @@ def read_machines():
         })
     machines.sort(key=lambda m: (not m["alive"], _ipkey(m["ip"])))
     return machines
+
+
+# Common port -> service names, enough to label what Bjorn targets.
+PORT_SERVICES = {
+    "21": "FTP", "22": "SSH", "23": "Telnet", "25": "SMTP", "53": "DNS",
+    "80": "HTTP", "110": "POP3", "111": "RPC", "135": "MSRPC", "139": "NetBIOS",
+    "143": "IMAP", "161": "SNMP", "389": "LDAP", "443": "HTTPS", "445": "SMB",
+    "465": "SMTPS", "500": "IKE", "515": "Printer", "548": "AFP", "631": "IPP",
+    "993": "IMAPS", "995": "POP3S", "1433": "MSSQL", "1883": "MQTT",
+    "3000": "HTTP", "3306": "MySQL", "3389": "RDP", "5000": "HTTP",
+    "5432": "PostgreSQL", "5900": "VNC", "6379": "Redis", "8000": "HTTP",
+    "8080": "HTTP", "8443": "HTTPS", "9100": "Printer", "32400": "Plex",
+}
+
+
+def _humanize(name):
+    """RDPBruteforce -> RDP Bruteforce, StealFilesSSH -> Steal Files SSH."""
+    name = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
+    name = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", name)
+    return name
+
+
+def _action_status(value):
+    """('success'|'failed'|'done', 'YYYY-MM-DD HH:MM') from a netkb action cell."""
+    low = value.lower()
+    if low.startswith("success"):
+        state = "success"
+    elif low.startswith("fail"):
+        state = "failed"
+    else:
+        state = "done"
+    when = ""
+    m = re.search(r"(\d{8})_(\d{6})", value)
+    if m:
+        d, t = m.group(1), m.group(2)
+        when = f"{d[0:4]}-{d[4:6]}-{d[6:8]} {t[0:2]}:{t[2:4]}"
+    return state, when
+
+
+def get_machine(mac):
+    """One device, enriched for its detail page: ports with service names and
+    Bjorn actions with status and date. Returns None if not found."""
+    machine = next((m for m in read_machines() if m["mac"] == mac), None)
+    if not machine:
+        return None
+    machine["ports_detail"] = [
+        {"port": p, "service": PORT_SERVICES.get(p, "unknown")}
+        for p in machine["ports"]
+    ]
+    actions = []
+    for name, value in sorted(machine["actions"].items()):
+        state, when = _action_status(value)
+        actions.append({"name": _humanize(name), "state": state, "when": when})
+    machine["actions_detail"] = actions
+    return machine
 
 
 def read_stats():

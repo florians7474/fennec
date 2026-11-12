@@ -26,7 +26,10 @@
     .ligne {
       display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
       background:#161b22; border:1px solid #30363d; border-radius:10px;
+      text-decoration:none; color:inherit;
     }
+    .ligne:active { border-color:#8b7fd4; }
+    .chev { color:#6e7681; font-size:18px; flex:0 0 auto; }
     .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#6e7681; }
     .dot.up { background:#2ea043; box-shadow:0 0 6px #2ea043; }
     .infos { flex:1; min-width:0; }
@@ -64,17 +67,18 @@
   <div class="liste">
     {% if machines %}
       {% for m in machines %}
-      <div class="ligne">
+      <a class="ligne" href="/hugin/machine/{{ m.mac }}">
         <span class="dot {{ 'up' if m.alive }}"></span>
         <div class="infos">
           <div class="rnom">{{ m.hostname or m.ip or m.mac }}</div>
           <div class="rbssid">{{ m.ip }}{% if m.mac %} · {{ m.mac }}{% endif %}</div>
         </div>
         <div class="tags">
-          <span class="tag {{ 'z' if not m.nb_ports }}">{{ m.nb_ports }} ports</span>
+          <span class="tag {{ 'z' if not m.nb_ports }}">{{ m.nb_ports }} port{{ 's' if m.nb_ports != 1 }}</span>
           <span class="tag act {{ 'z' if not m.nb_actions }}">{{ m.nb_actions }} act</span>
         </div>
-      </div>
+        <span class="chev">&rsaquo;</span>
+      </a>
       {% endfor %}
     {% else %}
       <div class="vide">No device in Bjorn's results.<br>Run Bjorn on an allowed network first.</div>

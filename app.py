@@ -800,6 +800,13 @@ def hugin_page():
                            machines=hugin.read_machines(),
                            stats=hugin.read_stats())
 
+@app.route("/hugin/machine/<mac>")
+def hugin_machine(mac):
+    m = hugin.get_machine(mac)
+    if not m:
+        return redirect(url_for("hugin_page"))
+    return render_template("hugin_machine.html", m=m)
+
 @app.route("/vigie")
 def vigie():
     return render_template("vigie.html")

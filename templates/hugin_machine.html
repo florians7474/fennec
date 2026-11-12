@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>{{ m.hostname or m.ip }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .barre {
+      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .titre { font-size:15px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#6e7681; }
+    .dot.up { background:#2ea043; box-shadow:0 0 6px #2ea043; }
+    .corps { flex:1 1 auto; overflow-y:auto; padding:10px 14px; }
+    .sous { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; margin-bottom:12px; }
+    .sect { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+            color:#8b7fd4; margin:14px 0 7px; }
+    .sect:first-of-type { margin-top:0; }
+    .row { display:flex; align-items:center; gap:10px; padding:8px 11px; margin-bottom:6px;
+           background:#161b22; border:1px solid #30363d; border-radius:9px; }
+    .port { font-size:14px; font-weight:700; font-family:ui-monospace,Consolas,monospace;
+            min-width:52px; }
+    .svc { flex:1; font-size:13px; color:#c9d1d9; }
+    .svc.unknown { color:#6e7681; }
+    .aname { flex:1; font-size:13px; }
+    .awhen { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; }
+    .badge { font-size:11px; font-weight:700; padding:4px 9px; border-radius:7px; white-space:nowrap; }
+    .badge.success { background:#133a2a; color:#2ea043; border:1px solid #1e5a40; }
+    .badge.failed  { background:#3a1518; color:#ff7b72; border:1px solid #6e2f36; }
+    .badge.done    { background:#161b22; color:#8b949e; border:1px solid #30363d; }
+    .vide { color:#6e7681; font-size:12px; padding:4px 2px; }
+  </style>
+</head>
+<body>
+  <div class="barre">
+    <a class="retour" href="/hugin">&larr;</a>
+    <span class="dot {{ 'up' if m.alive }}"></span>
+    <div class="titre">{{ m.hostname or m.ip or m.mac }}</div>
+  </div>
+
+  <div class="corps">
+    <div class="sous">{{ m.ip }}{% if m.mac %} · {{ m.mac }}{% endif %} · {{ 'alive' if m.alive else 'offline' }}</div>
+
+    <div class="sect">Open ports</div>
+    {% if m.ports_detail %}
+      {% for p in m.ports_detail %}
+      <div class="row">
+        <span class="port">{{ p.port }}</span>
+        <span class="svc {{ 'unknown' if p.service == 'unknown' }}">{{ p.service }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="vide">No open port recorded.</div>
+    {% endif %}
+
+    <div class="sect">Bjorn actions</div>
+    {% if m.actions_detail %}
+      {% for a in m.actions_detail %}
+      <div class="row">
+        <span class="aname">{{ a.name }}</span>
+        {% if a.when %}<span class="awhen">{{ a.when }}</span>{% endif %}
+        <span class="badge {{ a.state }}">{{ a.state }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="vide">No action run on this device yet.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
