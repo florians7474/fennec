@@ -153,6 +153,57 @@ def connection_state():
         return {"type": "wifi", "nom": wifi or "Wi-Fi"}
     return {"type": None, "nom": "Offline"}
 
+WIFI_IFACE = "wlan0"  # built-in station interface; USB adapter stays for monitor
+
+def _nmcli_split(line):
+    """Split an nmcli -t line on unescaped ':' (it escapes field ':' as '\\:')."""
+    out, cur, i = [], "", 0
+    while i < len(line):
+        c = line[i]
+        if c == "\\" and i + 1 < len(line):
+            cur += line[i + 1]
+            i += 2
+        elif c == ":":
+            out.append(cur)
+            cur = ""
+            i += 1
+        else:
+            cur += c
+            i += 1
+    out.append(cur)
+    return out
+
+def wifi_active():
+    """(ssid, bssid) currently associated on the station interface, else (None, None)."""
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "ACTIVE,SSID,BSSID", "device", "wifi"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        return (None, None)
+    for ligne in r.stdout.splitlines():
+        p = _nmcli_split(ligne)
+        if len(p) >= 3 and p[0] == "yes":
+            return (p[1] or None, (p[2] or "").upper() or None)
+    return (None, None)
+
+def known_wifi_profiles():
+    """SSIDs NetworkManager already has a saved Wi-Fi profile for."""
+    ssids = set()
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        return ssids
+    for ligne in r.stdout.splitlines():
+        p = _nmcli_split(ligne)
+        if len(p) >= 2 and p[1] in ("802-11-wireless", "wifi"):
+            ssids.add(p[0])
+    return ssids
+
 def local_ip():
     """The Pi's first non-loopback IPv4, or None."""
     try:
@@ -666,18 +717,50 @@ def map_view():
 
 @app.route("/connection")
 def connection():
-    return render_template("connection.html", reseaux=load_whitelist(), actuel=etat["reseau"])
+    reseaux = load_whitelist()
+    ssid_act, bssid_act = wifi_active()
+    connus = known_wifi_profiles()
+    for r in reseaux:
+        # Connectable if we hold a key, or the Pi already knows this network.
+        r["connectable"] = bool(r.get("cle")) or (r.get("nom") in connus)
+    actuel = None
+    if bssid_act:
+        actuel = next((r for r in reseaux if r["bssid"].upper() == bssid_act.upper()), None)
+        if not actuel:
+            actuel = {"nom": ssid_act or "Wi-Fi", "bssid": bssid_act}
+    return render_template("connection.html", reseaux=reseaux, actuel=actuel,
+                           err=request.args.get("err"))
 
 @app.route("/connection/to/<bssid>")
 def connection_to(bssid):
-    cible = next((r for r in load_whitelist() if r["bssid"] == bssid), None)
-    if cible:
-        etat["reseau"] = cible
+    cible = next((r for r in load_whitelist() if r["bssid"].upper() == bssid.upper()), None)
+    if not cible:
+        return redirect(url_for("connection", err="Unknown network"))
+    cle = cible.get("cle", "")
+    if not cle and cible.get("nom") not in known_wifi_profiles():
+        return redirect(url_for("connection",
+            err="No key for this network. Add it in Allowed networks, or crack it with Raton."))
+    try:
+        r = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-wifi-connect",
+             cible.get("nom", ""), cible["bssid"], cle],
+            capture_output=True, text=True, timeout=45,
+        )
+    except Exception:
+        return redirect(url_for("connection", err="Connection command failed"))
+    if r.returncode != 0:
+        lignes = (r.stderr or r.stdout or "").strip().splitlines()
+        msg = lignes[-1].strip() if lignes else "Connection failed"
+        return redirect(url_for("connection", err=msg[:120]))
     return redirect(url_for("connection"))
 
 @app.route("/connection/stop")
 def connection_stop():
-    etat["reseau"] = None
+    try:
+        subprocess.run(["sudo", "-n", "/usr/local/bin/fennec-wifi-disconnect"],
+                       capture_output=True, text=True, timeout=20)
+    except Exception:
+        pass
     return redirect(url_for("connection"))
 
 # ---------- Vigie ----------

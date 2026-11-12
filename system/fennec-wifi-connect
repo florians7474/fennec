@@ -1,0 +1,23 @@
+#!/bin/bash
+# Connect the Wi-Fi station interface to a network, via NetworkManager.
+# Usage: fennec-wifi-connect <SSID> <BSSID> [KEY]
+#   KEY empty  -> reuse an existing saved profile (fails if none and the
+#                 network needs a secret).
+#   KEY given  -> connect with that key (creates/updates the profile).
+# Targets the built-in station interface; the USB adapter stays free for
+# monitor mode.
+IFACE="wlan0"
+SSID="$1"
+BSSID="$2"
+KEY="$3"
+
+if [ -z "$SSID" ] || [ -z "$BSSID" ]; then
+    echo "usage: fennec-wifi-connect <SSID> <BSSID> [KEY]" >&2
+    exit 2
+fi
+
+if [ -n "$KEY" ]; then
+    exec nmcli device wifi connect "$SSID" password "$KEY" bssid "$BSSID" ifname "$IFACE"
+else
+    exec nmcli device wifi connect "$SSID" bssid "$BSSID" ifname "$IFACE"
+fi

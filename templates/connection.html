@@ -32,6 +32,9 @@
     .go { background:#28c0d4; color:#06303a; }
     .stop { background:#30363d; color:#e6edf3; }
     .badge { font-size:12px; color:#28c0d4; font-weight:600; }
+    .nokey { font-size:12px; color:#8b949e; white-space:nowrap; }
+    .err { margin:0 12px 6px; padding:8px 12px; background:#2d1518; border:1px solid #6e2f36;
+           border-radius:8px; color:#ffa198; font-size:12px; }
     .vide { color:#8b949e; font-size:13px; text-align:center; margin-top:28px; line-height:1.6; }
     .vide a { color:#28c0d4; }
   </style>
@@ -46,6 +49,8 @@
     {% if actuel %}Connected to <b>{{ actuel.nom }}</b>{% else %}Not connected{% endif %}
   </div>
 
+  {% if err %}<div class="err">{{ err }}</div>{% endif %}
+
   <div class="liste">
     {% if reseaux %}
       {% for r in reseaux %}
@@ -57,8 +62,10 @@
         {% if actuel and actuel.bssid == r.bssid %}
           <span class="badge">Connected</span>
           <a class="btn stop" href="/connection/stop">Disconnect</a>
-        {% else %}
+        {% elif r.connectable %}
           <a class="btn go" href="/connection/to/{{ r.bssid }}">Connect</a>
+        {% else %}
+          <span class="nokey">no key</span>
         {% endif %}
       </div>
       {% endfor %}

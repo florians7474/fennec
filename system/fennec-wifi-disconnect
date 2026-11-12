@@ -1,0 +1,4 @@
+#!/bin/bash
+# Disconnect the Wi-Fi station interface, via NetworkManager.
+# Brings wlan0 down and stops autoconnect until the next explicit connect.
+exec nmcli device disconnect wlan0
