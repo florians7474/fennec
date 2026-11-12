@@ -7,6 +7,7 @@ them per device. No action is taken on the network here.
 import os
 import re
 import csv
+import time
 
 BJORN_DATA = os.path.expanduser("~/Bjorn/data")
 NETKB = os.path.join(BJORN_DATA, "netkb.csv")
@@ -142,3 +143,89 @@ def read_stats():
         "known": _int("All Known Hosts Count"),
         "vulns": _int("Vulnerabilities Count"),
     }
+
+
+# --- File explorer (phase 1, section B) -------------------------------------
+
+# Human labels for Bjorn's output subfolders.
+FILE_CATEGORIES = {
+    "scan_results": "Scans",
+    "vulnerabilities": "Vulnerabilities",
+    "crackedpwd": "Cracked credentials",
+    "data_stolen": "Stolen data",
+    "zombies": "Zombies",
+}
+
+TEXT_EXT = {".txt", ".csv", ".log", ".json", ".md", ".nmap", ".xml", ".conf"}
+PREVIEW_MAX = 100_000  # bytes shown in a preview
+
+
+def _human_size(n):
+    if n < 1024:
+        return f"{n} B"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n / 1024 / 1024:.1f} MB"
+
+
+def list_files():
+    """Bjorn's output files grouped by category, newest first.
+
+    Returns [(label, [file, ...]), ...] ordered by FILE_CATEGORIES.
+    """
+    base = OUTPUT_DIR
+    groups = {}
+    for root, _dirs, files in os.walk(base):
+        for name in files:
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, base)
+            cat_dir = rel.split(os.sep)[0]
+            label = FILE_CATEGORIES.get(cat_dir, cat_dir)
+            try:
+                st = os.stat(full)
+            except OSError:
+                continue
+            groups.setdefault(label, []).append({
+                "rel": rel,
+                "name": name,
+                "size_h": _human_size(st.st_size),
+                "mtime": time.strftime("%Y-%m-%d %H:%M", time.localtime(st.st_mtime)),
+                "mtime_raw": st.st_mtime,
+                "text": is_text(name),
+            })
+    for files in groups.values():
+        files.sort(key=lambda f: -f["mtime_raw"])
+    ordered, seen = [], set()
+    for _dir, label in FILE_CATEGORIES.items():
+        if label in groups and label not in seen:
+            ordered.append((label, groups[label]))
+            seen.add(label)
+    for label, files in groups.items():
+        if label not in seen:
+            ordered.append((label, files))
+    return ordered
+
+
+def safe_output_path(rel):
+    """Absolute path of a file under OUTPUT_DIR, or None if it escapes it."""
+    base = os.path.realpath(OUTPUT_DIR)
+    target = os.path.realpath(os.path.join(base, rel or ""))
+    if target != base and not target.startswith(base + os.sep):
+        return None
+    if not os.path.isfile(target):
+        return None
+    return target
+
+
+def is_text(name):
+    return os.path.splitext(name)[1].lower() in TEXT_EXT
+
+
+def read_text(abs_path):
+    """(content, truncated) for a text preview, or (None, False) on error."""
+    try:
+        with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+            data = f.read(PREVIEW_MAX + 1)
+    except OSError:
+        return None, False
+    return data[:PREVIEW_MAX], len(data) > PREVIEW_MAX

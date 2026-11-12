@@ -807,6 +807,26 @@ def hugin_machine(mac):
         return redirect(url_for("hugin_page"))
     return render_template("hugin_machine.html", m=m)
 
+@app.route("/hugin/files")
+def hugin_files():
+    return render_template("hugin_files.html", groups=hugin.list_files())
+
+@app.route("/hugin/file")
+def hugin_file():
+    path = hugin.safe_output_path(request.args.get("path", ""))
+    if not path:
+        abort(404)
+    if request.args.get("dl") == "1":
+        from flask import send_file
+        return send_file(path, as_attachment=True,
+                         download_name=os.path.basename(path))
+    name = os.path.basename(path)
+    content, truncated = (hugin.read_text(path) if hugin.is_text(name)
+                          else (None, False))
+    return render_template("hugin_file.html", name=name,
+                           rel=request.args.get("path", ""),
+                           content=content, truncated=truncated)
+
 @app.route("/vigie")
 def vigie():
     return render_template("vigie.html")
