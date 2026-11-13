@@ -61,8 +61,14 @@ Waveshare 3.5-inch RPi LCD (C), which is the reference portable build. Set
 `FENNEC_DISPLAY` to automate the choice:
 
     FENNEC_DISPLAY=waveshare35c ./install.sh
+    FENNEC_DISPLAY=cuqi35 ./install.sh
     FENNEC_DISPLAY=hdmi ./install.sh
     FENNEC_DISPLAY=headless ./install.sh
+
+The `cuqi35` profile is for the CUQI 3.5-inch RPM-01 touchscreen (sold with a
+Raspberry Pi 5 case). It is a generic 480x320 SPI panel (ILI9486 + XPT2046)
+that is driver-compatible with the Waveshare (C), so it reuses the same config
+(verified on hardware, display and touch).
 
 | Profile | Result |
 |---|---|

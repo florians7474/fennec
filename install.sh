@@ -22,13 +22,15 @@ select_display_profile() {
             echo ""
             echo "==> Select the display profile:"
             echo "    1) Waveshare 3.5-inch RPi LCD (C) (SPI touchscreen)"
-            echo "    2) HDMI display (kiosk)"
-            echo "    3) Headless (network browser only)"
+            echo "    2) CUQI 3.5-inch RPM-01 (SPI touchscreen, Waveshare-C compatible)"
+            echo "    3) HDMI display (kiosk)"
+            echo "    4) Headless (network browser only)"
             read -r -p "Profile [1]: " selection
             case "$selection" in
                 ""|1) DISPLAY_PROFILE="waveshare35c" ;;
-                2)    DISPLAY_PROFILE="hdmi" ;;
-                3)    DISPLAY_PROFILE="headless" ;;
+                2)    DISPLAY_PROFILE="cuqi35" ;;
+                3)    DISPLAY_PROFILE="hdmi" ;;
+                4)    DISPLAY_PROFILE="headless" ;;
                 *)    echo "Invalid display profile."; exit 1 ;;
             esac
         else
@@ -37,10 +39,10 @@ select_display_profile() {
     fi
 
     case "$DISPLAY_PROFILE" in
-        waveshare35c|hdmi|headless) ;;
+        waveshare35c|cuqi35|hdmi|headless) ;;
         *)
             echo "Unsupported FENNEC_DISPLAY value: $DISPLAY_PROFILE"
-            echo "Use waveshare35c, hdmi, or headless."
+            echo "Use waveshare35c, cuqi35, hdmi, or headless."
             exit 1
             ;;
     esac
@@ -94,6 +96,14 @@ EOF
     sudo cp "$SYS/display-profiles/waveshare35c/99-fennec-touch.conf" \
         /etc/X11/xorg.conf.d/99-fennec-touch.conf
     configure_kiosk "$SYS/xinitrc"
+}
+
+configure_cuqi35() {
+    # The CUQI 3.5-inch RPM-01 is a generic 480x320 SPI touchscreen (ILI9486 +
+    # XPT2046) that is driver-compatible with the Waveshare 3.5-inch (C): the
+    # same overlay and touch config drive it, verified on hardware.
+    echo "==> Configuring CUQI 3.5-inch RPM-01 (Waveshare-C compatible driver)..."
+    configure_waveshare35c
 }
 
 configure_hdmi() {
@@ -297,6 +307,9 @@ sudo systemctl enable fennec
 case "$DISPLAY_PROFILE" in
     waveshare35c)
         configure_waveshare35c
+        ;;
+    cuqi35)
+        configure_cuqi35
         ;;
     hdmi)
         configure_hdmi

@@ -287,10 +287,13 @@ and the Waveshare 3.5" touchscreen is set up end to end so it lights up on its
 own on a fresh Pi.
 Notes:
 - Display profiles: the installer asks which display to configure, or reads
-  FENNEC_DISPLAY (waveshare35c, hdmi, or headless). The Waveshare 3.5-inch RPi
+  FENNEC_DISPLAY (waveshare35c, cuqi35, hdmi, or headless). The Waveshare 3.5-inch RPi
   LCD (C) profile downloads the vendor overlay, enables SPI, configures its /dev/fb0
   framebuffer for X11, calibrates the ADS7846 touch input, and starts the Chromium
-  kiosk through tty1 auto-login. The HDMI profile starts the same kiosk without SPI
+  kiosk through tty1 auto-login. The cuqi35 profile is for the CUQI 3.5-inch RPM-01
+  (sold with a Pi 5 case): a generic 480x320 SPI panel (ILI9486 + XPT2046) that is
+  driver-compatible with the Waveshare (C), so it reuses that exact config (verified
+  on hardware, display and touch). The HDMI profile starts the same kiosk without SPI
   configuration. Headless mode keeps only the network interface. Reboot once after
   installation when using a local display.
 - Fennec service: system/fennec.service runs app.py as the install user with
