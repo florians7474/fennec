@@ -30,6 +30,7 @@ crack_state = {
     "enregistree": False,
     "robustesse": None,
     "sans_handshake": False,
+    "stoppe": False,
 }
 
 _lock = threading.Lock()
@@ -50,6 +51,7 @@ def _reset(bssid, reseau):
         "journal": [],
         "enregistree": False,
         "sans_handshake": False,
+        "stoppe": False,
     })
 
 
@@ -403,8 +405,11 @@ def _run(pcap, bssid, reseau, wordlist):
     with _lock:
         crack_state["actif"] = False
         crack_state["fini"] = True
-        crack_state["robustesse"] = _robustness_score(None, crack_state["etape_total"])
-        crack_state["message"] = "Exhausted"
+        # Only call it "robust" when every stage actually ran. A manual stop
+        # breaks out early, so don't claim the key resisted anything.
+        if not crack_state.get("stoppe"):
+            crack_state["robustesse"] = _robustness_score(None, crack_state["etape_total"])
+            crack_state["message"] = "Exhausted"
 
 def _robustness_score(etage_echec, total):
     """Robustness = the stage that cracked the key. Earlier stage = weaker key."""
@@ -457,6 +462,7 @@ def stop():
         _proc.terminate()
     crack_state["actif"] = False
     crack_state["fini"] = True
+    crack_state["stoppe"] = True
     crack_state["message"] = "Stopped"
 
 

@@ -146,6 +146,12 @@
               '<br><br>Key found:<br><span class="cle">' + e.cle + '</span>' +
               '<br><br>Change it to something long and random.' +
               '<br><br><span style="color:#2ea043;">&#10003; Key saved to Allowed networks.</span>';
+          } else if(e.stoppe){
+            v.textContent = 'Test stopped';
+            v.className = 'verdict neutre';
+            d.innerHTML =
+              'You stopped the test before it finished, so the key was not fully evaluated.' +
+              '<br><br>Run it again to go through all the stages.';
           } else {
             v.textContent = rob.label || 'Robust';
             v.className = 'verdict solide';
