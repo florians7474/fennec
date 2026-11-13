@@ -58,7 +58,7 @@
 
   <div class="vue {{ 'plein' if actif and url_iframe }}">
     {% if actif and url_iframe %}
-      <div class="cadre"><iframe src="{{ url_iframe }}"></iframe></div>
+      <div class="cadre"><iframe id="bjorn-frame" src="{{ url_iframe }}"></iframe></div>
     {% elif actif and url_ui %}
       <div class="chargement" id="pwna-chargement">
         <div class="anneau"></div>
@@ -87,6 +87,17 @@
   </div>
   <script>
     (function () {
+      // Bjorn's web UI is embedded in an iframe. Right after start its first
+      // screen image doesn't exist yet, so the iframe shows a broken image
+      // until a full reload. Reload it a few times over the first 30s so the
+      // image appears on its own, without going Home and back.
+      var frame = document.getElementById("bjorn-frame");
+      if (frame) {
+        var base = frame.src.split("?")[0];
+        [4000, 10000, 18000, 30000].forEach(function (d) {
+          setTimeout(function () { frame.src = base + "?t=" + Date.now(); }, d);
+        });
+      }
       var img = document.getElementById("pwna-live");
       var charge = document.getElementById("pwna-chargement");
       if (!img) return;
