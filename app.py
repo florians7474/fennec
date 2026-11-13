@@ -846,12 +846,13 @@ def hugin_plan():
     module = request.args.get("module", "")
     ip = request.args.get("ip", "")
     cve = request.args.get("cve", "")
-    if not hugin.module_in_index(module):
+    port = request.args.get("port", "")
+    if not hugin.module_known(module):
         abort(404)
     machine = next((m for m in hugin.read_machines() if m["ip"] == ip), None)
     if not machine:
         abort(404)
-    rc = hugin.build_rc(module, ip, machine.get("hostname", ""), cve)
+    rc = hugin.build_rc(module, ip, machine.get("hostname", ""), cve, port)
     if request.args.get("dl") == "1":
         from flask import Response
         fname = module.replace("/", "_") + ".rc"
@@ -864,12 +865,16 @@ def hugin_run():
     module = request.form.get("module", "")
     ip = request.form.get("ip", "")
     cve = request.form.get("cve", "")
-    if not hugin.module_in_index(module):
+    port = request.form.get("port", "")
+    if not hugin.module_known(module):
         return jsonify({"status": "error", "error": "Unknown module."})
     machine = next((m for m in hugin.read_machines() if m["ip"] == ip), None)
     if not machine:
         return jsonify({"status": "error", "error": "Unknown target."})
-    res = hugin_msf.run_module(module, {"RHOSTS": ip})
+    opts = {"RHOSTS": ip}
+    if port:
+        opts["RPORT"] = port
+    res = hugin_msf.run_module(module, opts)
     hugin_msf.log_run({
         "ts": time.strftime("%Y-%m-%d %H:%M"),
         "ip": ip, "hostname": machine.get("hostname", ""),

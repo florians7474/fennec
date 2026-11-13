@@ -80,6 +80,8 @@ PORT_SERVICES = {
     "3000": "HTTP", "3306": "MySQL", "3389": "RDP", "5000": "HTTP",
     "5432": "PostgreSQL", "5900": "VNC", "6379": "Redis", "8000": "HTTP",
     "8080": "HTTP", "8443": "HTTPS", "9100": "Printer", "32400": "Plex",
+    "512": "rexec", "513": "rlogin", "514": "rsh", "2049": "NFS",
+    "3632": "distcc", "6667": "IRC", "8180": "HTTP",
 }
 
 
@@ -327,7 +329,7 @@ def module_in_index(fullname):
     return fullname in _msf_modules_set
 
 
-def build_rc(module, ip, hostname="", cve=""):
+def build_rc(module, ip, hostname="", cve="", rport=""):
     """A Metasploit resource script (.rc) pre-filled for a target.
 
     This only writes a text plan; it runs nothing. The operator reviews and
@@ -345,12 +347,92 @@ def build_rc(module, ip, hostname="", cve=""):
         "",
         f"use {module}",
         f"set RHOSTS {ip}",
-        "# set RPORT <port>   # set the service port if the default is wrong",
+    ]
+    if rport:
+        lines.append(f"set RPORT {rport}")
+    else:
+        lines.append("# set RPORT <port>   # set the service port if the default is wrong")
+    lines += [
         "# show options       # check required options first",
         "run",
         "",
     ]
     return "\n".join(lines)
+
+
+# --- Phase 2b: Metasploit modules suggested by open service ------------------
+# When Bjorn's vuln scan yields no CVE, the ports it mapped are still a real
+# attack surface. These are well-known modules per service: candidates to try,
+# never confirmed vulnerabilities. Keyed by port -> [{f: fullname, n: label,
+# t: type}]. Covers this target's services and a few common extras.
+SERVICE_MODULES = {
+    "21": [{"f": "exploit/unix/ftp/vsftpd_234_backdoor", "n": "vsftpd 2.3.4 backdoor", "t": "exploit"},
+           {"f": "auxiliary/scanner/ftp/ftp_login", "n": "FTP login bruteforce", "t": "auxiliary"},
+           {"f": "auxiliary/scanner/ftp/anonymous", "n": "Anonymous FTP check", "t": "auxiliary"}],
+    "22": [{"f": "auxiliary/scanner/ssh/ssh_login", "n": "SSH login bruteforce", "t": "auxiliary"},
+           {"f": "auxiliary/scanner/ssh/ssh_version", "n": "SSH version", "t": "auxiliary"}],
+    "23": [{"f": "auxiliary/scanner/telnet/telnet_login", "n": "Telnet login bruteforce", "t": "auxiliary"}],
+    "25": [{"f": "auxiliary/scanner/smtp/smtp_enum", "n": "SMTP user enumeration", "t": "auxiliary"},
+           {"f": "auxiliary/scanner/smtp/smtp_version", "n": "SMTP version", "t": "auxiliary"}],
+    "80": [{"f": "auxiliary/scanner/http/http_version", "n": "HTTP version", "t": "auxiliary"},
+           {"f": "auxiliary/scanner/http/dir_scanner", "n": "HTTP directory scan", "t": "auxiliary"}],
+    "139": [{"f": "exploit/multi/samba/usermap_script", "n": "Samba usermap_script (root shell)", "t": "exploit"},
+            {"f": "auxiliary/scanner/smb/smb_version", "n": "SMB version", "t": "auxiliary"}],
+    "445": [{"f": "exploit/multi/samba/usermap_script", "n": "Samba usermap_script (root shell)", "t": "exploit"},
+            {"f": "exploit/linux/samba/is_known_pipename", "n": "Samba is_known_pipename", "t": "exploit"},
+            {"f": "auxiliary/scanner/smb/smb_login", "n": "SMB login bruteforce", "t": "auxiliary"},
+            {"f": "auxiliary/scanner/smb/smb_version", "n": "SMB version", "t": "auxiliary"}],
+    "512": [{"f": "auxiliary/scanner/rservices/rexec_login", "n": "rexec login", "t": "auxiliary"}],
+    "513": [{"f": "auxiliary/scanner/rservices/rlogin_login", "n": "rlogin login", "t": "auxiliary"}],
+    "514": [{"f": "auxiliary/scanner/rservices/rsh_login", "n": "rsh login", "t": "auxiliary"}],
+    "2049": [{"f": "auxiliary/scanner/nfs/nfsmount", "n": "NFS export scan", "t": "auxiliary"}],
+    "3306": [{"f": "auxiliary/scanner/mysql/mysql_login", "n": "MySQL login bruteforce", "t": "auxiliary"},
+             {"f": "auxiliary/scanner/mysql/mysql_version", "n": "MySQL version", "t": "auxiliary"}],
+    "5432": [{"f": "auxiliary/scanner/postgres/postgres_login", "n": "PostgreSQL login bruteforce", "t": "auxiliary"},
+             {"f": "exploit/linux/postgres/postgres_payload", "n": "PostgreSQL payload (auth)", "t": "exploit"}],
+    "5900": [{"f": "auxiliary/scanner/vnc/vnc_none_auth", "n": "VNC no-auth check", "t": "auxiliary"},
+             {"f": "auxiliary/scanner/vnc/vnc_login", "n": "VNC login bruteforce", "t": "auxiliary"}],
+    "1433": [{"f": "auxiliary/scanner/mssql/mssql_login", "n": "MSSQL login bruteforce", "t": "auxiliary"}],
+    "3389": [{"f": "auxiliary/scanner/rdp/rdp_scanner", "n": "RDP scanner", "t": "auxiliary"}],
+    "6379": [{"f": "auxiliary/scanner/redis/redis_login", "n": "Redis login", "t": "auxiliary"}],
+    "6667": [{"f": "exploit/unix/irc/unreal_ircd_3281_backdoor", "n": "UnrealIRCd 3.2.8.1 backdoor", "t": "exploit"}],
+    "3632": [{"f": "exploit/unix/misc/distcc_exec", "n": "distcc command execution", "t": "exploit"}],
+    "8180": [{"f": "auxiliary/scanner/http/tomcat_mgr_login", "n": "Tomcat manager login", "t": "auxiliary"},
+             {"f": "exploit/multi/http/tomcat_mgr_upload", "n": "Tomcat manager upload", "t": "exploit"}],
+    "8080": [{"f": "auxiliary/scanner/http/tomcat_mgr_login", "n": "Tomcat manager login", "t": "auxiliary"}],
+}
+
+_service_set = None
+
+
+def module_known(fullname):
+    """Whether Hugin can plan/run this module: known from the CVE index or from
+    the service map. Guards the plan and run endpoints against arbitrary input."""
+    global _service_set
+    if _service_set is None:
+        s = set()
+        for mods in SERVICE_MODULES.values():
+            for m in mods:
+                s.add(m["f"])
+        _service_set = s
+    return module_in_index(fullname) or fullname in _service_set
+
+
+def suggest_by_service(machine):
+    """Candidate modules for each open port Bjorn found, grouped by port.
+    Suggestions from the attack surface, not confirmed vulnerabilities."""
+    out = []
+    for p in machine.get("ports", []):
+        mods = SERVICE_MODULES.get(p)
+        if not mods:
+            continue
+        out.append({
+            "port": p,
+            "service": PORT_SERVICES.get(p, "service"),
+            "modules": [{"fullname": m["f"], "name": m["n"], "type": m["t"]}
+                        for m in mods],
+        })
+    return out
 
 
 def correlate_machine(machine):
@@ -375,10 +457,13 @@ def correlate_machine(machine):
                 "rank": RANK_LABELS.get(m["r"], str(m["r"])),
             })
         results.append({"cve": c, "modules": mods})
+    services = suggest_by_service(machine)
     return {
         "cves": results,
+        "services": services,
         "nb_cve": len(cves),
         "nb_matched": sum(1 for r in results if r["modules"]),
+        "nb_services": sum(len(s["modules"]) for s in services),
         "index": {"modules": idx.get("modules_with_cve", 0),
                   "cve": idx.get("cve_count", 0)},
     }

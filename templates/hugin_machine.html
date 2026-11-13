@@ -146,7 +146,8 @@
     {% endif %}
 
     <div class="sect">Metasploit modules</div>
-    <div class="msfnote">Correlation only — a CVE match is a candidate, not a confirmed vulnerability. Index: {{ m.msf.index.modules }} modules / {{ m.msf.index.cve }} CVEs.</div>
+    <div class="msfnote">Candidates, not confirmed vulnerabilities — review and run in an authorized lab. Index: {{ m.msf.index.modules }} modules / {{ m.msf.index.cve }} CVEs.</div>
+
     {% if m.msf.nb_cve %}
       {% for r in m.msf.cves %}
         <div class="cvehdr">{{ r.cve }}</div>
@@ -159,15 +160,35 @@
             </div>
             <span class="mtype {{ mod.type }}">{{ mod.type }}</span>
             <a class="planbtn" href="/hugin/plan?module={{ mod.fullname|urlencode }}&amp;ip={{ m.ip|urlencode }}&amp;cve={{ r.cve|urlencode }}">.rc</a>
-            <button class="runbtn" type="button" data-mod="{{ mod.fullname }}" data-ip="{{ m.ip }}" data-cve="{{ r.cve }}" disabled>Run</button>
+            <button class="runbtn" type="button" data-mod="{{ mod.fullname }}" data-ip="{{ m.ip }}" data-cve="{{ r.cve }}" data-port="" disabled>Run</button>
           </div>
           {% endfor %}
         {% else %}
           <div class="vide">No Metasploit module for this CVE.</div>
         {% endif %}
       {% endfor %}
-    {% else %}
-      <div class="vide">No CVE found by Bjorn yet. Run NmapVulnScanner on a target to populate this.</div>
+    {% endif %}
+
+    {% if m.msf.services %}
+      <div class="msfnote">By open service — suggested from the ports Bjorn mapped.</div>
+      {% for s in m.msf.services %}
+        <div class="cvehdr">{{ s.port }} · {{ s.service }}</div>
+        {% for mod in s.modules %}
+        <div class="mod">
+          <div class="mname">
+            <div class="mtitle">{{ mod.name }}</div>
+            <div class="mfull">{{ mod.fullname }}</div>
+          </div>
+          <span class="mtype {{ mod.type }}">{{ mod.type }}</span>
+          <a class="planbtn" href="/hugin/plan?module={{ mod.fullname|urlencode }}&amp;ip={{ m.ip|urlencode }}&amp;port={{ s.port|urlencode }}">.rc</a>
+          <button class="runbtn" type="button" data-mod="{{ mod.fullname }}" data-ip="{{ m.ip }}" data-cve="" data-port="{{ s.port }}" disabled>Run</button>
+        </div>
+        {% endfor %}
+      {% endfor %}
+    {% endif %}
+
+    {% if not m.msf.nb_cve and not m.msf.services %}
+      <div class="vide">No CVE and no known service to suggest a module yet. Let Bjorn finish scanning.</div>
     {% endif %}
   </div>
 
@@ -199,7 +220,7 @@
       document.querySelectorAll('.runbtn').forEach(function(b){
         b.addEventListener('click', function(){
           if(b.disabled) return;
-          cur={mod:b.dataset.mod, ip:b.dataset.ip, cve:b.dataset.cve};
+          cur={mod:b.dataset.mod, ip:b.dataset.ip, cve:b.dataset.cve, port:b.dataset.port||''};
           title.textContent='Run this module?';
           mono.textContent=cur.mod+' → '+cur.ip;
           msg.className='msg warn'; msg.textContent='Lab use only, on a target you are authorized to test.';
@@ -214,7 +235,7 @@
       function go(){
         msg.className='msg'; msg.textContent='Running… this can take a few seconds.';
         acts.innerHTML='';
-        var body='module='+encodeURIComponent(cur.mod)+'&ip='+encodeURIComponent(cur.ip)+'&cve='+encodeURIComponent(cur.cve);
+        var body='module='+encodeURIComponent(cur.mod)+'&ip='+encodeURIComponent(cur.ip)+'&cve='+encodeURIComponent(cur.cve)+'&port='+encodeURIComponent(cur.port);
         fetch('/hugin/run',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
           .then(function(r){return r.json();}).then(function(res){
             if(res.status==='session'){
