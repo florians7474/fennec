@@ -97,11 +97,16 @@
       var frame = document.getElementById("bjorn-frame");
       if (frame) {
         var base = frame.src.split("?")[0];
-        var reloaded = false;
+        var reloaded = false, interacted = false;
+        // Clicking inside the iframe blurs the parent window: use that to know
+        // the user is interacting with Bjorn, and cancel the one-shot reload so
+        // it never yanks the UI out from under a click.
+        window.addEventListener("blur", function () { interacted = true; });
         frame.addEventListener("load", function () {
           if (reloaded) return;
           reloaded = true;
           setTimeout(function () {
+            if (interacted) return;
             frame.src = "about:blank";
             setTimeout(function () { frame.src = base; }, 60);
           }, 3000);
