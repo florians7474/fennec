@@ -859,6 +859,30 @@ def hugin_plan():
                         headers={"Content-Disposition": f'attachment; filename="{fname}"'})
     return render_template("hugin_plan.html", module=module, ip=ip, cve=cve, rc=rc)
 
+@app.route("/hugin/run", methods=["POST"])
+def hugin_run():
+    module = request.form.get("module", "")
+    ip = request.form.get("ip", "")
+    cve = request.form.get("cve", "")
+    if not hugin.module_in_index(module):
+        return jsonify({"status": "error", "error": "Unknown module."})
+    machine = next((m for m in hugin.read_machines() if m["ip"] == ip), None)
+    if not machine:
+        return jsonify({"status": "error", "error": "Unknown target."})
+    res = hugin_msf.run_module(module, {"RHOSTS": ip})
+    hugin_msf.log_run({
+        "ts": time.strftime("%Y-%m-%d %H:%M"),
+        "ip": ip, "hostname": machine.get("hostname", ""),
+        "module": module, "cve": cve,
+        "status": res.get("status"), "session": res.get("session"),
+        "error": res.get("error", ""),
+    })
+    return jsonify(res)
+
+@app.route("/hugin/activity")
+def hugin_activity():
+    return render_template("hugin_activity.html", runs=hugin_msf.read_runs())
+
 @app.route("/hugin/files")
 def hugin_files():
     return render_template("hugin_files.html", groups=hugin.list_files())

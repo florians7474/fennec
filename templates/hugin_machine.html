@@ -58,6 +58,24 @@
     .mrank { font-size:10px; color:#8b949e; white-space:nowrap; }
     .planbtn { font-size:11px; font-weight:700; padding:5px 9px; border-radius:6px; white-space:nowrap;
                text-decoration:none; background:#8b7fd4; color:#1a1230; font-family:ui-monospace,monospace; }
+    .runbtn { font-size:11px; font-weight:700; padding:5px 9px; border-radius:6px; white-space:nowrap;
+              border:none; background:#da3633; color:#fff; font-family:inherit; cursor:pointer; }
+    .runbtn:disabled { background:#30363d; color:#6e7681; cursor:default; }
+    .ov { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center;
+          justify-content:center; z-index:200; }
+    .ov.show { display:flex; }
+    .box { width:400px; max-width:92%; background:#161b22; border:1px solid #30363d; border-radius:12px; padding:16px; }
+    .box h3 { font-size:15px; margin-bottom:8px; }
+    .box .mono { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#b9a7f5;
+                 word-break:break-all; margin-bottom:10px; }
+    .box .msg { font-size:13px; color:#c9d1d9; line-height:1.5; margin-bottom:14px; }
+    .box .msg.ok { color:#3fb950; } .box .msg.warn { color:#e3b341; } .box .msg.err { color:#ff7b72; }
+    .box .acts { display:flex; gap:10px; justify-content:flex-end; }
+    .box button { border:none; border-radius:8px; font-size:13px; font-weight:600; padding:9px 16px;
+                  cursor:pointer; font-family:inherit; }
+    .b-cancel { background:#30363d; color:#e6edf3; }
+    .b-go { background:#da3633; color:#fff; }
+    .b-close { background:#8b7fd4; color:#1a1230; }
   </style>
 </head>
 <body>
@@ -141,6 +159,7 @@
             </div>
             <span class="mtype {{ mod.type }}">{{ mod.type }}</span>
             <a class="planbtn" href="/hugin/plan?module={{ mod.fullname|urlencode }}&amp;ip={{ m.ip|urlencode }}&amp;cve={{ r.cve|urlencode }}">.rc</a>
+            <button class="runbtn" type="button" data-mod="{{ mod.fullname }}" data-ip="{{ m.ip }}" data-cve="{{ r.cve }}" disabled>Run</button>
           </div>
           {% endfor %}
         {% else %}
@@ -151,5 +170,73 @@
       <div class="vide">No CVE found by Bjorn yet. Run NmapVulnScanner on a target to populate this.</div>
     {% endif %}
   </div>
+
+  <div class="ov" id="ov">
+    <div class="box">
+      <h3 id="ov-title">Run module</h3>
+      <div class="mono" id="ov-mono"></div>
+      <div class="msg" id="ov-msg"></div>
+      <div class="acts" id="ov-acts"></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      var ov=document.getElementById('ov'), title=document.getElementById('ov-title'),
+          mono=document.getElementById('ov-mono'), msg=document.getElementById('ov-msg'),
+          acts=document.getElementById('ov-acts');
+      var cur=null;
+      function close(){ ov.classList.remove('show'); }
+
+      // Run is enabled only when Metasploit is connected.
+      fetch('/hugin/msf/state').then(function(r){return r.json();}).then(function(s){
+        document.querySelectorAll('.runbtn').forEach(function(b){
+          if(s.connected){ b.disabled=false; }
+          else { b.disabled=true; b.title='Connect Metasploit (MSF) first'; }
+        });
+      }).catch(function(){});
+
+      document.querySelectorAll('.runbtn').forEach(function(b){
+        b.addEventListener('click', function(){
+          if(b.disabled) return;
+          cur={mod:b.dataset.mod, ip:b.dataset.ip, cve:b.dataset.cve};
+          title.textContent='Run this module?';
+          mono.textContent=cur.mod+' → '+cur.ip;
+          msg.className='msg warn'; msg.textContent='Lab use only, on a target you are authorized to test.';
+          acts.innerHTML='';
+          var c=document.createElement('button'); c.className='b-cancel'; c.textContent='Cancel'; c.onclick=close;
+          var g=document.createElement('button'); g.className='b-go'; g.textContent='Run'; g.onclick=go;
+          acts.appendChild(c); acts.appendChild(g);
+          ov.classList.add('show');
+        });
+      });
+
+      function go(){
+        msg.className='msg'; msg.textContent='Running… this can take a few seconds.';
+        acts.innerHTML='';
+        var body='module='+encodeURIComponent(cur.mod)+'&ip='+encodeURIComponent(cur.ip)+'&cve='+encodeURIComponent(cur.cve);
+        fetch('/hugin/run',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+          .then(function(r){return r.json();}).then(function(res){
+            if(res.status==='session'){
+              var s=res.session||{};
+              msg.className='msg ok';
+              msg.textContent='Session opened ('+(s.type||'shell')+') on '+(s.peer||cur.ip)+'. See Activity.';
+            } else if(res.status==='no_session'){
+              msg.className='msg warn';
+              msg.textContent='Module ran, no session opened in the time window. See Activity.';
+            } else {
+              msg.className='msg err';
+              msg.textContent='Error: '+(res.error||'failed');
+            }
+            var k=document.createElement('button'); k.className='b-close'; k.textContent='Close'; k.onclick=close;
+            acts.appendChild(k);
+          }).catch(function(){
+            msg.className='msg err'; msg.textContent='Request failed.';
+            var k=document.createElement('button'); k.className='b-close'; k.textContent='Close'; k.onclick=close;
+            acts.appendChild(k);
+          });
+      }
+    })();
+  </script>
 </body>
 </html>

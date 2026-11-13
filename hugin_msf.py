@@ -8,6 +8,7 @@ with a tiny msgpack-RPC client: detect the host, log in, show the state.
 import os
 import re
 import json
+import time
 import socket
 import subprocess
 import urllib.request
@@ -134,3 +135,78 @@ def detect(subnet):
             if m:
                 hosts.append(m.group(1))
     return hosts
+
+
+# --- Phase 3 brick 3: run a module via RPC, record the result ----------------
+
+RUNS = os.path.join(BASE, "hugin_runs.json")
+
+
+def run_module(fullname, options, wait=15):
+    """Run a Metasploit module on the remote msfrpcd and watch for a session.
+
+    Correlation/execution happens on the remote lab machine, never on the Pi.
+    Returns a status dict: 'session' (a session opened), 'no_session' (ran, no
+    session within the wait window), or 'error'.
+    """
+    cfg = load_config()
+    if not cfg.get("host"):
+        return {"status": "error", "error": "Not connected to Metasploit."}
+    host, port = cfg["host"], int(cfg["port"])
+    try:
+        token, _v = login(host, port, cfg["password"])
+    except Exception as e:
+        return {"status": "error", "error": _friendly(e)}
+    mtype, _, refname = fullname.partition("/")
+    if not mtype or not refname:
+        return {"status": "error", "error": "Bad module name."}
+    try:
+        before = set((_rpc(host, port, "session.list", token=token) or {}).keys())
+        res = _rpc(host, port, "module.execute", mtype, refname, options, token=token)
+    except Exception as e:
+        return {"status": "error", "error": _friendly(e)}
+    if not isinstance(res, dict) or res.get("error"):
+        detail = ""
+        if isinstance(res, dict):
+            detail = res.get("error_message") or res.get("error_string") or ""
+        return {"status": "error", "error": detail or "Module did not start."}
+    job_id = res.get("job_id")
+    session = None
+    end = time.time() + wait
+    while time.time() < end:
+        time.sleep(2)
+        try:
+            cur = _rpc(host, port, "session.list", token=token) or {}
+        except Exception:
+            break
+        new = set(cur.keys()) - before
+        if new:
+            sid = sorted(new, key=lambda x: str(x))[0]
+            s = cur.get(sid, {}) if isinstance(cur, dict) else {}
+            session = {
+                "id": str(sid),
+                "type": s.get("type", ""),
+                "peer": s.get("tunnel_peer", "") or s.get("session_host", ""),
+                "info": s.get("info", ""),
+            }
+            break
+    return {"status": "session" if session else "no_session",
+            "job_id": job_id, "session": session}
+
+
+def read_runs():
+    try:
+        with open(RUNS, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, OSError, ValueError):
+        return []
+
+
+def log_run(entry):
+    runs = read_runs()
+    runs.insert(0, entry)
+    try:
+        with open(RUNS, "w", encoding="utf-8") as f:
+            json.dump(runs[:100], f)
+    except OSError:
+        pass
