@@ -318,14 +318,9 @@
         fetch('/hugin/msf/state', {cache:'no-store'})
           .then(function(r){ return r.json(); })
           .then(function(s){
-            var ok = !!(s && s.connected);
-            tile.classList.toggle('on', ok);
-            etat.textContent = ok ? 'Metasploit linked' : 'Metasploit off';
+            tile.classList.toggle('on', !!(s && s.connected));
           })
-          .catch(function(){
-            tile.classList.remove('on');
-            etat.textContent = 'Metasploit off';
-          });
+          .catch(function(){ tile.classList.remove('on'); });
       }
       refresh();
       setInterval(refresh, 15000);
