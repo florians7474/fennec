@@ -51,6 +51,22 @@ def clear_config():
         pass
 
 
+def _norm(obj):
+    """msfrpcd packs strings as msgpack raw, so msgpack-python hands them back as
+    bytes. Decode keys and values to str so the rest of the code can read plain
+    string keys ('result', 'token', 'error_message', ...)."""
+    if isinstance(obj, bytes):
+        try:
+            return obj.decode("utf-8")
+        except UnicodeDecodeError:
+            return obj
+    if isinstance(obj, dict):
+        return {_norm(k): _norm(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_norm(v) for v in obj]
+    return obj
+
+
 def _rpc(host, port, method, *args, token=None):
     """One msgpack-RPC call to msfrpcd (SSL off). Returns the decoded reply."""
     if msgpack is None:
@@ -66,11 +82,11 @@ def _rpc(host, port, method, *args, token=None):
     )
     try:
         with urllib.request.urlopen(req, timeout=8) as r:
-            return msgpack.unpackb(r.read(), raw=False, strict_map_key=False)
+            return _norm(msgpack.unpackb(r.read(), raw=False, strict_map_key=False))
     except urllib.error.HTTPError as e:
         # msfrpcd puts the real reason in the msgpack body even on 401/500.
         try:
-            data = msgpack.unpackb(e.read(), raw=False, strict_map_key=False)
+            data = _norm(msgpack.unpackb(e.read(), raw=False, strict_map_key=False))
         except Exception:
             raise
         if isinstance(data, dict):
