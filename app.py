@@ -884,6 +884,18 @@ def hugin_run():
     })
     return jsonify(res)
 
+@app.route("/hugin/sessions")
+def hugin_sessions():
+    return jsonify(hugin_msf.list_sessions())
+
+@app.route("/hugin/session/run", methods=["POST"])
+def hugin_session_run():
+    sid = request.form.get("sid", "")
+    cmd = request.form.get("cmd", "").strip()
+    if not sid or not cmd:
+        return jsonify({"ok": False, "error": "Missing session or command."})
+    return jsonify(hugin_msf.session_run(sid, cmd))
+
 @app.route("/hugin/activity")
 def hugin_activity():
     return render_template("hugin_activity.html", runs=hugin_msf.read_runs())

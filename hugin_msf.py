@@ -231,6 +231,70 @@ def run_module(fullname, options, wait=15):
             "job_id": job_id, "session": session}
 
 
+def list_sessions():
+    """Active sessions held by the remote msfrpcd. Re-queried live."""
+    cfg = load_config()
+    if not cfg.get("host"):
+        return {"connected": False, "sessions": []}
+    host, port = cfg["host"], int(cfg["port"])
+    try:
+        token, _v = login(host, port, cfg["password"])
+        raw = _rpc(host, port, "session.list", token=token) or {}
+    except Exception as e:
+        return {"connected": False, "error": _friendly(e), "sessions": []}
+    sessions = []
+    if isinstance(raw, dict):
+        for sid, s in raw.items():
+            s = s if isinstance(s, dict) else {}
+            sessions.append({
+                "id": str(sid),
+                "type": s.get("type", ""),
+                "info": s.get("info", "") or s.get("desc", ""),
+                "target": (s.get("session_host") or s.get("target_host")
+                           or s.get("tunnel_peer") or ""),
+                "via": s.get("via_exploit", ""),
+            })
+    return {"connected": True, "sessions": sessions}
+
+
+def session_run(sid, cmd, wait=2.0):
+    """Run one command inside an open session and return its output.
+    Works for command-shell and meterpreter sessions."""
+    cfg = load_config()
+    if not cfg.get("host"):
+        return {"ok": False, "error": "Not connected to Metasploit."}
+    host, port = cfg["host"], int(cfg["port"])
+    try:
+        token, _v = login(host, port, cfg["password"])
+        lst = _rpc(host, port, "session.list", token=token) or {}
+    except Exception as e:
+        return {"ok": False, "error": _friendly(e)}
+    real_key, meta = None, {}
+    if isinstance(lst, dict):
+        for k, v in lst.items():
+            if str(k) == str(sid):
+                real_key = k
+                meta = v if isinstance(v, dict) else {}
+                break
+    if real_key is None:
+        return {"ok": False, "error": "Session not found (it may have closed)."}
+    stype = (meta.get("type") or "").lower()
+    try:
+        if stype == "meterpreter":
+            _rpc(host, port, "session.meterpreter_run_single", real_key, cmd, token=token)
+            time.sleep(wait)
+            out = _rpc(host, port, "session.meterpreter_read", real_key, token=token)
+        else:
+            _rpc(host, port, "session.shell_read", real_key, token=token)  # flush
+            _rpc(host, port, "session.shell_write", real_key, cmd + "\n", token=token)
+            time.sleep(wait)
+            out = _rpc(host, port, "session.shell_read", real_key, token=token)
+    except Exception as e:
+        return {"ok": False, "error": _friendly(e)}
+    data = out.get("data", "") if isinstance(out, dict) else ""
+    return {"ok": True, "output": data}
+
+
 def read_runs():
     try:
         with open(RUNS, encoding="utf-8") as f:

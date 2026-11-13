@@ -76,6 +76,17 @@
     .b-cancel { background:#30363d; color:#e6edf3; }
     .b-go { background:#da3633; color:#fff; }
     .b-close { background:#8b7fd4; color:#1a1230; }
+    .sess { background:#13211a; border:1px solid #1f6f43; border-radius:9px; padding:10px 11px; margin-bottom:8px; }
+    .sess-head { font-size:12px; color:#3fb950; font-weight:700; margin-bottom:7px; }
+    .sess-head span { color:#8b949e; font-weight:400; }
+    .sess-cmd { display:flex; gap:7px; }
+    .sess-cmd input { flex:1; min-width:0; background:#0d1117; border:1px solid #30363d; border-radius:7px;
+                      color:#e6edf3; font-family:ui-monospace,Consolas,monospace; font-size:12px; padding:7px 9px; }
+    .sess-cmd button { border:none; border-radius:7px; background:#238636; color:#fff; font-weight:700;
+                       font-size:12px; padding:7px 13px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .sess-out { margin-top:8px; background:#010409; border:1px solid #30363d; border-radius:7px; padding:8px;
+                font-family:ui-monospace,Consolas,monospace; font-size:11px; color:#adbac7;
+                white-space:pre-wrap; word-break:break-all; max-height:120px; overflow:auto; display:none; }
   </style>
 </head>
 <body>
@@ -87,6 +98,11 @@
 
   <div class="corps">
     <div class="sous">{{ m.ip }}{% if m.mac %} · {{ m.mac }}{% endif %} · {{ 'alive' if m.alive else 'offline' }}</div>
+
+    <div id="sess-sect" style="display:none">
+      <div class="sect">Active sessions</div>
+      <div id="sess-list" data-ip="{{ m.ip }}"></div>
+    </div>
 
     <div class="sect">Open ports</div>
     {% if m.ports_detail %}
@@ -241,7 +257,8 @@
             if(res.status==='session'){
               var s=res.session||{};
               msg.className='msg ok';
-              msg.textContent='Session opened ('+(s.type||'shell')+') on '+(s.peer||cur.ip)+'. See Activity.';
+              msg.textContent='Session opened ('+(s.type||'shell')+') on '+(s.peer||cur.ip)+'. See below / Activity.';
+              if(window.loadSessions) window.loadSessions();
             } else if(res.status==='no_session'){
               msg.className='msg warn';
               msg.textContent='Module ran, no session opened in the time window. See Activity.';
@@ -257,6 +274,60 @@
             acts.appendChild(k);
           });
       }
+    })();
+  </script>
+  <script>
+    (function () {
+      var sect = document.getElementById('sess-sect');
+      var list = document.getElementById('sess-list');
+      if (!sect || !list) return;
+      var myip = list.dataset.ip || '';
+
+      function runCmd(sid, input, out, btn) {
+        var cmd = (input.value || '').trim();
+        if (!cmd) return;
+        btn.disabled = true; out.style.display = 'block'; out.textContent = 'Running…';
+        var body = 'sid=' + encodeURIComponent(sid) + '&cmd=' + encodeURIComponent(cmd);
+        fetch('/hugin/session/run', {method:'POST',
+              headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+          .then(function(r){return r.json();}).then(function(res){
+            out.textContent = res.ok ? (res.output || '(no output)') : ('Error: ' + (res.error || 'failed'));
+            btn.disabled = false;
+          }).catch(function(){ out.textContent = 'Request failed.'; btn.disabled = false; });
+      }
+
+      function render(sessions) {
+        list.innerHTML = '';
+        sessions.forEach(function (s) {
+          var card = document.createElement('div'); card.className = 'sess';
+          var head = document.createElement('div'); head.className = 'sess-head';
+          head.textContent = 'Session ' + s.id + ' · ' + (s.type || 'shell');
+          var sub = document.createElement('span');
+          sub.textContent = '  ' + (s.target || '') + (s.via ? ('  ·  ' + s.via) : '');
+          head.appendChild(sub); card.appendChild(head);
+          var row = document.createElement('div'); row.className = 'sess-cmd';
+          var inp = document.createElement('input'); inp.type = 'text'; inp.value = 'id';
+          var btn = document.createElement('button'); btn.textContent = 'Run';
+          var out = document.createElement('div'); out.className = 'sess-out';
+          btn.onclick = function () { runCmd(s.id, inp, out, btn); };
+          inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') btn.click(); });
+          row.appendChild(inp); row.appendChild(btn);
+          card.appendChild(row); card.appendChild(out);
+          list.appendChild(card);
+        });
+      }
+
+      function load() {
+        fetch('/hugin/sessions').then(function(r){return r.json();}).then(function(res){
+          var ss = (res && res.sessions) ? res.sessions : [];
+          var mine = ss.filter(function(s){ return !myip || !s.target || s.target === myip; });
+          if (mine.length) { render(mine); sect.style.display = 'block'; }
+          else { sect.style.display = 'none'; list.innerHTML = ''; }
+        }).catch(function(){});
+      }
+
+      window.loadSessions = load;
+      load();
     })();
   </script>
 </body>
