@@ -12,6 +12,7 @@ import time
 import socket
 import subprocess
 import urllib.request
+import urllib.error
 
 try:
     import msgpack
@@ -63,18 +64,37 @@ def _rpc(host, port, method, *args, token=None):
         f"http://{host}:{port}/api/", data=body,
         headers={"Content-Type": "binary/message-pack"},
     )
-    with urllib.request.urlopen(req, timeout=8) as r:
-        return msgpack.unpackb(r.read(), raw=False, strict_map_key=False)
+    try:
+        with urllib.request.urlopen(req, timeout=8) as r:
+            return msgpack.unpackb(r.read(), raw=False, strict_map_key=False)
+    except urllib.error.HTTPError as e:
+        # msfrpcd puts the real reason in the msgpack body even on 401/500.
+        try:
+            data = msgpack.unpackb(e.read(), raw=False, strict_map_key=False)
+        except Exception:
+            raise
+        if isinstance(data, dict):
+            m = (data.get("error_message") or data.get("error_string")
+                 or data.get("message"))
+            if m:
+                raise RuntimeError(str(m))
+        raise
 
 
 def login(host, port, password):
-    """(token, version) on success; raises on failure."""
+    """(token, version) on success; raises on failure.
+    The version call is best-effort: a valid auth.login is enough to be connected."""
     res = _rpc(host, port, "auth.login", RPC_USER, password)
     if not isinstance(res, dict) or res.get("result") != "success":
         raise RuntimeError("authentication refused")
     token = res["token"]
-    ver = _rpc(host, port, "core.version", token=token)
-    version = ver.get("version", "") if isinstance(ver, dict) else ""
+    version = ""
+    try:
+        ver = _rpc(host, port, "core.version", token=token)
+        if isinstance(ver, dict):
+            version = ver.get("version", "")
+    except Exception:
+        version = ""
     return token, version
 
 
@@ -107,7 +127,8 @@ def _friendly(exc):
     msg = str(exc).lower()
     if "refused" in msg and "auth" not in msg:
         return "Host reachable but no Metasploit RPC there (is msfrpcd running?)."
-    if "authentication" in msg:
+    if ("authentication" in msg or "password" in msg or "invalid user" in msg
+            or "login failed" in msg or "401" in msg):
         return "Wrong RPC password."
     if "timed out" in msg or "timeout" in msg:
         return "No answer (host off, or a firewall blocks the port)."
