@@ -23,7 +23,7 @@ etat = {"mode_actif": None, "reseau": None}
 
 MODES = {
     "pwnagotchi": {"nom": "Pwnagotchi", "classe": "pwn",   "url": None},
-    "cracking":    {"nom": "Raton",      "classe": "cass",  "url": None},
+    "cracking":    {"nom": "Bandit",      "classe": "cass",  "url": None},
     "bjorn":      {"nom": "Bjorn",      "classe": "bjorn", "url": None},
 }
 

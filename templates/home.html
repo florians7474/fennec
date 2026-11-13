@@ -170,13 +170,13 @@
           <circle cx="12" cy="10" r="3"/>
         </svg>
       </div>
-      <div class="nom">Carte</div>
+      <div class="nom">Map</div>
       <div class="etat"><span class="pastille"></span>soon</div>
     </a>
 
     <a class="app {{ 'on' if actif=='cracking' }}" href="/mode/cracking">
-      <div class="icone cass"><img src="/static/raton.png" alt="Raton"></div>
-      <div class="nom">Raton</div>
+      <div class="icone cass"><img src="/static/raton.png" alt="Bandit"></div>
+      <div class="nom">Bandit</div>
       <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='cracking' else 'stopped' }}</div>
     </a>
 
@@ -193,8 +193,8 @@
     </a>
 
     <a class="app {{ 'on' if actif=='vigie' }}" href="/vigie">
-      <div class="icone vigie"><img src="/static/vigie.png" alt="Vigie"></div>
-      <div class="nom">Vigie</div>
+      <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
+      <div class="nom">Sentry</div>
       <div class="etat"><span class="pastille"></span>{{ 'watching' if actif=='vigie' else 'idle' }}</div>
     </a>
 
