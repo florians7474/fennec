@@ -70,9 +70,10 @@ def read_machines():
             "nb_success": nb_success,
             "nb_mods": nb_mods,
         })
-    # Most exposed first: candidate modules, then open ports, then alive, then IP.
-    machines.sort(key=lambda m: (-m["nb_mods"], -m["nb_ports"],
-                                 not m["alive"], _ipkey(m["ip"])))
+    # Alive devices first (an offline host can't be attacked), then by exposed
+    # surface: candidate modules, then open ports, then IP.
+    machines.sort(key=lambda m: (not m["alive"], -m["nb_mods"],
+                                 -m["nb_ports"], _ipkey(m["ip"])))
     return machines
 
 

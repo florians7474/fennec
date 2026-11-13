@@ -760,7 +760,7 @@ def connection():
     if ssid_act and not actuel:
         actuel = {"nom": ssid_act, "bssid": bssid_act, "connected": True}
     return render_template("connection.html", reseaux=reseaux, actuel=actuel,
-                           err=request.args.get("err"))
+                           conn=connection_state(), err=request.args.get("err"))
 
 @app.route("/connection/to/<bssid>")
 def connection_to(bssid):
