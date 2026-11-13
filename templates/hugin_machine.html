@@ -7,7 +7,7 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
-      width:480px; height:320px; overflow:hidden;
+      width:480px; height:320px; overflow:hidden; position:relative;
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
@@ -61,7 +61,7 @@
     .runbtn { font-size:11px; font-weight:700; padding:5px 9px; border-radius:6px; white-space:nowrap;
               border:none; background:#da3633; color:#fff; font-family:inherit; cursor:pointer; }
     .runbtn:disabled { background:#30363d; color:#6e7681; cursor:default; }
-    .ov { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center;
+    .ov { position:absolute; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center;
           justify-content:center; z-index:200; }
     .ov.show { display:flex; }
     .box { width:400px; max-width:92%; background:#161b22; border:1px solid #30363d; border-radius:12px; padding:16px; }
