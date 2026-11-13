@@ -88,21 +88,23 @@
   <script>
     (function () {
       // Bjorn's web UI is embedded in an iframe. Right after start its first
-      // screen image doesn't exist yet, so the iframe shows a broken image
-      // until a full reload. Reload it a few times over the first 30s so the
-      // image appears on its own, without going Home and back.
-      // NB: reload the exact same URL (via about:blank) — Bjorn's server only
-      // serves its UI on "/", so a ?t= cache-buster makes it fall back to a
-      // directory listing.
+      // screen image doesn't exist yet, so the iframe shows a broken image.
+      // Reload it ONCE, a few seconds after the first load, so the image
+      // appears without going Home and back — and never again, so repeated
+      // reloads don't swallow the user's clicks on Bjorn's own buttons.
+      // Reload the exact same URL (via about:blank): Bjorn only serves its UI
+      // on "/", so a ?t= cache-buster makes it fall back to a directory listing.
       var frame = document.getElementById("bjorn-frame");
       if (frame) {
         var base = frame.src.split("?")[0];
-        function reloadFrame() {
-          frame.src = "about:blank";
-          setTimeout(function () { frame.src = base; }, 60);
-        }
-        [4000, 10000, 18000, 30000].forEach(function (d) {
-          setTimeout(reloadFrame, d);
+        var reloaded = false;
+        frame.addEventListener("load", function () {
+          if (reloaded) return;
+          reloaded = true;
+          setTimeout(function () {
+            frame.src = "about:blank";
+            setTimeout(function () { frame.src = base; }, 60);
+          }, 3000);
         });
       }
       var img = document.getElementById("pwna-live");
