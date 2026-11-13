@@ -23,7 +23,7 @@ etat = {"mode_actif": None, "reseau": None}
 
 MODES = {
     "pwnagotchi": {"nom": "Pwnagotchi", "classe": "pwn",   "url": None},
-    "cracking":    {"nom": "Bandit",      "classe": "cass",  "url": None},
+    "cracking":    {"nom": "Sly",      "classe": "cass",  "url": None},
     "bjorn":      {"nom": "Bjorn",      "classe": "bjorn", "url": None},
 }
 
@@ -459,7 +459,7 @@ def merge_traffic(mac, live):
 @app.route("/")
 def home():
     mode_actif = etat["mode_actif"]
-    # Bandit runs in a thread, not a service: the dot follows the engine's real state.
+    # Sly runs in a thread, not a service: the dot follows the engine's real state.
     if mode_actif == "cracking" and not raton_engine.crack_state.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
@@ -611,7 +611,7 @@ def crack_test(bssid):
     capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", nom="cracking"))
-    # Bandit takes over: stop the running modes (Pwnagotchi / Bjorn / Sentry)
+    # Sly takes over: stop the running modes (Pwnagotchi / Bjorn / Sentry)
     if est_actif("pwnagotchi"):
         stop("pwnagotchi")
     if est_actif("bjorn"):
@@ -770,7 +770,7 @@ def connection_to(bssid):
     cle = cible.get("cle", "")
     if not cle and cible.get("nom") not in known_wifi_profiles():
         return redirect(url_for("connection",
-            err="No key for this network. Add it in Allowed networks, or crack it with Bandit."))
+            err="No key for this network. Add it in Allowed networks, or crack it with Sly."))
     try:
         r = subprocess.run(
             ["sudo", "-n", "/usr/local/bin/fennec-wifi-connect",

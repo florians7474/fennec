@@ -16,21 +16,21 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 |------|------|--------|
 | **Pwnagotchi** | Passive Wi-Fi handshake capture | ✅ Working |
 | **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
-| **Bandit** | Offline WPA cracking on your own captures | ✅ Working |
+| **Sly** | Offline WPA cracking on your own captures | ✅ Working |
 | **Sentry** | Network radar + per-device traffic watch | ✅ Working |
 | **Map** | Map of captures by GPS location | 🚧 Phase 1 |
 | **Hugin** | Bjorn companion: results, Metasploit correlation (CVE + service), deported execution & live sessions | ✅ Working |
 
 The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and tapping it opens the connection manager: you scan for networks, pick the ones you are allowed to test, and connect the Pi to a whitelisted Wi-Fi or disconnect it (real nmcli on the built-in interface; the key comes from the whitelist or an existing profile, and a network answering on several bands is handled by SSID). An on-screen keyboard pops up on any text field, so keys and device names can be typed on the touchscreen without a physical keyboard. A power button in the top-right opens an on-screen menu to lock the screen, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate slide-to-unlock brings the interface back.
 
-**Pwnagotchi**, **Bjorn**, **Bandit** and **Sentry** are operational: automatic installation, control from the tile, and a live view inside the interface.
+**Pwnagotchi**, **Bjorn**, **Sly** and **Sentry** are operational: automatic installation, control from the tile, and a live view inside the interface.
 
 - **Pwnagotchi** captures handshakes in the background and mirrors its head live in the tile.
 - **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile. On Wi-Fi it only starts when the connected network is in your whitelist; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
-- **Bandit** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
+- **Sly** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
 - **Sentry** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Sentry into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts (TLS SNI and QUIC via tshark, plus every cleartext DNS query through an on-demand dnsmasq the Pi redirects port 53 to), with a persistent, timestamped history kept per network. A **Force DNS** toggle blocks DoT and the main DoH resolvers to push hardened devices back onto readable DNS, and a device running a VPN is detected and flagged (WireGuard, OpenVPN or IPsec/IKEv2 tunnel plus endpoint) instead of showing blank.
 - **Map** plots captured handshakes on a live map using the position read at capture time (Pwnagotchi's GPS plugin writes a `.gps.json` next to each handshake when a fix is available). Markers are colour-coded by whitelist status, and tapping one adds that network to the allowed list. Phase 1 (geolocating captures) is in; full wardriving comes next.
-- **Hugin** is to Bjorn what Bandit is to Pwnagotchi. It reads Bjorn's own results and shows them per device: open ports and services, vulnerabilities, the actions Bjorn ran (with status and date), and the files it produced (preview and download). It suggests candidate Metasploit modules two ways — by CVE (from a local index, no Metasploit on the Pi) and by open service (a built-in service→module map, so it lights up from the open ports even when no CVE was found) — clearly flagged as candidates, not confirmed vulnerabilities, and exports a ready-to-run `.rc` attack plan per module. Execution is deported: Metasploit runs on a separate lab machine and the Pi drives it over RPC — run a module with confirmation, watch a session open, then list the live sessions and run commands inside one (e.g. `id` returning `uid=0(root)`), all from Fennec. Validated end to end against a lab target. Lab use only, on authorized targets.
+- **Hugin** is to Bjorn what Sly is to Pwnagotchi. It reads Bjorn's own results and shows them per device: open ports and services, vulnerabilities, the actions Bjorn ran (with status and date), and the files it produced (preview and download). It suggests candidate Metasploit modules two ways — by CVE (from a local index, no Metasploit on the Pi) and by open service (a built-in service→module map, so it lights up from the open ports even when no CVE was found) — clearly flagged as candidates, not confirmed vulnerabilities, and exports a ready-to-run `.rc` attack plan per module. Execution is deported: Metasploit runs on a separate lab machine and the Pi drives it over RPC — run a module with confirmation, watch a session open, then list the live sessions and run commands inside one (e.g. `id` returning `uid=0(root)`), all from Fennec. Validated end to end against a lab target. Lab use only, on authorized targets.
 
 ## Legal scope
 
@@ -74,7 +74,7 @@ The script is idempotent and adapts to any user. It installs the system packages
 (including nmap), enables SPI (needed by Bjorn's e-paper display), sets up
 Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli,
 installs Bjorn in its own venv from a pinned requirements file that works on
-Python 3.13, downloads the Bandit wordlists (10k-common, probable-wpa and
+Python 3.13, downloads the Sly wordlists (10k-common, probable-wpa and
 rockyou from SecLists), generates a random bettercap password, and configures
 all systemd services. No sensitive data is stored in the repository.
 
@@ -94,7 +94,7 @@ Click or tap a tile to activate the matching module.
 - **Fennec**: Flask app that drives the modules without modifying them (port 5000)
 - **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd
 - **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
-- **Bandit**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
+- **Sly**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
 - **Sentry**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM, tshark for SNI/QUIC and an on-demand dnsmasq for DNS, optional Force DNS against DoT/DoH, VPN detection, persistent per-network history)
 - **Connection**: joins or leaves a whitelisted Wi-Fi via nmcli on the built-in interface; keeps the USB adapter free for monitor mode
 - **Hugin**: in-house Bjorn companion (reads Bjorn's CSV/output, Metasploit correlation by CVE and by open service, `.rc` attack plans, msgpack-RPC link to a remote Metasploit — never on the Pi — with run, live sessions and in-session commands)
@@ -109,7 +109,7 @@ Click or tap a tile to activate the matching module.
 - [x] Touchscreen display and Chromium kiosk auto-starting at boot
 - [x] On-screen power menu: lock screen (nomadic), reboot, shut down
 - [x] Bjorn module (install, control, live console)
-- [x] Bandit module (WPA cracking, 9-stage escalation, GPU export)
+- [x] Sly module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)
 - [x] Sentry module (device radar, per-device recon, naming, and traffic watch via MITM)
 - [x] Sentry DNS capture (Pi as resolver), Force DNS against DoT/DoH, and VPN detection

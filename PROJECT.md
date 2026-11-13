@@ -39,7 +39,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 |--------|------|--------|
 | Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
-| Bandit | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
+| Sly | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Map | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
@@ -47,7 +47,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
-florian to systemctl start/stop them without a password). Bandit and Hugin are
+florian to systemctl start/stop them without a password). Sly and Hugin are
 coded in-house.
 
 ## Connection, scan and lists
@@ -118,7 +118,7 @@ coded in-house.
   and the detail.
 - Traffic watch ("Watch" button): starts a MITM of the whole subnet via bettercap
   (/usr/local/bin/fennec-monitor, sudo) to reveal the domains each device
-  contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Bandit, and they
+  contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Sly, and they
   stop it). The capture script runs two sources on the forwarded traffic: tshark
   (TLS SNI, QUIC destination) and an on-demand dnsmasq the Pi redirects port 53 to
   (dedicated nat chain VIGIE_DNS), which answers and logs every cleartext DNS query
@@ -147,10 +147,10 @@ coded in-house.
   MITM'd (ARP spoof is IPv4 only); a device in strict private-DNS mode may fail
   closed under Force DNS until it is turned off.
 
-## Bandit — cracking engine
+## Sly — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
 (segfaults on the Pi's PoCL/OpenCL ARM backend); it is reserved for the GPU
-export only. Bandit is the smart orchestrator.
+export only. Sly is the smart orchestrator.
 
 ### Pi constraints (hard rules)
 - Everything in flux (pipes) or in RAM (/dev/shm), no large wordlist written
@@ -159,13 +159,13 @@ export only. Bandit is the smart orchestrator.
 - Everything else stays in RAM.
 
 ### Honesty guardrail
-Bandit reveals WEAK keys. On a modern box with a random factory key it passes
+Sly reveals WEAK keys. On a modern box with a random factory key it passes
 quickly, concludes "probably sound", and points to the GPU export. It never
 promises to crack long random WPA2.
 
 ### Intelligence = knowledge base (not self-learning)
 The intelligence comes from external knowledge about how boxes and humans make
-weak keys, not from Bandit's own (rare) successes. At launch Bandit reads the
+weak keys, not from Sly's own (rare) successes. At launch Sly reads the
 BSSID (OUI -> vendor) and the ESSID, queries the local box-profile base, and
 derives a targeted plan. Key point: you cannot deduce password length/shape
 from the hash (PBKDF2 destroys it) — the only possible narrowing comes from
@@ -201,7 +201,7 @@ Length filter: every stage feeds aircrack only candidates of 8..63 chars
 (WPA minimum), via awk on the pipe or a filtered /dev/shm copy, so no invalid
 short candidate is ever shown or tested.
 
-### Already done on Bandit
+### Already done on Sly
 - 9-stage escalation built, reordered, and tested live on a real Bbox.
 - Robustness score recalibrated for the 9 stages: stage where the box falls =
   its grade (Critical / Very weak / Weak / Moderate / Robust).
@@ -212,14 +212,14 @@ short candidate is ever shown or tested.
   (hcxpcapngtool) and returns the hashcat command; "GPU" button -> crack_gpu.html.
 - Robust stdout reading (errors="replace") so a non-UTF8 byte from aircrack no
   longer freezes a stage.
-- install.sh now folds all Bandit deps (routerkeygen build, hcxtools, John,
+- install.sh now folds all Sly deps (routerkeygen build, hcxtools, John,
   wordlists: 10k-common, probable-wpa-top4800, rockyou).
-- No-handshake guard: before cracking, Bandit checks the capture really holds a
+- No-handshake guard: before cracking, Sly checks the capture really holds a
   4-way handshake (aircrack-ng). If not, the Test button is greyed out in the
   capture list ("· no handshake") and the result reads "No usable handshake"
   instead of a misleading "Robust". Presence is cached per file (mtime + size).
 
-### Work left on Bandit
+### Work left on Sly
 - Clearer GPU export — one-click handoff, so the user has nothing to copy:
   - a download button for the already-generated .hc22000 file
   - a ready command pointing at that file + a known wordlist, e.g.
@@ -228,7 +228,7 @@ short candidate is ever shown or tested.
     wordlist if needed and launches hashcat, so there is zero manual step
 
 ## Hugin — Bjorn companion
-Hugin is to Bjorn what Bandit is to Pwnagotchi: it turns Bjorn's raw output into
+Hugin is to Bjorn what Sly is to Pwnagotchi: it turns Bjorn's raw output into
 something readable, then adds Metasploit correlation and (deported) execution.
 Raven mascot (Odin's Huginn, "thought").
 
@@ -280,7 +280,7 @@ Lab use only, on explicitly authorized targets.
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
 adapts to any user/path; generates a random bettercap password; nothing
 sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn (clone + dedicated
-venv + systemd services), and all Bandit deps (routerkeygen, hcxtools, John,
+venv + systemd services), and all Sly deps (routerkeygen, hcxtools, John,
 nmap, and the wordlists 10k-common / probable-wpa / rockyou fetched from
 SecLists). Fennec itself is installed as a systemd service (enabled at boot),
 and the Waveshare 3.5" touchscreen is set up end to end so it lights up on its
@@ -327,7 +327,7 @@ Notes:
 Edited directly on the Pi and pushed from there.
 Editing any project file: nano ~/console/<file>.
 
-## Other work left (outside Bandit)
+## Other work left (outside Sly)
 - Wi-Fi lock: done. Step 2 (real Connexion via nmcli) and step 3 (Bjorn start
   gate) are both in — see "Connection, scan and lists" above. The connection page
   joins/leaves a whitelisted Wi-Fi for real, and Bjorn refuses to start on a
