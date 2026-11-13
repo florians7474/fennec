@@ -42,6 +42,7 @@
     .tag { font-size:11px; font-weight:600; padding:5px 9px; border-radius:8px;
            background:#1b1442; color:#b9a7f5; border:1px solid #3a2e6b; white-space:nowrap; }
     .tag.act { background:#10303a; color:#28c0d4; border-color:#1d5663; }
+    .tag.mod { background:#3a2410; color:#f0883e; border-color:#6e3f1a; }
     .tag.z { background:#161b22; color:#6e7681; border-color:#30363d; }
     .vide { color:#8b949e; font-size:13px; text-align:center; margin-top:40px; line-height:1.7; }
   </style>
@@ -77,6 +78,7 @@
           <div class="rbssid">{{ m.ip }}{% if m.mac %} · {{ m.mac }}{% endif %}</div>
         </div>
         <div class="tags">
+          <span class="tag mod {{ 'z' if not m.nb_mods }}">{{ m.nb_mods }} mod</span>
           <span class="tag {{ 'z' if not m.nb_ports }}">{{ m.nb_ports }} port{{ 's' if m.nb_ports != 1 }}</span>
           <span class="tag act {{ 'z' if not m.nb_actions }}">{{ m.nb_actions }} act</span>
         </div>

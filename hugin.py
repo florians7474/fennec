@@ -55,6 +55,9 @@ def read_machines():
                 actions[col] = val
         nb_success = sum(1 for v in actions.values()
                          if v.lower().startswith("success"))
+        # Candidate Metasploit modules from the open services: Hugin's
+        # exploitable-surface signal (Bjorn's own CVE list is usually empty).
+        nb_mods = sum(len(SERVICE_MODULES.get(p, ())) for p in ports)
         machines.append({
             "mac": mac,
             "ip": (row.get("IPs") or "").strip(),
@@ -65,8 +68,11 @@ def read_machines():
             "actions": actions,
             "nb_actions": len(actions),
             "nb_success": nb_success,
+            "nb_mods": nb_mods,
         })
-    machines.sort(key=lambda m: (not m["alive"], _ipkey(m["ip"])))
+    # Most exposed first: candidate modules, then open ports, then alive, then IP.
+    machines.sort(key=lambda m: (-m["nb_mods"], -m["nb_ports"],
+                                 not m["alive"], _ipkey(m["ip"])))
     return machines
 
 
