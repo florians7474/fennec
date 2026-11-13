@@ -830,7 +830,10 @@ def hugin_msf_connect():
     password = request.form.get("password", "").strip()
     if not host or not password:
         return redirect(url_for("hugin_msf_page", err="Host and password are required."))
-    hugin_msf.connect(host, port, password)
+    res = hugin_msf.connect(host, port, password)
+    if not res.get("connected"):
+        return redirect(url_for("hugin_msf_page",
+                                err=res.get("error") or "Connection failed.", host=host))
     return redirect(url_for("hugin_msf_page"))
 
 @app.route("/hugin/msf/disconnect")

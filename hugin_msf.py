@@ -112,7 +112,7 @@ def _friendly(exc):
         return "No answer (host off, or a firewall blocks the port)."
     if "msgpack" in msg:
         return "msgpack missing on the Pi (reinstall)."
-    return "Could not connect."
+    return "Could not connect: " + str(exc)[:180]
 
 
 def detect(subnet):
