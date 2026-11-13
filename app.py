@@ -551,6 +551,12 @@ def mode(nom):
             # Only check for a handshake on allowed networks (the only ones that
             # show a Test button), to avoid useless scans.
             cap["handshake"] = cap["bssid"] in deja and capture_a_handshake(cap["fichier"])
+        # Testable captures first (allowed + handshake), then allowed without a
+        # handshake, then locked ones; alphabetical within each group.
+        captures.sort(key=lambda c: (
+            0 if c["handshake"] else (1 if c["bssid"] in deja else 2),
+            c["nom"].lower(),
+        ))
         return render_template("cracking.html", captures=captures, deja=deja)
 
     if nom == "pwnagotchi":
