@@ -186,10 +186,10 @@
       <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='bjorn' else 'stopped' }}</div>
     </a>
 
-    <a class="app" href="/hugin">
+    <a class="app" id="hugin-tile" href="/hugin">
       <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
       <div class="nom">Hugin</div>
-      <div class="etat"><span class="pastille"></span>results</div>
+      <div class="etat"><span class="pastille"></span><span id="hugin-etat">Metasploit</span></div>
     </a>
 
     <a class="app {{ 'on' if actif=='vigie' }}" href="/vigie">
@@ -306,6 +306,29 @@
           .catch(function(){});
       }
       setInterval(refresh, 8000);
+    })();
+  </script>
+  <script>
+    // Hugin tile: green dot when Metasploit (RPC) is connected, grey otherwise.
+    (function(){
+      var tile = document.getElementById('hugin-tile');
+      var etat = document.getElementById('hugin-etat');
+      if (!tile || !etat) return;
+      function refresh(){
+        fetch('/hugin/msf/state', {cache:'no-store'})
+          .then(function(r){ return r.json(); })
+          .then(function(s){
+            var ok = !!(s && s.connected);
+            tile.classList.toggle('on', ok);
+            etat.textContent = ok ? 'Metasploit linked' : 'Metasploit off';
+          })
+          .catch(function(){
+            tile.classList.remove('on');
+            etat.textContent = 'Metasploit off';
+          });
+      }
+      refresh();
+      setInterval(refresh, 15000);
     })();
   </script>
 </body>
