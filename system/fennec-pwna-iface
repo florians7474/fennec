@@ -1,6 +1,36 @@
 #!/bin/bash
-# Write into pwnagotchi's config the interface actually in monitor mode, so it
-# follows the plugged Wi-Fi adapter (whatever its name: wlan1, wlan1mon...).
-IFACE=$(iw dev | awk '$1=="Interface"{i=$2} $1=="type"&&$2=="monitor"{print i; exit}')
-[ -n "$IFACE" ] && sed -i -E "s/^[[:space:]]*iface[[:space:]]*=.*/iface = \"$IFACE\"/" /etc/pwnagotchi/config.toml
+# Make pwnagotchi follow whatever Wi-Fi adapter is plugged in, whatever its name
+# or driver. Some drivers keep the name in monitor mode (Atheros: wlan1), others
+# expose a separate monitor interface (MediaTek/Realtek: wlan1mon). We find the
+# adapter, make sure it is in monitor mode, and write its real name into
+# pwnagotchi's config so it stops waiting on a hard-coded interface.
+CONFIG=/etc/pwnagotchi/config.toml
+
+mon_iface() {
+    iw dev | awk '$1=="Interface"{i=$2} $1=="type"&&$2=="monitor"{print i; exit}'
+}
+alfa_iface() {
+    # First Wi-Fi interface that is not the onboard wlan0.
+    iw dev | awk '$1=="Interface"{print $2}' | grep -v '^wlan0$' | head -n1
+}
+
+# The adapter can take a few seconds to appear at boot/hotplug. Try for ~15s:
+# use a monitor interface if one already exists, otherwise switch the adapter
+# to monitor mode ourselves.
+IFACE=""
+for _ in $(seq 1 15); do
+    IFACE=$(mon_iface)
+    [ -n "$IFACE" ] && break
+    CAND=$(alfa_iface)
+    if [ -n "$CAND" ]; then
+        ip link set "$CAND" down 2>/dev/null
+        iw dev "$CAND" set type monitor 2>/dev/null
+        ip link set "$CAND" up 2>/dev/null
+        IFACE=$(mon_iface)
+        [ -n "$IFACE" ] && break
+    fi
+    sleep 1
+done
+
+[ -n "$IFACE" ] && sed -i -E "s/^[[:space:]]*iface[[:space:]]*=.*/iface = \"$IFACE\"/" "$CONFIG"
 exit 0
