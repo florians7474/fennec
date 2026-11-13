@@ -43,7 +43,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Carte | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
-| Hugin | Bjorn companion: surfaces Bjorn's results, CVE->Metasploit correlation, attack plans | Phases 1-2 done; phase 3 (deported Metasploit execution) in progress |
+| Hugin | Bjorn companion: surfaces Bjorn's results, CVE->Metasploit correlation, attack plans | Phases 1-2 done; phase 3 (deported Metasploit execution via RPC) built, pending live validation |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
@@ -249,18 +249,19 @@ Raven mascot (Odin's Huginn, "thought").
 - For each CVE Bjorn found on a device, lists the candidate Metasploit modules
   (type, rank). Flagged as correlation only, never a confirmed vulnerability.
 
-### Phase 3 — deported execution (in progress)
+### Phase 3 — deported execution (built, pending live validation)
 Metasploit never runs on the Pi. It runs on a separate lab machine
 (msfrpcd -P <pass> -S); the Pi talks to it over the network with a small
-msgpack-RPC client (python3-msgpack).
-- Brick 1 (done, to validate live): guided connection screen — auto-detect the
-  host (nmap on port 55553), enter the RPC password, connect, live state. Config
-  stored locally in msf_config.json (gitignored).
-- Brick 2 (done): per-module attack plan — a pre-filled .rc (use + RHOSTS)
-  viewable and downloadable from each candidate module; module name validated
-  against the index.
-- Brick 3 (to do): run a module via RPC with explicit confirmation, capture the
-  result (session opened / failed) and record it; Activity screen with history.
+msgpack-RPC client (python3-msgpack). All three bricks are coded; they still
+need a first validation against a reachable msfrpcd.
+- Brick 1: guided connection screen — auto-detect the host (nmap on port 55553),
+  enter the RPC password, connect, live state. Config stored locally in
+  msf_config.json (gitignored).
+- Brick 2: per-module attack plan — a pre-filled .rc (use + RHOSTS) viewable and
+  downloadable from each candidate module; module name validated against the index.
+- Brick 3: run a module via RPC with explicit confirmation, watch for an opened
+  session, and record the result; Activity screen with history. The Run button is
+  disabled until Metasploit is connected.
 Lab use only, on explicitly authorized targets.
 
 ## Install (showcase)
@@ -336,9 +337,9 @@ Editing any project file: nano ~/console/<file>.
 - Nomadic Wi-Fi reconnection: NetworkManager now retries autoconnect forever
   (/etc/NetworkManager/conf.d/wifi-retry.conf, installed by install.sh), so the
   Pi rejoins its network on its own when it comes back in range without a reboot.
-- Hugin phase 3: validate the RPC connection live, then build brick 3 (run a
-  module via RPC with confirmation + Activity screen). Also optional: refresh the
-  Metasploit CVE index from the upstream repo via install.sh.
+- Hugin phase 3: validate the whole RPC chain live (connection + run) against a
+  reachable msfrpcd — all three bricks are coded but untested in the wild. Also
+  optional: refresh the Metasploit CVE index from the upstream repo via install.sh.
 - Hugin phase 4 (later): combined Bjorn + Hugin reports, export, cross-session
   history, and the future "Audit" orchestrator.
 
