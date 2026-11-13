@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stream WPA candidates mutated from custom-name seed words (Raton ESSID stage).
+"""Stream WPA candidates mutated from custom-name seed words (Bandit ESSID stage).
 
 Reads one seed word per line (path given as argv[1]) and prints candidates to
 stdout, one per line. Every candidate is kept inside the WPA-friendly 8..15

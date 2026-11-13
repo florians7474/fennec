@@ -1,4 +1,4 @@
-"""Vigie monitoring engine. The sudo script /usr/local/bin/fennec-monitor starts
+"""Sentry monitoring engine. The sudo script /usr/local/bin/fennec-monitor starts
 bettercap (arp.spoof) to route the subnet through the Pi, then two capture
 sources whose lines are merged on the same stdout:
 

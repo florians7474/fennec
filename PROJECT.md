@@ -24,7 +24,7 @@ only applies to Wi-Fi.
 - Wi-Fi USB adapter (monitor mode, required — Pi 5 built-in chip can't do it):
   Alfa AWUS036AXM (MediaTek MT7921AU), plugs straight into USB. Auto-detected
   by Fennec (first wlan* whose phy advertises monitor mode), no config needed.
-- GPS: VK-162 USB GPS module (waterproof, for the Carte / wardriving module —
+- GPS: VK-162 USB GPS module (waterproof, for the Map / wardriving module —
   tags each captured network with its position)
 
 ### Test gear
@@ -39,15 +39,15 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 |--------|------|--------|
 | Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
-| Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
+| Bandit | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
-| Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
-| Carte | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
+| Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
+| Map | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
-florian to systemctl start/stop them without a password). Raton and Hugin are
+florian to systemctl start/stop them without a password). Bandit and Hugin are
 coded in-house.
 
 ## Connection, scan and lists
@@ -96,7 +96,7 @@ coded in-house.
   going underneath. Unlock is a deliberate slide-to-unlock (pointer drag past a
   threshold), so random bag contact can't release it.
 
-## Vigie (device radar)
+## Sentry (device radar)
 - Real ARP scan of the current /24 via nmap -sn, run as root by a dedicated
   sudo helper (/usr/local/bin/fennec-netscan, allowed in fennec.sudoers). Needs
   root so nmap returns MAC addresses + vendor (OUI).
@@ -118,7 +118,7 @@ coded in-house.
   and the detail.
 - Traffic watch ("Watch" button): starts a MITM of the whole subnet via bettercap
   (/usr/local/bin/fennec-monitor, sudo) to reveal the domains each device
-  contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Raton, and they
+  contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Bandit, and they
   stop it). The capture script runs two sources on the forwarded traffic: tshark
   (TLS SNI, QUIC destination) and an on-demand dnsmasq the Pi redirects port 53 to
   (dedicated nat chain VIGIE_DNS), which answers and logs every cleartext DNS query
@@ -147,10 +147,10 @@ coded in-house.
   MITM'd (ARP spoof is IPv4 only); a device in strict private-DNS mode may fail
   closed under Force DNS until it is turned off.
 
-## Raton — cracking engine
+## Bandit — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
 (segfaults on the Pi's PoCL/OpenCL ARM backend); it is reserved for the GPU
-export only. Raton is the smart orchestrator.
+export only. Bandit is the smart orchestrator.
 
 ### Pi constraints (hard rules)
 - Everything in flux (pipes) or in RAM (/dev/shm), no large wordlist written
@@ -159,13 +159,13 @@ export only. Raton is the smart orchestrator.
 - Everything else stays in RAM.
 
 ### Honesty guardrail
-Raton reveals WEAK keys. On a modern box with a random factory key it passes
+Bandit reveals WEAK keys. On a modern box with a random factory key it passes
 quickly, concludes "probably sound", and points to the GPU export. It never
 promises to crack long random WPA2.
 
 ### Intelligence = knowledge base (not self-learning)
 The intelligence comes from external knowledge about how boxes and humans make
-weak keys, not from Raton's own (rare) successes. At launch Raton reads the
+weak keys, not from Bandit's own (rare) successes. At launch Bandit reads the
 BSSID (OUI -> vendor) and the ESSID, queries the local box-profile base, and
 derives a targeted plan. Key point: you cannot deduce password length/shape
 from the hash (PBKDF2 destroys it) — the only possible narrowing comes from
@@ -201,7 +201,7 @@ Length filter: every stage feeds aircrack only candidates of 8..63 chars
 (WPA minimum), via awk on the pipe or a filtered /dev/shm copy, so no invalid
 short candidate is ever shown or tested.
 
-### Already done on Raton
+### Already done on Bandit
 - 9-stage escalation built, reordered, and tested live on a real Bbox.
 - Robustness score recalibrated for the 9 stages: stage where the box falls =
   its grade (Critical / Very weak / Weak / Moderate / Robust).
@@ -212,14 +212,14 @@ short candidate is ever shown or tested.
   (hcxpcapngtool) and returns the hashcat command; "GPU" button -> crack_gpu.html.
 - Robust stdout reading (errors="replace") so a non-UTF8 byte from aircrack no
   longer freezes a stage.
-- install.sh now folds all Raton deps (routerkeygen build, hcxtools, John,
+- install.sh now folds all Bandit deps (routerkeygen build, hcxtools, John,
   wordlists: 10k-common, probable-wpa-top4800, rockyou).
-- No-handshake guard: before cracking, Raton checks the capture really holds a
+- No-handshake guard: before cracking, Bandit checks the capture really holds a
   4-way handshake (aircrack-ng). If not, the Test button is greyed out in the
   capture list ("· no handshake") and the result reads "No usable handshake"
   instead of a misleading "Robust". Presence is cached per file (mtime + size).
 
-### Work left on Raton
+### Work left on Bandit
 - Clearer GPU export — one-click handoff, so the user has nothing to copy:
   - a download button for the already-generated .hc22000 file
   - a ready command pointing at that file + a known wordlist, e.g.
@@ -228,7 +228,7 @@ short candidate is ever shown or tested.
     wordlist if needed and launches hashcat, so there is zero manual step
 
 ## Hugin — Bjorn companion
-Hugin is to Bjorn what Raton is to Pwnagotchi: it turns Bjorn's raw output into
+Hugin is to Bjorn what Bandit is to Pwnagotchi: it turns Bjorn's raw output into
 something readable, then adds Metasploit correlation and (deported) execution.
 Raven mascot (Odin's Huginn, "thought").
 
@@ -280,7 +280,7 @@ Lab use only, on explicitly authorized targets.
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
 adapts to any user/path; generates a random bettercap password; nothing
 sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn (clone + dedicated
-venv + systemd services), and all Raton deps (routerkeygen, hcxtools, John,
+venv + systemd services), and all Bandit deps (routerkeygen, hcxtools, John,
 nmap, and the wordlists 10k-common / probable-wpa / rockyou fetched from
 SecLists). Fennec itself is installed as a systemd service (enabled at boot),
 and the Waveshare 3.5" touchscreen is set up end to end so it lights up on its
@@ -310,7 +310,7 @@ Notes:
 - Bjorn's web server is patched at install time (allow_reuse_address + a fixed
   port 8000): upstream jumps to 8001 on a quick Stop/Start because the port is
   still in TIME_WAIT, which breaks the embedded view. The patch keeps it on 8000.
-- Vigie uses small sudo helpers installed to /usr/local/bin: fennec-netscan
+- Sentry uses small sudo helpers installed to /usr/local/bin: fennec-netscan
   (nmap ARP sweep), fennec-monitor (bettercap MITM + tshark + on-demand dnsmasq),
   fennec-dns-force (Force DNS: block DoT/DoH) and fennec-clear-handshakes (delete
   Pwnagotchi captures). Each is granted by an exact-path rule in fennec.sudoers,
@@ -327,24 +327,24 @@ Notes:
 Edited directly on the Pi and pushed from there.
 Editing any project file: nano ~/console/<file>.
 
-## Other work left (outside Raton)
+## Other work left (outside Bandit)
 - Wi-Fi lock: done. Step 2 (real Connexion via nmcli) and step 3 (Bjorn start
   gate) are both in — see "Connection, scan and lists" above. The connection page
   joins/leaves a whitelisted Wi-Fi for real, and Bjorn refuses to start on a
   non-whitelisted Wi-Fi (Ethernet stays free).
-- Vigie DNS capture (v3): done. During a Watch the Pi is the network's DNS
+- Sentry DNS capture (v3): done. During a Watch the Pi is the network's DNS
   resolver (dnsmasq + port-53 redirect), with a Force DNS toggle against DoT/DoH
   and VPN detection (WireGuard, OpenVPN, IPsec/IKEv2). v1 (device radar) and v2
   (per-device port scan/type,
   naming, traffic watch via MITM with saved history) were already done.
-- Carte phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
-  handshake when a fix is available, and the Carte tile plots them (colour-coded
+- Map phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
+  handshake when a fix is available, and the Map tile plots them (colour-coded
   by whitelist status, tap to add to the whitelist). The plugin is enabled in
   config.toml ([main.plugins.gps], device /dev/ttyACM0) and install.sh patches a
   bug in it (it replaced ".pcapng" while bettercap writes ".pcap", which made it
   overwrite the handshake instead of writing the .gps.json). Markers sit at the
   capture position (where the Pi was), not at the access point.
-- Carte phase 2: build the full wardriving map (map every network even without a
+- Map phase 2: build the full wardriving map (map every network even without a
   handshake, via airodump-ng + GPS) and add offline map tiles for nomadic use.
 - Nomadic Wi-Fi reconnection: NetworkManager now retries autoconnect forever
   (/etc/NetworkManager/conf.d/wifi-retry.conf, installed by install.sh), so the
@@ -355,6 +355,6 @@ Editing any project file: nano ~/console/<file>.
   history, and the future "Audit" orchestrator.
 
 ## Known issues
-- While Vigie's Watch (MITM) is active, all LAN traffic routes through the Pi,
+- While Sentry's Watch (MITM) is active, all LAN traffic routes through the Pi,
   so SSH and the UI can lag; it recovers once you Stop. Starting another mode or
   quitting Fennec stops it automatically.

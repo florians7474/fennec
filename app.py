@@ -273,7 +273,7 @@ def scan_network():
     return appareils
 
 def vigie_devices():
-    """Enriched list for Vigie: type, 'mine', unknown; unknowns first."""
+    """Enriched list for Sentry: type, 'mine', unknown; unknowns first."""
     mienne = local_ip()
     passerelle = passerelle_ip()
     miens = set(load_mine())
@@ -381,7 +381,7 @@ def guess_type(ports, vendor):
         return "Raspberry Pi"
     return "Unknown"
 
-# ---------- Vigie: network identity, custom names, traffic history ----------
+# ---------- Sentry: network identity, custom names, traffic history ----------
 
 def network_id():
     """Stable id of the current network: the router's MAC, else the subnet."""
@@ -459,7 +459,7 @@ def merge_traffic(mac, live):
 @app.route("/")
 def home():
     mode_actif = etat["mode_actif"]
-    # Raton runs in a thread, not a service: the dot follows the engine's real state.
+    # Bandit runs in a thread, not a service: the dot follows the engine's real state.
     if mode_actif == "cracking" and not raton_engine.crack_state.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
@@ -584,7 +584,7 @@ def mode(nom):
 def toggle(nom):
     if nom not in MODES:
         return redirect(url_for("home"))
-    if vigie_monitor.monitor_state["actif"]:   # another mode starts: stop Vigie monitoring
+    if vigie_monitor.monitor_state["actif"]:   # another mode starts: stop Sentry monitoring
         vigie_monitor.stop()
     actuel = etat["mode_actif"]
     if actuel == "vigie":
@@ -611,7 +611,7 @@ def crack_test(bssid):
     capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", nom="cracking"))
-    # Raton takes over: stop the running modes (Pwnagotchi / Bjorn / Vigie)
+    # Bandit takes over: stop the running modes (Pwnagotchi / Bjorn / Sentry)
     if est_actif("pwnagotchi"):
         stop("pwnagotchi")
     if est_actif("bjorn"):
@@ -770,7 +770,7 @@ def connection_to(bssid):
     cle = cible.get("cle", "")
     if not cle and cible.get("nom") not in known_wifi_profiles():
         return redirect(url_for("connection",
-            err="No key for this network. Add it in Allowed networks, or crack it with Raton."))
+            err="No key for this network. Add it in Allowed networks, or crack it with Bandit."))
     try:
         r = subprocess.run(
             ["sudo", "-n", "/usr/local/bin/fennec-wifi-connect",
@@ -799,7 +799,7 @@ def connection_state_json():
     """Live connection for the header badge (polled by the kiosk home page)."""
     return jsonify(connection_state())
 
-# ---------- Vigie ----------
+# ---------- Sentry ----------
 
 @app.route("/hugin")
 def hugin_page():

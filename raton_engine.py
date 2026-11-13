@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Raton cracking engine — stage-based WPA cracking on the Pi (aircrack-ng)."""
+"""Bandit cracking engine — stage-based WPA cracking on the Pi (aircrack-ng)."""
 import os
 import re
 import subprocess
@@ -203,7 +203,7 @@ def a_un_handshake(pcap, bssid=None):
             stdin=subprocess.DEVNULL,
         )
     except Exception:
-        return True   # tool missing or error: don't block, let Raton try
+        return True   # tool missing or error: don't block, let Bandit try
     try:
         ok = os.path.getsize(sortie) > 0
     except OSError:
