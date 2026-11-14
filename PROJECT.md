@@ -42,7 +42,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Sly | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
-| Map | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
+| Map | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
@@ -364,8 +364,21 @@ console -> fennec, the folder was not).
   bug in it (it replaced ".pcapng" while bettercap writes ".pcap", which made it
   overwrite the handshake instead of writing the .gps.json). Markers sit at the
   capture position (where the Pi was), not at the access point.
-- Map phase 2: build the full wardriving map (map every network even without a
-  handshake, via airodump-ng + GPS) and add offline map tiles for nomadic use.
+- Map phase 2: done. Wardriving reuses bettercap instead of a separate
+  airodump-ng (which would conflict with Pwnagotchi over the single monitor
+  interface): while Pwnagotchi runs, the fennec-wardrive service (bound to
+  pwnagotchi.service, driven by its tile) polls bettercap's REST API every few
+  seconds, reads every AP in range plus the current GPS fix, and appends them to
+  handshakes/wardrive.json (keyed by BSSID, position kept where the signal was
+  strongest; only logged when there is a real fix). The Map merges these as grey
+  "seen" points, deduped by BSSID against the handshake points. Offline tiles:
+  Fennec serves map tiles from a local cache (tiles/ dir) through a /tiles proxy
+  that reads from disk, else fetches from OSM and caches when online, else
+  returns a light placeholder; Leaflet is vendored in static/ so the map needs no
+  CDN; an "offline" button pre-downloads the visible area (bounded, run in a
+  background thread with a /tiles/status poll). A /gps route plus a badge on the
+  Map show the live satellite fix on the device (for checking in the car without
+  SSH). Centering fits the bulk of the points, dropping far outliers.
 - Nomadic Wi-Fi reconnection: NetworkManager now retries autoconnect forever
   (/etc/NetworkManager/conf.d/wifi-retry.conf, installed by install.sh), so the
   Pi rejoins its network on its own when it comes back in range without a reboot.
