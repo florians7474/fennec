@@ -3,12 +3,13 @@ import re
 import json
 import time
 import atexit
+import threading
 import socket
 import raton_engine
 import vigie_monitor
 import hugin
 import hugin_msf
-from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
+from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, Response
 
 app = Flask(__name__)
 
@@ -781,6 +782,106 @@ def map_view():
             }
     return render_template("map.html", points=list(pts.values()),
                            sans_position=sans_position)
+
+
+# ---------- Offline map tiles ----------
+# Fennec serves OSM tiles from a local cache so the map works with no internet
+# (nomadic use). A requested tile is served from disk if cached; otherwise, when
+# online, it is fetched from OSM, saved, and served; offline and uncached, a
+# neutral placeholder is returned. A "Save this area" action pre-fills the cache.
+
+TILES_DIR = os.path.join(BASE, "tiles")
+import base64 as _b64
+_TILE_PLACEHOLDER = _b64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNQ0TQGAAD1AIGaB5rAAAAAAElFTkSuQmCC"
+)
+_tiles_dl = {"actif": False, "fait": 0, "total": 0, "echecs": 0}
+
+
+def fetch_osm_tile(z, x, y):
+    url = f"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    try:
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Fennec/1.0 (personal pentest console)"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return r.read()
+    except Exception:
+        return None
+
+
+@app.route("/tiles/<int:z>/<int:x>/<int:y>.png")
+def tile(z, x, y):
+    path = os.path.join(TILES_DIR, str(z), str(x), f"{y}.png")
+    if os.path.exists(path):
+        return send_file(path, mimetype="image/png")
+    data = fetch_osm_tile(z, x, y)
+    if data:
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(data)
+        except OSError:
+            pass
+        return Response(data, mimetype="image/png")
+    return Response(_TILE_PLACEHOLDER, mimetype="image/png")
+
+
+def _deg2tile(lat, lon, z):
+    import math
+    n = 2 ** z
+    xt = int((lon + 180.0) / 360.0 * n)
+    yt = int((1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2.0 * n)
+    return xt, yt
+
+
+def _telecharger_zone(tuiles):
+    _tiles_dl.update({"actif": True, "fait": 0, "total": len(tuiles), "echecs": 0})
+    for (z, x, y) in tuiles:
+        path = os.path.join(TILES_DIR, str(z), str(x), f"{y}.png")
+        if not os.path.exists(path):
+            data = fetch_osm_tile(z, x, y)
+            if data:
+                try:
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    with open(path, "wb") as f:
+                        f.write(data)
+                except OSError:
+                    _tiles_dl["echecs"] += 1
+                time.sleep(0.05)  # be gentle on the OSM tile servers
+            else:
+                _tiles_dl["echecs"] += 1
+        _tiles_dl["fait"] += 1
+    _tiles_dl["actif"] = False
+
+
+@app.route("/tiles/save", methods=["POST"])
+def tiles_save():
+    if _tiles_dl["actif"]:
+        return jsonify(error="A download is already running"), 409
+    try:
+        south = float(request.form["south"]); west = float(request.form["west"])
+        north = float(request.form["north"]); east = float(request.form["east"])
+        zmin = int(request.form.get("zmin", 13)); zmax = int(request.form.get("zmax", 16))
+    except (KeyError, ValueError):
+        return jsonify(error="Bad bounds"), 400
+    tuiles = []
+    for z in range(zmin, zmax + 1):
+        x1, y1 = _deg2tile(north, west, z)
+        x2, y2 = _deg2tile(south, east, z)
+        for x in range(min(x1, x2), max(x1, x2) + 1):
+            for y in range(min(y1, y2), max(y1, y2) + 1):
+                tuiles.append((z, x, y))
+    CAP = 1500
+    if len(tuiles) > CAP:
+        return jsonify(error=f"Too many tiles ({len(tuiles)}). Zoom in first.",
+                       count=len(tuiles)), 400
+    threading.Thread(target=_telecharger_zone, args=(tuiles,), daemon=True).start()
+    return jsonify(total=len(tuiles))
+
+
+@app.route("/tiles/status")
+def tiles_status():
+    return jsonify(_tiles_dl)
 
 # ---------- Connection ----------
 

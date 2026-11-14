@@ -4,19 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
   <title>Map</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link rel="stylesheet" href="/static/leaflet/leaflet.css">
+  <script src="/static/leaflet/leaflet.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html,body { width:100%; height:100%; background:#0d1117;
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
     .ecran { position:relative; width:480px; height:320px; overflow:hidden; }
-    #map { width:480px; height:320px; }
+    #map { width:480px; height:320px; background:#20242c; }
     .retour {
       position:absolute; top:10px; left:10px; z-index:1000;
       background:#161b22; color:#e6edf3; text-decoration:none;
       border:1px solid #30363d; border-radius:8px;
       font-size:20px; line-height:1; padding:7px 11px;
+    }
+    .savezone {
+      position:absolute; top:10px; left:62px; z-index:1000;
+      background:#161b22; color:#e6edf3; text-decoration:none; cursor:pointer;
+      border:1px solid #30363d; border-radius:8px;
+      font-size:12px; font-weight:600; line-height:1; padding:10px 11px;
     }
     .legende {
       position:absolute; bottom:10px; left:10px; z-index:1000;
@@ -45,6 +51,7 @@
 <body>
   <div class="ecran">
     <a class="retour" href="/">&larr;</a>
+    <a class="savezone" id="savezone" onclick="saveArea()">&#x2b07; offline</a>
     <div id="map"></div>
 
     {% if points %}
@@ -65,7 +72,9 @@
     const points = {{ points|tojson }};
     const map = L.map('map', { zoomControl: false });
     L.control.zoom({ position: 'topright' }).addTo(map);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Tiles are served by Fennec from its local cache (offline-capable),
+    // fetched from OSM on demand when online.
+    L.tileLayer('/tiles/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
@@ -118,6 +127,44 @@
       map.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
     } else {
       map.setView([48.8566, 2.3522], 15);
+    }
+
+    // Pre-download the visible area (a few zoom levels around the current one)
+    // into the local cache, so the map works offline later.
+    function saveArea() {
+      const el = document.getElementById('savezone');
+      const b = map.getBounds(), z = map.getZoom();
+      const body = new URLSearchParams({
+        south: b.getSouth(), west: b.getWest(),
+        north: b.getNorth(), east: b.getEast(),
+        zmin: Math.max(z - 1, 10), zmax: Math.min(z + 2, 17)
+      });
+      el.textContent = '…';
+      fetch('/tiles/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).then(r => r.json()).then(d => {
+        if (d.error) {
+          el.textContent = 'too big';
+          setTimeout(() => el.innerHTML = '&#x2b07; offline', 2500);
+          return;
+        }
+        pollTiles();
+      }).catch(() => { el.textContent = 'error'; });
+    }
+
+    function pollTiles() {
+      fetch('/tiles/status').then(r => r.json()).then(s => {
+        const el = document.getElementById('savezone');
+        if (s.actif) {
+          el.textContent = s.fait + '/' + s.total;
+          setTimeout(pollTiles, 600);
+        } else {
+          el.textContent = '✓ ' + s.fait;
+          setTimeout(() => el.innerHTML = '&#x2b07; offline', 3000);
+        }
+      });
     }
   </script>
 </body>
