@@ -143,28 +143,23 @@ def pwna_ui():
         abort(503)
 
 def connection_state():
-    """The Pi's real network connection: ethernet, wifi (+SSID) or none."""
+    """The Pi's real network connection: ethernet, or the station Wi-Fi (wlan0)
+    with its SSID, or none. Only wlan0 counts as the station — the USB adapter
+    (wlan1) is for monitor and must never drive the header or the manager."""
     try:
         r = subprocess.run(
-            ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device", "status"],
+            ["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status"],
             capture_output=True, text=True, timeout=5,
         )
     except Exception:
         return {"type": None, "nom": "Offline"}
-    eth = wifi = None
     for ligne in r.stdout.splitlines():
         fields = ligne.split(":")
-        if len(fields) < 3 or fields[1] != "connected":
-            continue
-        typ, conn = fields[0], ":".join(fields[2:])
-        if typ == "ethernet" and not eth:
-            eth = conn
-        elif typ == "wifi" and not wifi:
-            wifi = conn
-    if eth:
-        return {"type": "ethernet", "nom": "Ethernet"}
-    if wifi:
-        return {"type": "wifi", "nom": wifi or "Wi-Fi"}
+        if len(fields) >= 3 and fields[1] == "ethernet" and fields[2] == "connected":
+            return {"type": "ethernet", "nom": "Ethernet"}
+    ssid, _ = wifi_active()
+    if ssid:
+        return {"type": "wifi", "nom": ssid}
     return {"type": None, "nom": "Offline"}
 
 WIFI_IFACE = "wlan0"  # built-in station interface; USB adapter stays for monitor
@@ -188,17 +183,19 @@ def _nmcli_split(line):
     return out
 
 def wifi_active():
-    """(ssid, bssid) currently associated on the station interface, else (None, None)."""
+    """(ssid, bssid) currently associated on the station interface (wlan0) only,
+    else (None, None). The USB adapter (wlan1) is ignored so a profile that grabs
+    it never shows up as the Pi's connection."""
     try:
         r = subprocess.run(
-            ["nmcli", "-t", "-f", "ACTIVE,SSID,BSSID", "device", "wifi"],
+            ["nmcli", "-t", "-f", "ACTIVE,SSID,BSSID,DEVICE", "device", "wifi"],
             capture_output=True, text=True, timeout=5,
         )
     except Exception:
         return (None, None)
     for ligne in r.stdout.splitlines():
         p = _nmcli_split(ligne)
-        if len(p) >= 3 and p[0] == "yes":
+        if len(p) >= 4 and p[0] == "yes" and p[3] == WIFI_IFACE:
             return (p[1] or None, (p[2] or "").upper() or None)
     return (None, None)
 
