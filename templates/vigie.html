@@ -15,7 +15,7 @@
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
-    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .tete { width:28px; height:28px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
     .scan-btn { border:1px solid #28c0d4; color:#28c0d4; background:none; border-radius:8px;
@@ -74,7 +74,7 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/">&larr;</a>
+    <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/vigie.png" alt="">
     <div class="titre">Sentry</div>
     <button class="scan-btn watch" id="watch" onclick="toggleWatch()">Watch</button>
@@ -199,7 +199,7 @@
       var b = document.getElementById('watch'); b.disabled = true;
       fetch(monitoring ? '/vigie/monitor/stop' : '/vigie/monitor/start')
         .then(function(r){ return r.json(); })
-        .then(function(j){ monitoring = !!j.actif; updateWatch(); })
+        .then(function(j){ monitoring = !!j.active; updateWatch(); })
         .catch(function(){})
         .finally(function(){ b.disabled = false; });
     }
@@ -214,7 +214,7 @@
     }
     // current monitoring state (persisted server-side across pages)
     fetch('/vigie/monitor/data').then(function(r){ return r.json(); })
-      .then(function(j){ monitoring = !!j.actif; forcing = !!j.force; updateWatch(); }).catch(function(){});
+      .then(function(j){ monitoring = !!j.active; forcing = !!j.force; updateWatch(); }).catch(function(){});
 
     // On return (from a detail view), re-display the last saved scan without
     // re-running it: it's up to the user to click "Rescan".

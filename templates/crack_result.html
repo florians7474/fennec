@@ -15,13 +15,13 @@
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
-    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
     .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:14px 18px; overflow-y:auto; }
-    .cible { font-size:13px; color:#8b949e; margin-bottom:12px; }
-    .cible b { color:#e6edf3; }
+    .target { font-size:13px; color:#8b949e; margin-bottom:12px; }
+    .target b { color:#e6edf3; }
 
-    .journal { margin-bottom:10px; }
+    .log { margin-bottom:10px; }
     .jline { font-size:12px; padding:3px 0; display:flex; gap:8px; align-items:center; }
     .jline .ico { width:16px; text-align:center; font-weight:700; }
     .jline.ok .ico { color:#2ea043; }
@@ -33,7 +33,7 @@
     .stage .num { color:#f0883e; }
     .bar { height:10px; background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; margin-bottom:10px; }
     .bar i { display:block; height:100%; width:0; background:#f0883e; transition:width .4s; }
-    .bar.flux i { width:35% !important; animation:balaye 1.1s ease-in-out infinite; }
+    .bar.streaming i { width:35% !important; animation:balaye 1.1s ease-in-out infinite; }
     @keyframes balaye { 0%{margin-left:-35%;} 100%{margin-left:100%;} }
     .stats { display:flex; justify-content:space-between; font-size:11px; color:#8b949e; margin-bottom:12px; }
     .try { font-size:12px; color:#c9d1d9; font-family:ui-monospace,Consolas,monospace;
@@ -56,15 +56,15 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/">&larr;</a>
+    <a class="back" href="/">&larr;</a>
     <div class="titre">Cracking</div>
   </div>
 
   <div class="corps">
-    <div class="cible">Network tested: <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
+    <div class="target">Network tested: <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
 
     <div id="live">
-      <div class="journal" id="journal"></div>
+      <div class="log" id="log"></div>
       <div class="stage">Stage <span class="num"><b id="snum">1</b>/<b id="stot">1</b></span> — <span id="sname">starting…</span></div>
       <div class="bar"><i id="bar"></i></div>
       <div class="stats"><span id="tested">0 keys</span><span id="speed">0 k/s</span></div>
@@ -88,51 +88,51 @@
     tick();
     function tick(){
       fetch('/cracking/state').then(r=>r.json()).then(e=>{
-        document.getElementById('snum').textContent = e.etape_num || 1;
-        document.getElementById('stot').textContent = e.etape_total || 1;
-        document.getElementById('sname').textContent = e.etape || 'starting…';
-        document.getElementById('tested').textContent = fmt(e.testes||0) + ' keys';
-        document.getElementById('speed').textContent = (e.vitesse||0) + ' k/s';
-        document.getElementById('cand').textContent = e.candidat || '…';
+        document.getElementById('snum').textContent = e.stage_num || 1;
+        document.getElementById('stot').textContent = e.stage_total || 1;
+        document.getElementById('sname').textContent = e.stage || 'starting…';
+        document.getElementById('tested').textContent = fmt(e.tested||0) + ' keys';
+        document.getElementById('speed').textContent = (e.speed||0) + ' k/s';
+        document.getElementById('cand').textContent = e.candidate || '…';
         var barEl = document.querySelector('.bar');
-        if(e.jauge_temps){
-          var pt = e.temps_total ? Math.min(100, (e.temps_ecoule/e.temps_total)*100) : 0;
+        if(e.time_gauge){
+          var pt = e.time_total ? Math.min(100, (e.time_elapsed/e.time_total)*100) : 0;
           document.getElementById('bar').style.width = pt + '%';
-          barEl.classList.remove('flux');
+          barEl.classList.remove('streaming');
           document.getElementById('tested').textContent = '';
-          var s = e.temps_ecoule || 0;
+          var s = e.time_elapsed || 0;
           document.getElementById('speed').textContent =
             Math.floor(s/60) + ':' + ('0'+(s%60)).slice(-2) + ' / 60:00';
         } else {
-          var pct = e.total ? Math.min(100, (e.testes/e.total)*100) : 0;
+          var pct = e.total ? Math.min(100, (e.tested/e.total)*100) : 0;
           document.getElementById('bar').style.width = pct + '%';
-          if(e.flux){
-            barEl.classList.add('flux');
+          if(e.streaming){
+            barEl.classList.add('streaming');
             document.getElementById('tested').textContent = 'streaming';
           } else {
-            barEl.classList.remove('flux');
+            barEl.classList.remove('streaming');
           }
         }
 
-        var jl = e.journal || [];
+        var jl = e.log || [];
         var jhtml = '';
         jl.forEach(function(s){
-          var cls = s.resultat==='cracked' ? 'ok' : (s.resultat==='skipped' ? 'skip' : 'no');
-          var ico = s.resultat==='cracked' ? '✓' : (s.resultat==='skipped' ? '⊘' : '✗');
-          var lab = s.resultat==='cracked' ? 'cracked' : (s.resultat==='skipped' ? 'not applicable' : 'not found');
+          var cls = s.result==='cracked' ? 'ok' : (s.result==='skipped' ? 'skip' : 'no');
+          var ico = s.result==='cracked' ? '✓' : (s.result==='skipped' ? '⊘' : '✗');
+          var lab = s.result==='cracked' ? 'cracked' : (s.result==='skipped' ? 'not applicable' : 'not found');
           jhtml += '<div class="jline '+cls+'"><span class="ico">'+ico+'</span><span class="txt">Stage '+s.num+': '+s.nom+' — '+lab+'</span></div>';
         });
-        document.getElementById('journal').innerHTML = jhtml;
+        document.getElementById('log').innerHTML = jhtml;
 
-        if(e.fini){
+        if(e.finished){
           clearInterval(timer);
           document.getElementById('live').classList.add('hide');
           var fin = document.getElementById('fin');
           var v = document.getElementById('verdict');
           var d = document.getElementById('detail');
           fin.classList.remove('hide');
-          var rob = e.robustesse || {};
-          if(e.sans_handshake){
+          var rob = e.robustness || {};
+          if(e.no_handshake){
             v.textContent = 'No usable handshake';
             v.className = 'verdict neutre';
             d.innerHTML =
@@ -146,7 +146,7 @@
               '<br><br>Key found:<br><span class="cle">' + e.cle + '</span>' +
               '<br><br>Change it to something long and random.' +
               '<br><br><span style="color:#2ea043;">&#10003; Key saved to Allowed networks.</span>';
-          } else if(e.stoppe){
+          } else if(e.stopped){
             v.textContent = 'Test stopped';
             v.className = 'verdict neutre';
             d.innerHTML =

@@ -15,7 +15,7 @@
       height:48px; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
-    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .tete { width:28px; height:28px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
     .pastille { width:9px; height:9px; border-radius:50%; background:#5a6673; }
@@ -45,27 +45,27 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/">&larr;</a>
+    <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/{{ cle }}.png" alt="" onerror="this.style.display='none'">
     <div class="titre">{{ infos.nom }}</div>
-    <span class="pastille {{ 'on' if actif }}"></span>
-    {% if actif %}
+    <span class="pastille {{ 'on' if active }}"></span>
+    {% if active %}
       <a class="btn stop" href="/toggle/{{ cle }}">Stop</a>
     {% else %}
       <a class="btn go" href="/toggle/{{ cle }}">Start</a>
     {% endif %}
   </div>
 
-  <div class="vue {{ 'plein' if actif and url_iframe }}">
-    {% if actif and url_iframe %}
+  <div class="vue {{ 'plein' if active and url_iframe }}">
+    {% if active and url_iframe %}
       <div class="cadre"><iframe id="bjorn-frame" src="{{ url_iframe }}"></iframe></div>
-    {% elif actif and url_ui %}
+    {% elif active and url_ui %}
       <div class="chargement" id="pwna-chargement">
         <div class="anneau"></div>
         <div class="txt">Pwnagotchi is starting…</div>
       </div>
       <img class="pwna-live" id="pwna-live" alt="">
-    {% elif actif %}
+    {% elif active %}
       <div class="vide">This mode is running.<br>Its interface will appear here once started on the Pi.</div>
     {% elif reseau_scan %}
       {% if err %}<div class="err">{{ err }}</div>{% endif %}

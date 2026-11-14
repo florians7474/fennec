@@ -15,7 +15,7 @@
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
-    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .titre { font-size:15px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#6e7681; }
     .dot.up { background:#2ea043; box-shadow:0 0 6px #2ea043; }
@@ -91,7 +91,7 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/hugin">&larr;</a>
+    <a class="back" href="/hugin">&larr;</a>
     <span class="dot {{ 'up' if m.alive }}"></span>
     <div class="titre">{{ m.hostname or m.ip or m.mac }}</div>
   </div>

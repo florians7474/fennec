@@ -9,14 +9,14 @@
     // Splash only on app startup, not on every return to the home screen.
     try {
       if (sessionStorage.getItem('fennec_booted')) {
-        document.documentElement.classList.add('deja');
+        document.documentElement.classList.add('seen');
       } else {
         sessionStorage.setItem('fennec_booted', '1');
       }
     } catch (e) {}
   </script>
   <style>
-    html.deja .splash { display:none !important; }
+    html.seen .splash { display:none !important; }
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
       width:480px; height:320px; overflow:hidden; position:relative;
@@ -157,10 +157,10 @@
 
   <div class="grille">
 
-    <a class="app {{ 'on' if actif=='pwnagotchi' }}" href="/mode/pwnagotchi">
+    <a class="app {{ 'on' if active=='pwnagotchi' }}" href="/mode/pwnagotchi">
       <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
       <div class="nom">Pwnagotchi</div>
-      <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='pwnagotchi' else 'stopped' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'active' if active=='pwnagotchi' else 'stopped' }}</div>
     </a>
 
     <a class="app" href="/map">
@@ -169,16 +169,16 @@
       <div class="etat">{{ echo_count }} mapped</div>
     </a>
 
-    <a class="app {{ 'on' if actif=='cracking' }}" href="/mode/cracking">
+    <a class="app {{ 'on' if active=='cracking' }}" href="/mode/cracking">
       <div class="icone cass"><img src="/static/raton.png" alt="Sly"></div>
       <div class="nom">Sly</div>
-      <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='cracking' else 'stopped' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
     </a>
 
-    <a class="app {{ 'on' if actif=='bjorn' }}" href="/mode/bjorn">
+    <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
       <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
       <div class="nom">Bjorn</div>
-      <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='bjorn' else 'stopped' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
     </a>
 
     <a class="app" id="hugin-tile" href="/hugin">
@@ -187,10 +187,10 @@
       <div class="etat"><span class="pastille"></span><span id="hugin-etat">Metasploit</span></div>
     </a>
 
-    <a class="app {{ 'on' if actif=='vigie' }}" href="/vigie">
+    <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
       <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
       <div class="nom">Sentry</div>
-      <div class="etat"><span class="pastille"></span>{{ 'watching' if actif=='vigie' else 'idle' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
     </a>
 
   </div>

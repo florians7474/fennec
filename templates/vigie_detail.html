@@ -15,7 +15,7 @@
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
-    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 6px; }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 6px; }
     .titre { font-size:16px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .edit { background:none; border:none; color:#8b949e; font-size:15px; cursor:pointer; padding:4px 6px; }
     .type { flex:0 0 auto; font-size:11px; font-weight:600; color:#28c0d4;
@@ -65,7 +65,7 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/vigie">&larr;</a>
+    <a class="back" href="/vigie">&larr;</a>
     <div class="titre" id="titre">{{ d.nom }}</div>
     {% if d.mac %}<button class="edit" onclick="openName()" title="Rename">&#9998;</button>{% endif %}
     <span class="type" id="type">…</span>
@@ -162,7 +162,7 @@
         }
         var doms = j.domaines || [];
         if(!doms.length){
-          box.innerHTML = j.actif
+          box.innerHTML = j.active
             ? '<div class="vide">Monitoring… no domain seen yet for this device.</div>'
             : '<div class="vide">No history yet. Start "Watch" in Sentry to capture this device\'s traffic.</div>';
           return;

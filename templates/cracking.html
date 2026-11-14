@@ -15,7 +15,7 @@
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
-    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 6px; }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 6px; }
     .tete { width:28px; height:28px; }
     .titre { font-size:16px; font-weight:700; flex:1; }
     .aide { flex:0 0 auto; font-size:11px; color:#8b949e; padding:8px 14px; background:#10151c; }
@@ -44,7 +44,7 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/">&larr;</a>
+    <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/raton.png" alt="">
     <div class="titre">Sly</div>
   </div>
@@ -53,12 +53,12 @@
 
   <div class="liste">
     {% for r in captures %}
-    <div class="ligne {{ '' if r.bssid in deja else 'verrou' }}">
+    <div class="ligne {{ '' if r.bssid in seen else 'verrou' }}">
       <div class="infos">
         <div class="rnom">{{ r.nom }}</div>
-        <div class="rbssid">{{ r.bssid }}{% if r.bssid in deja and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
+        <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
       </div>
-      {% if r.bssid in deja %}
+      {% if r.bssid in seen %}
         {% if r.handshake %}
           <a class="tester" href="/cracking/test/{{ r.bssid }}">Test</a>
           <a class="exporter" href="/cracking/gpu/{{ r.bssid }}">GPU</a>

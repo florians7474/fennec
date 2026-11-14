@@ -14,7 +14,7 @@
     #map { width:100%; height:100%; background:#dfe3e8; }
     /* Keep the zoom +/- clear of the screen bezel on the right edge. */
     .leaflet-control-zoom { margin-top:12px !important; margin-right:12px !important; }
-    .retour {
+    .back {
       position:absolute; top:10px; left:10px; z-index:1000;
       background:#161b22; color:#e6edf3; text-decoration:none;
       border:1px solid #30363d; border-radius:8px;
@@ -67,7 +67,7 @@
 </head>
 <body>
   <div class="ecran">
-    <a class="retour" href="/">&larr;</a>
+    <a class="back" href="/">&larr;</a>
     <a class="savezone" id="savezone" onclick="saveArea()">&#x2b07; offline</a>
     <div class="gpsbadge" id="gpsbadge">GPS&hellip;</div>
     <div id="map"></div>
@@ -246,11 +246,11 @@
     function pollTiles() {
       fetch('/tiles/status').then(r => r.json()).then(s => {
         const el = document.getElementById('savezone');
-        if (s.actif) {
-          el.textContent = s.fait + '/' + s.total;
+        if (s.active) {
+          el.textContent = s.done + '/' + s.total;
           setTimeout(pollTiles, 600);
         } else {
-          el.textContent = '✓ ' + s.fait;
+          el.textContent = '✓ ' + s.done;
           setTimeout(() => el.innerHTML = '&#x2b07; offline', 3000);
         }
       });

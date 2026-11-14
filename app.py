@@ -268,9 +268,9 @@ def scan_network():
     for ligne in r.stdout.splitlines():
         m = re.search(r"Nmap scan report for (.+)", ligne)
         if m:
-            cible = m.group(1).strip()
-            mip = re.search(r"\(([\d.]+)\)", cible)
-            ip = mip.group(1) if mip else cible
+            target = m.group(1).strip()
+            mip = re.search(r"\(([\d.]+)\)", target)
+            ip = mip.group(1) if mip else target
             courant = {"ip": ip, "mac": None, "vendor": None}
             appareils.append(courant)
             continue
@@ -469,10 +469,10 @@ def merge_traffic(mac, live):
 def home():
     mode_actif = etat["mode_actif"]
     # Sly runs in a thread, not a service: the dot follows the engine's real state.
-    if mode_actif == "cracking" and not raton_engine.crack_state.get("actif"):
+    if mode_actif == "cracking" and not raton_engine.crack_state.get("active"):
         mode_actif = None
         etat["mode_actif"] = None
-    if mode_actif == "vigie" and not vigie_monitor.monitor_state.get("actif"):
+    if mode_actif == "vigie" and not vigie_monitor.monitor_state.get("active"):
         mode_actif = None
         etat["mode_actif"] = None
     # Echo is a viewer, not a service — show how many networks are mapped.
@@ -485,7 +485,7 @@ def home():
         bssids.add(b.upper())
     n = len(bssids)
     echo_count = f"{n / 1000:.1f}k" if n >= 1000 else str(n)
-    return render_template("home.html", actif=mode_actif,
+    return render_template("home.html", active=mode_actif,
                            connection=connection_state(), echo_count=echo_count)
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
@@ -560,51 +560,51 @@ def mode(nom):
 
     if nom == "cracking":
         e = raton_engine.crack_state
-        if e.get("actif"):
+        if e.get("active"):
             capture = next((c for c in read_handshakes()
                             if c["bssid"] == e.get("bssid")), None)
             if capture:
                 return render_template("crack_result.html", c=capture)
-        deja = {r["bssid"] for r in load_whitelist()}
+        seen = {r["bssid"] for r in load_whitelist()}
         captures = read_handshakes()
         for cap in captures:
             # Only check for a handshake on allowed networks (the only ones that
             # show a Test button), to avoid useless scans.
-            cap["handshake"] = cap["bssid"] in deja and capture_has_handshake(cap["file"])
+            cap["handshake"] = cap["bssid"] in seen and capture_has_handshake(cap["file"])
         # Testable captures first (allowed + handshake), then allowed without a
         # handshake, then locked ones; alphabetical within each group.
         captures.sort(key=lambda c: (
-            0 if c["handshake"] else (1 if c["bssid"] in deja else 2),
+            0 if c["handshake"] else (1 if c["bssid"] in seen else 2),
             c["nom"].lower(),
         ))
-        return render_template("cracking.html", captures=captures, deja=deja)
+        return render_template("cracking.html", captures=captures, seen=seen)
 
     if nom == "pwnagotchi":
-        actif = est_actif("pwnagotchi")
-        etat["mode_actif"] = "pwnagotchi" if actif else etat["mode_actif"]
+        active = est_actif("pwnagotchi")
+        etat["mode_actif"] = "pwnagotchi" if active else etat["mode_actif"]
         url_ui = "/pwna-ui"
-        return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
+        return render_template("mode.html", cle=nom, infos=MODES[nom], active=active,
                                url_ui=url_ui, url_iframe=None)
     if nom == "bjorn":
-        actif = est_actif("bjorn")
-        etat["mode_actif"] = "bjorn" if actif else etat["mode_actif"]
+        active = est_actif("bjorn")
+        etat["mode_actif"] = "bjorn" if active else etat["mode_actif"]
         hote = request.host.split(":")[0]
         url_iframe = f"http://{hote}:8000/"
         conn = connection_state()
         reseau_scan = {"type": conn["type"], "nom": conn["nom"],
                        "sous_reseau": local_subnet()}
-        return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
+        return render_template("mode.html", cle=nom, infos=MODES[nom], active=active,
                                url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan,
                                err=request.args.get("err"))
-    actif = (etat["mode_actif"] == nom)
-    return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
+    active = (etat["mode_actif"] == nom)
+    return render_template("mode.html", cle=nom, infos=MODES[nom], active=active,
                            url_ui=None, url_iframe=None)
 
 @app.route("/toggle/<nom>")
 def toggle(nom):
     if nom not in MODES:
         return redirect(url_for("home"))
-    if vigie_monitor.monitor_state["actif"]:   # another mode starts: stop Sentry monitoring
+    if vigie_monitor.monitor_state["active"]:   # another mode starts: stop Sentry monitoring
         vigie_monitor.stop()
     actuel = etat["mode_actif"]
     if actuel == "vigie":
@@ -636,7 +636,7 @@ def crack_test(bssid):
         stop("pwnagotchi")
     if est_actif("bjorn"):
         stop("bjorn")
-    if vigie_monitor.monitor_state["actif"]:
+    if vigie_monitor.monitor_state["active"]:
         vigie_monitor.stop()
     etat["mode_actif"] = "cracking"
     etat["network"] = capture["nom"]
@@ -648,10 +648,10 @@ def crack_test(bssid):
 def crack_export(bssid):
     autorises = {r["bssid"] for r in load_whitelist()}
     if bssid not in autorises:
-        return jsonify({"ok": False, "erreur": "Network not in allowed list"})
+        return jsonify({"ok": False, "error": "Network not in allowed list"})
     capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
     if not capture:
-        return jsonify({"ok": False, "erreur": "No handshake for this network"})
+        return jsonify({"ok": False, "error": "No handshake for this network"})
     pcap = os.path.join(HANDSHAKES_DIR, capture["file"])
     output = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
     try:
@@ -660,23 +660,23 @@ def crack_export(bssid):
             capture_output=True, text=True, timeout=30,
         )
     except Exception as ex:
-        return jsonify({"ok": False, "erreur": "Conversion failed: " + str(ex)})
+        return jsonify({"ok": False, "error": "Conversion failed: " + str(ex)})
     try:
         with open(output) as f:
             hash_hc = f.read().strip()
     except OSError:
         hash_hc = ""
     if not hash_hc:
-        return jsonify({"ok": False, "erreur": "No crackable handshake in this capture"})
+        return jsonify({"ok": False, "error": "No crackable handshake in this capture"})
     file = os.path.basename(output)
     profile = raton_engine.profile_for_essid(capture["nom"])
     fmt = (profile or {}).get("format") or {}
     mask = fmt.get("mask", "")
     if profile and profile.get("algo") == "mask" and "?" in mask:
-        commande = "cd ~/Downloads && hashcat -m 22000 " + file + " -a 3 " + mask
+        command = "cd ~/Downloads && hashcat -m 22000 " + file + " -a 3 " + mask
         type_attaque = "mask"
     else:
-        commande = ("cd ~/Downloads && hashcat -m 22000 " + file
+        command = ("cd ~/Downloads && hashcat -m 22000 " + file
                     + " /usr/share/wordlists/rockyou.txt"
                     + " -r /usr/share/hashcat/rules/best64.rule")
         type_attaque = "wordlist"
@@ -684,7 +684,7 @@ def crack_export(bssid):
         "ok": True,
         "file": file,
         "hash": hash_hc,
-        "commande": commande,
+        "command": command,
         "telecharger": "/cracking/download/" + bssid,
         "type": type_attaque,
     })
@@ -800,7 +800,7 @@ def _risk_level(enc, wps):
 
 @app.route("/map")
 def map_view():
-    deja = {r["bssid"].upper() for r in load_whitelist()}
+    seen = {r["bssid"].upper() for r in load_whitelist()}
     wd = load_wardrive()
     wd_up = {k.upper(): v for k, v in wd.items()}  # for enc/wps lookup by BSSID
     try:
@@ -836,7 +836,7 @@ def map_view():
                 "bssid": c["bssid"],
                 "lat": lat,
                 "lon": lon,
-                "autorise": key in deja,
+                "autorise": key in seen,
                 "handshake": True,
                 "risk": risk_for(key, w.get("enc"), w.get("wps"), c["nom"], True),
             }
@@ -855,7 +855,7 @@ def map_view():
                 "bssid": bssid,
                 "lat": lat,
                 "lon": lon,
-                "autorise": key in deja,
+                "autorise": key in seen,
                 "handshake": False,
                 "risk": risk_for(key, w.get("enc"), w.get("wps"), w.get("nom"), False),
             }
@@ -874,7 +874,7 @@ import base64 as _b64
 _TILE_PLACEHOLDER = _b64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGO4//gFAAVPAqtspm6mAAAAAElFTkSuQmCC"
 )
-_tiles_dl = {"actif": False, "fait": 0, "total": 0, "failures": 0}
+_tiles_dl = {"active": False, "done": 0, "total": 0, "failures": 0}
 
 
 def fetch_osm_tile(z, x, y):
@@ -914,7 +914,7 @@ def _deg2tile(lat, lon, z):
 
 
 def _telecharger_zone(tiles):
-    _tiles_dl.update({"actif": True, "fait": 0, "total": len(tiles), "failures": 0})
+    _tiles_dl.update({"active": True, "done": 0, "total": len(tiles), "failures": 0})
     for (z, x, y) in tiles:
         path = os.path.join(TILES_DIR, str(z), str(x), f"{y}.png")
         if not os.path.exists(path):
@@ -929,13 +929,13 @@ def _telecharger_zone(tiles):
                 time.sleep(0.05)  # be gentle on the OSM tile servers
             else:
                 _tiles_dl["failures"] += 1
-        _tiles_dl["fait"] += 1
-    _tiles_dl["actif"] = False
+        _tiles_dl["done"] += 1
+    _tiles_dl["active"] = False
 
 
 @app.route("/tiles/save", methods=["POST"])
 def tiles_save():
-    if _tiles_dl["actif"]:
+    if _tiles_dl["active"]:
         return jsonify(error="A download is already running"), 409
     try:
         south = float(request.form["south"]); west = float(request.form["west"])
@@ -985,17 +985,17 @@ def connection():
 
 @app.route("/connection/to/<bssid>")
 def connection_to(bssid):
-    cible = next((r for r in load_whitelist() if r["bssid"].upper() == bssid.upper()), None)
-    if not cible:
+    target = next((r for r in load_whitelist() if r["bssid"].upper() == bssid.upper()), None)
+    if not target:
         return redirect(url_for("connection", err="Unknown network"))
-    cle = cible.get("cle", "")
-    if not cle and cible.get("nom") not in known_wifi_profiles():
+    cle = target.get("cle", "")
+    if not cle and target.get("nom") not in known_wifi_profiles():
         return redirect(url_for("connection",
             err="No key for this network. Add it in Allowed networks, or crack it with Sly."))
     try:
         r = subprocess.run(
             ["sudo", "-n", "/usr/local/bin/fennec-wifi-connect",
-             cible.get("nom", ""), cible["bssid"], cle],
+             target.get("nom", ""), target["bssid"], cle],
             capture_output=True, text=True, timeout=45,
         )
     except Exception:
@@ -1195,14 +1195,14 @@ def vigie_monitor_start():
     # Monitoring takes over: stop the other active modes.
     if etat["mode_actif"] in SERVICES:
         stop(etat["mode_actif"])
-    if raton_engine.crack_state.get("actif"):
+    if raton_engine.crack_state.get("active"):
         raton_engine.stop()
     ip = local_ip()
     prefix = ".".join(ip.split(".")[:3]) + "." if ip else None
     ok = vigie_monitor.start(prefix)
     if ok:
         etat["mode_actif"] = "vigie"
-    return jsonify({"actif": vigie_monitor.monitor_state["actif"]})
+    return jsonify({"active": vigie_monitor.monitor_state["active"]})
 
 @app.route("/vigie/monitor/stop")
 def vigie_monitor_stop():
@@ -1210,7 +1210,7 @@ def vigie_monitor_stop():
     _history_flush(force=True)
     if etat["mode_actif"] == "vigie":
         etat["mode_actif"] = None
-    return jsonify({"actif": False})
+    return jsonify({"active": False})
 
 @app.route("/vigie/monitor/data")
 def vigie_monitor_data():
@@ -1219,15 +1219,15 @@ def vigie_monitor_data():
 @app.route("/vigie/monitor/force")
 def vigie_monitor_force():
     # Only while watching: the DoT/DoH block sits on the MITM-forwarded traffic.
-    if not vigie_monitor.monitor_state["actif"]:
-        return jsonify({"actif": False, "force": False})
+    if not vigie_monitor.monitor_state["active"]:
+        return jsonify({"active": False, "force": False})
     force = vigie_monitor.forcer_dns(request.args.get("on") == "1")
-    return jsonify({"actif": True, "force": force})
+    return jsonify({"active": True, "force": force})
 
 @app.route("/vigie/traffic/<ip>")
 def vigie_traffic(ip):
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
-        return jsonify({"actif": False, "domaines": []})
+        return jsonify({"active": False, "domaines": []})
     d = last_scan.get(ip) or {}
     mac = d.get("mac") or arp_mac(ip)
     hote = (host_name(ip) or "").lower().rstrip(".")
@@ -1235,7 +1235,7 @@ def vigie_traffic(ip):
     dom_ts = merge_traffic(mac, live)   # fusionne live + historique persistant
     items = sorted(dom_ts.items(), key=lambda kv: kv[1], reverse=True)
     return jsonify({
-        "actif": vigie_monitor.monitor_state["actif"],
+        "active": vigie_monitor.monitor_state["active"],
         "vpn": vigie_monitor.vpn_info([c for c in (ip, hote) if c]),
         "domaines": [{"d": dom, "t": ts} for dom, ts in items],
     })
@@ -1256,7 +1256,7 @@ def whitelist_add():
     nom = request.form.get("nom", "").strip()
     bssid = request.form.get("bssid", "").strip().upper()
     cle = request.form.get("cle", "").strip()
-    retour = request.form.get("retour", "")
+    back = request.form.get("back", "")
     source = request.form.get("source", "direct")
     if bssid:
         reseaux = load_whitelist()
@@ -1266,7 +1266,7 @@ def whitelist_add():
                 entree["cle"] = cle
             reseaux.append(entree)
             save_whitelist(reseaux)
-    if retour == "scan":
+    if back == "scan":
         return redirect(url_for("scan", source=source))
     return redirect(url_for("whitelist_page"))
 
@@ -1315,8 +1315,8 @@ def scan():
             save_scan(scan_direct())
             return redirect(url_for("scan", source="direct"))
         reseaux = load_scan()
-    deja = {r["bssid"] for r in load_whitelist()}
-    return render_template("scan.html", reseaux=reseaux, deja=deja, source=source)
+    seen = {r["bssid"] for r in load_whitelist()}
+    return render_template("scan.html", reseaux=reseaux, seen=seen, source=source)
 
 @app.route("/scan/vider/<source>")
 def scan_clear(source):
