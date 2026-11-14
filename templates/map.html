@@ -11,7 +11,9 @@
     html,body { width:100%; height:100%; background:#0d1117;
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
     .ecran { position:relative; width:100%; height:100%; overflow:hidden; }
-    #map { width:100%; height:100%; background:#20242c; }
+    #map { width:100%; height:100%; background:#dfe3e8; }
+    /* Keep the zoom +/- clear of the screen bezel on the right edge. */
+    .leaflet-control-zoom { margin-top:12px !important; margin-right:16px !important; }
     .retour {
       position:absolute; top:10px; left:10px; z-index:1000;
       background:#161b22; color:#e6edf3; text-decoration:none;
@@ -75,7 +77,8 @@
     // Tiles are served by Fennec from its local cache (offline-capable),
     // fetched from OSM on demand when online.
     L.tileLayer('/tiles/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      maxZoom: 19, attribution: '&copy; OpenStreetMap',
+      keepBuffer: 4, updateWhenIdle: true, updateWhenZooming: false
     }).addTo(map);
 
     const COUL_OK = '#2ea043', COUL_HS = '#d29922', COUL_VU = '#8b949e';
@@ -148,8 +151,7 @@
       const c = pointsCentraux(points);
       map.fitBounds(c.map(p => [p.lat, p.lon]), { padding: [30, 30], maxZoom: 17 });
     }
-    ajuster();
-    setTimeout(ajuster, 250);
+    setTimeout(ajuster, 150);
 
     // Pre-download the visible area (a few zoom levels around the current one)
     // into the local cache, so the map works offline later.

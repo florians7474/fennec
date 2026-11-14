@@ -793,7 +793,7 @@ def map_view():
 TILES_DIR = os.path.join(BASE, "tiles")
 import base64 as _b64
 _TILE_PLACEHOLDER = _b64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNQ0TQGAAD1AIGaB5rAAAAAAElFTkSuQmCC"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGO4//gFAAVPAqtspm6mAAAAAElFTkSuQmCC"
 )
 _tiles_dl = {"actif": False, "fait": 0, "total": 0, "echecs": 0}
 
