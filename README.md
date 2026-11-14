@@ -143,6 +143,15 @@ shut down.
 - [ ] Custom carrier board (Raspberry Pi CM5) to turn the prototype into a self-contained device
 - [ ] WPA3 (SAE) auditing support
 
+## Credits & third-party
+
+Fennec drives several open-source projects, installed and run as separate programs — it does not fork or bundle their source. All names, mascots and trademarks belong to their respective owners; Fennec is an independent project and is not affiliated with or endorsed by them.
+
+- **Pwnagotchi** — created by [@evilsocket](https://github.com/evilsocket), maintained by [jayofelony/pwnagotchi](https://github.com/jayofelony/pwnagotchi). Licensed under **GPL-3.0**. The Pwnagotchi module icon (`static/pwnagotchi.png`) is taken from the Pwnagotchi project and remains under GPL-3.0.
+- **Bjorn** — created by [infinition](https://github.com/infinition/Bjorn). Copyright © 2024 infinition, licensed under the **MIT License**. The Bjorn module icon (`static/bjorn.png`) is taken from the Bjorn project and is used under the MIT License.
+- **Leaflet** (BSD-2-Clause) is vendored in `static/leaflet/`; map tiles © **OpenStreetMap** contributors (ODbL).
+- Runtime tools: **bettercap**, **aircrack-ng**, **nmap**, **tshark**, **dnsmasq**, **Metasploit**, **routerkeygen** — each under its own license.
+
 ## License
 
 Released under the [MIT License](LICENSE). This tool is for auditing networks you own or are explicitly authorized to test; any other use is your responsibility.
