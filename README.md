@@ -39,7 +39,7 @@ All six modules are operational: automatic installation, control from the tile, 
 
 ## Legal scope
 
-Fennec is built to audit your own networks. Offensive actions (cracking, targeted reconnaissance) are restricted to a whitelist of networks you declare yourself, identified by their BSSID. Passive capture stays open because it only listens to the surrounding airspace, like any Wi-Fi analyzer.
+Fennec is built to audit networks you own or are authorized to test. Offensive actions (cracking, targeted reconnaissance, exploitation) are restricted to networks you declare on a whitelist, identified by their BSSID: on Wi-Fi, Fennec only connects to and attacks whitelisted networks, and Metasploit execution runs on a separate lab machine, never on the Pi. The observation features only watch, they do not attack: passive air capture listens to the surrounding airspace like any Wi-Fi analyzer, and the traffic monitor inspects a network you are already connected to.
 
 Only use this tool on networks you own or have written permission to test. Any other use is illegal.
 
