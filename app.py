@@ -478,7 +478,16 @@ def home():
     if mode_actif == "vigie" and not vigie_monitor.monitor_state.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
-    return render_template("home.html", actif=mode_actif, connection=connection_state())
+    # Echo (Map) is a viewer, not a service — show how many networks are mapped.
+    bssids = set()
+    for c in read_handshakes():
+        gp = os.path.join(HANDSHAKES_DIR, c["fichier"].replace(".pcap", ".gps.json"))
+        if os.path.exists(gp):
+            bssids.add(c["bssid"].upper())
+    for b in load_wardrive():
+        bssids.add(b.upper())
+    return render_template("home.html", actif=mode_actif,
+                           connection=connection_state(), echo_count=len(bssids))
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
