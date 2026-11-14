@@ -123,11 +123,19 @@
       });
     }
 
-    if (marqueurs.length) {
-      map.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
-    } else {
-      map.setView([48.8566, 2.3522], 15);
+    // Recenter after the container has its final size. In portrait the rotation
+    // CSS resizes the body after Leaflet first measures the map, so we tell
+    // Leaflet to re-read its size before fitting the markers.
+    function ajuster() {
+      map.invalidateSize();
+      if (marqueurs.length) {
+        map.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
+      } else {
+        map.setView([48.8566, 2.3522], 15);
+      }
     }
+    ajuster();
+    setTimeout(ajuster, 250);
 
     // Pre-download the visible area (a few zoom levels around the current one)
     // into the local cache, so the map works offline later.
