@@ -17,10 +17,10 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 WHITELIST_FILE = os.path.join(BASE, "liste_blanche.json")
 MINE_FILE = os.path.join(BASE, "mes_appareils.json")
 SCAN_FILE  = os.path.join(BASE, "scan_direct.json")
-NAMES_FILE  = os.path.join(BASE, "noms_appareils.json")   # {reseau: {mac: nom}}
-HISTORY_FILE  = os.path.join(BASE, "historique_trafic.json")  # {reseau: {mac: {domaine: ts}}}
+NAMES_FILE  = os.path.join(BASE, "noms_appareils.json")   # {network: {mac: nom}}
+HISTORY_FILE  = os.path.join(BASE, "historique_trafic.json")  # {network: {mac: {domaine: ts}}}
 
-etat = {"mode_actif": None, "reseau": None}
+etat = {"mode_actif": None, "network": None}
 
 MODES = {
     "pwnagotchi": {"nom": "Pwnagotchi", "classe": "pwn",   "url": None},
@@ -30,15 +30,15 @@ MODES = {
 
 # ---------- JSON files ----------
 
-def _load(fichier):
+def _load(file):
     try:
-        with open(fichier, "r", encoding="utf-8") as f:
+        with open(file, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-def _save(fichier, data):
-    with open(fichier, "w", encoding="utf-8") as f:
+def _save(file, data):
+    with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def load_whitelist():
@@ -86,10 +86,10 @@ import glob
 
 def detect_monitor_iface():
     """Return the name of the first wlan interface capable of monitor mode, else None."""
-    for chemin in sorted(glob.glob("/sys/class/net/wlan*")):
-        iface = os.path.basename(chemin)
+    for path in sorted(glob.glob("/sys/class/net/wlan*")):
+        iface = os.path.basename(path)
         try:
-            with open(os.path.join(chemin, "phy80211/name")) as f:
+            with open(os.path.join(path, "phy80211/name")) as f:
                 phy = f.read().strip()
             infos = subprocess.run(
                 ["iw", "phy", phy, "info"],
@@ -478,7 +478,7 @@ def home():
     # Echo is a viewer, not a service — show how many networks are mapped.
     bssids = set()
     for c in read_handshakes():
-        gp = os.path.join(HANDSHAKES_DIR, c["fichier"].replace(".pcap", ".gps.json"))
+        gp = os.path.join(HANDSHAKES_DIR, c["file"].replace(".pcap", ".gps.json"))
         if os.path.exists(gp):
             bssids.add(c["bssid"].upper())
     for b in load_wardrive():
@@ -492,28 +492,28 @@ HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
 _hs_cache = {}
 
-def capture_a_handshake(fichier):
+def capture_has_handshake(file):
     """Whether a capture holds a handshake, cached per file (mtime+size)."""
-    chemin = os.path.join(HANDSHAKES_DIR, fichier)
+    path = os.path.join(HANDSHAKES_DIR, file)
     try:
-        st = os.stat(chemin)
+        st = os.stat(path)
         cle = (st.st_mtime, st.st_size)
     except OSError:
         return False
-    hit = _hs_cache.get(chemin)
+    hit = _hs_cache.get(path)
     if hit and hit[0] == cle:
         return hit[1]
-    val = raton_engine.a_un_handshake(chemin)
-    _hs_cache[chemin] = (cle, val)
+    val = raton_engine.a_un_handshake(path)
+    _hs_cache[path] = (cle, val)
     return val
 
 def read_handshakes():
     captures = {}
     try:
-        fichiers = os.listdir(HANDSHAKES_DIR)
+        files = os.listdir(HANDSHAKES_DIR)
     except OSError:
         return []
-    for f in fichiers:
+    for f in files:
         if not f.endswith(".pcap"):
             continue
         base = f[:-5]
@@ -525,7 +525,7 @@ def read_handshakes():
             continue
         bssid = ":".join(brut[i:i+2] for i in range(0, 12, 2)).upper()
         if bssid not in captures:
-            captures[bssid] = {"nom": nom, "bssid": bssid, "fichier": f}
+            captures[bssid] = {"nom": nom, "bssid": bssid, "file": f}
     return sorted(captures.values(), key=lambda c: c["nom"].lower())
 
 def scan_direct():
@@ -570,7 +570,7 @@ def mode(nom):
         for cap in captures:
             # Only check for a handshake on allowed networks (the only ones that
             # show a Test button), to avoid useless scans.
-            cap["handshake"] = cap["bssid"] in deja and capture_a_handshake(cap["fichier"])
+            cap["handshake"] = cap["bssid"] in deja and capture_has_handshake(cap["file"])
         # Testable captures first (allowed + handshake), then allowed without a
         # handshake, then locked ones; alphabetical within each group.
         captures.sort(key=lambda c: (
@@ -639,9 +639,9 @@ def crack_test(bssid):
     if vigie_monitor.monitor_state["actif"]:
         vigie_monitor.stop()
     etat["mode_actif"] = "cracking"
-    etat["reseau"] = capture["nom"]
-    pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
-    raton_engine.lancer(pcap, bssid, capture["nom"])
+    etat["network"] = capture["nom"]
+    pcap = os.path.join(HANDSHAKES_DIR, capture["file"])
+    raton_engine.launch(pcap, bssid, capture["nom"])
     return render_template("crack_result.html", c=capture)
 
 @app.route("/cracking/export/<bssid>")
@@ -652,37 +652,37 @@ def crack_export(bssid):
     capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return jsonify({"ok": False, "erreur": "No handshake for this network"})
-    pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
-    sortie = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
+    pcap = os.path.join(HANDSHAKES_DIR, capture["file"])
+    output = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
     try:
         subprocess.run(
-            ["hcxpcapngtool", "-o", sortie, pcap],
+            ["hcxpcapngtool", "-o", output, pcap],
             capture_output=True, text=True, timeout=30,
         )
     except Exception as ex:
         return jsonify({"ok": False, "erreur": "Conversion failed: " + str(ex)})
     try:
-        with open(sortie) as f:
+        with open(output) as f:
             hash_hc = f.read().strip()
     except OSError:
         hash_hc = ""
     if not hash_hc:
         return jsonify({"ok": False, "erreur": "No crackable handshake in this capture"})
-    fichier = os.path.basename(sortie)
-    profil = raton_engine.profile_for_essid(capture["nom"])
-    fmt = (profil or {}).get("format") or {}
-    masque = fmt.get("mask", "")
-    if profil and profil.get("algo") == "mask" and "?" in masque:
-        commande = "cd ~/Downloads && hashcat -m 22000 " + fichier + " -a 3 " + masque
+    file = os.path.basename(output)
+    profile = raton_engine.profile_for_essid(capture["nom"])
+    fmt = (profile or {}).get("format") or {}
+    mask = fmt.get("mask", "")
+    if profile and profile.get("algo") == "mask" and "?" in mask:
+        commande = "cd ~/Downloads && hashcat -m 22000 " + file + " -a 3 " + mask
         type_attaque = "mask"
     else:
-        commande = ("cd ~/Downloads && hashcat -m 22000 " + fichier
+        commande = ("cd ~/Downloads && hashcat -m 22000 " + file
                     + " /usr/share/wordlists/rockyou.txt"
                     + " -r /usr/share/hashcat/rules/best64.rule")
         type_attaque = "wordlist"
     return jsonify({
         "ok": True,
-        "fichier": fichier,
+        "file": file,
         "hash": hash_hc,
         "commande": commande,
         "telecharger": "/cracking/download/" + bssid,
@@ -694,22 +694,22 @@ def crack_download(bssid):
     autorises = {r["bssid"] for r in load_whitelist()}
     if bssid not in autorises:
         abort(404)
-    sortie = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
-    if not (os.path.exists(sortie) and os.path.getsize(sortie) > 0):
+    output = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
+    if not (os.path.exists(output) and os.path.getsize(output) > 0):
         capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
         if not capture:
             abort(404)
-        pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
+        pcap = os.path.join(HANDSHAKES_DIR, capture["file"])
         try:
-            subprocess.run(["hcxpcapngtool", "-o", sortie, pcap],
+            subprocess.run(["hcxpcapngtool", "-o", output, pcap],
                            capture_output=True, text=True, timeout=30)
         except Exception:
             abort(404)
-    if not (os.path.exists(sortie) and os.path.getsize(sortie) > 0):
+    if not (os.path.exists(output) and os.path.getsize(output) > 0):
         abort(404)
     from flask import send_file
-    return send_file(sortie, as_attachment=True,
-                     download_name=os.path.basename(sortie),
+    return send_file(output, as_attachment=True,
+                     download_name=os.path.basename(output),
                      mimetype="text/plain")
 
 @app.route("/cracking/gpu/<bssid>")
@@ -821,9 +821,9 @@ def map_view():
     sans_position = 0
     # Handshake points (orange, or green if whitelisted) — take precedence.
     for c in read_handshakes():
-        chemin_gps = os.path.join(HANDSHAKES_DIR, c["fichier"].replace(".pcap", ".gps.json"))
+        gps_path = os.path.join(HANDSHAKES_DIR, c["file"].replace(".pcap", ".gps.json"))
         try:
-            with open(chemin_gps, "r", encoding="utf-8") as f:
+            with open(gps_path, "r", encoding="utf-8") as f:
                 g = json.load(f)
             lat, lon = g.get("Latitude"), g.get("Longitude")
         except (FileNotFoundError, json.JSONDecodeError):
@@ -874,7 +874,7 @@ import base64 as _b64
 _TILE_PLACEHOLDER = _b64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGO4//gFAAVPAqtspm6mAAAAAElFTkSuQmCC"
 )
-_tiles_dl = {"actif": False, "fait": 0, "total": 0, "echecs": 0}
+_tiles_dl = {"actif": False, "fait": 0, "total": 0, "failures": 0}
 
 
 def fetch_osm_tile(z, x, y):
@@ -913,9 +913,9 @@ def _deg2tile(lat, lon, z):
     return xt, yt
 
 
-def _telecharger_zone(tuiles):
-    _tiles_dl.update({"actif": True, "fait": 0, "total": len(tuiles), "echecs": 0})
-    for (z, x, y) in tuiles:
+def _telecharger_zone(tiles):
+    _tiles_dl.update({"actif": True, "fait": 0, "total": len(tiles), "failures": 0})
+    for (z, x, y) in tiles:
         path = os.path.join(TILES_DIR, str(z), str(x), f"{y}.png")
         if not os.path.exists(path):
             data = fetch_osm_tile(z, x, y)
@@ -925,10 +925,10 @@ def _telecharger_zone(tuiles):
                     with open(path, "wb") as f:
                         f.write(data)
                 except OSError:
-                    _tiles_dl["echecs"] += 1
+                    _tiles_dl["failures"] += 1
                 time.sleep(0.05)  # be gentle on the OSM tile servers
             else:
-                _tiles_dl["echecs"] += 1
+                _tiles_dl["failures"] += 1
         _tiles_dl["fait"] += 1
     _tiles_dl["actif"] = False
 
@@ -943,19 +943,19 @@ def tiles_save():
         zmin = int(request.form.get("zmin", 13)); zmax = int(request.form.get("zmax", 16))
     except (KeyError, ValueError):
         return jsonify(error="Bad bounds"), 400
-    tuiles = []
+    tiles = []
     for z in range(zmin, zmax + 1):
         x1, y1 = _deg2tile(north, west, z)
         x2, y2 = _deg2tile(south, east, z)
         for x in range(min(x1, x2), max(x1, x2) + 1):
             for y in range(min(y1, y2), max(y1, y2) + 1):
-                tuiles.append((z, x, y))
+                tiles.append((z, x, y))
     CAP = 1500
-    if len(tuiles) > CAP:
-        return jsonify(error=f"Too many tiles ({len(tuiles)}). Zoom in first.",
-                       count=len(tuiles)), 400
-    threading.Thread(target=_telecharger_zone, args=(tuiles,), daemon=True).start()
-    return jsonify(total=len(tuiles))
+    if len(tiles) > CAP:
+        return jsonify(error=f"Too many tiles ({len(tiles)}). Zoom in first.",
+                       count=len(tiles)), 400
+    threading.Thread(target=_telecharger_zone, args=(tiles,), daemon=True).start()
+    return jsonify(total=len(tiles))
 
 
 @app.route("/tiles/status")
@@ -968,11 +968,11 @@ def tiles_status():
 def connection():
     reseaux = load_whitelist()
     ssid_act, bssid_act = wifi_active()
-    connus = known_wifi_profiles()
+    known = known_wifi_profiles()
     actuel = None
     for r in reseaux:
         # Connectable if we hold a key, or the Pi already knows this network.
-        r["connectable"] = bool(r.get("cle")) or (r.get("nom") in connus)
+        r["connectable"] = bool(r.get("cle")) or (r.get("nom") in known)
         # Match the live Wi-Fi by SSID: a multi-band network answers on several
         # BSSIDs, so the associated BSSID may differ from the whitelisted one.
         r["connected"] = bool(ssid_act) and r.get("nom") == ssid_act
@@ -1291,14 +1291,14 @@ def whitelist_edit():
 def whitelist_remove(bssid):
     reseaux = [r for r in load_whitelist() if r["bssid"] != bssid]
     save_whitelist(reseaux)
-    if etat["reseau"] and etat["reseau"]["bssid"] == bssid:
-        etat["reseau"] = None
+    if etat["network"] and etat["network"]["bssid"] == bssid:
+        etat["network"] = None
     return redirect(url_for("whitelist_page"))
 
 @app.route("/whitelist/reset")
 def whitelist_reset():
     save_whitelist([])
-    etat["reseau"] = None
+    etat["network"] = None
     source = request.args.get("source")
     if source:
         return redirect(url_for("scan", source=source))

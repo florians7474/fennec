@@ -14,7 +14,7 @@ WORDLISTS = {
 crack_state = {
     "actif": False,
     "bssid": None,
-    "reseau": None,
+    "network": None,
     "etape": None,
     "etape_num": 0,
     "etape_total": 1,
@@ -42,9 +42,9 @@ RE_TROUVE = re.compile(r"KEY FOUND!\s*\[\s*(.+?)\s*\]")
 RE_TESTES_FLUX = re.compile(r"(\d+)\s+keys tested\s+\(([\d.]+)\s*k/s\)")
 
 
-def _reset(bssid, reseau):
+def _reset(bssid, network):
     crack_state.update({
-        "actif": True, "bssid": bssid, "reseau": reseau,
+        "actif": True, "bssid": bssid, "network": network,
         "etape": None, "etape_num": 0, "etape_total": 1,
         "testes": 0, "total": 0, "vitesse": 0.0, "candidat": "",
         "trouve": False, "cle": None, "fini": False, "message": "",
@@ -55,13 +55,13 @@ def _reset(bssid, reseau):
     })
 
 
-def lancer(pcap, bssid, reseau="", wordlist=WORDLISTS["rockyou"]):
+def launch(pcap, bssid, network="", wordlist=WORDLISTS["rockyou"]):
     """Start a crack job in the background. Returns immediately."""
-    _reset(bssid, reseau)
-    t = threading.Thread(target=_run, args=(pcap, bssid, reseau, wordlist), daemon=True)
+    _reset(bssid, network)
+    t = threading.Thread(target=_run, args=(pcap, bssid, network, wordlist), daemon=True)
     t.start()
 
-def generate_keyboard(fichier):
+def generate_keyboard(file):
     """Stage: keyboard walks and repetition patterns (min 8 chars for WPA)."""
     bases = [
         "1234567890", "0987654321", "azertyuiop", "qwertyuiop",
@@ -80,21 +80,21 @@ def generate_keyboard(fichier):
     for c in "0123456789azertyuiopqsdfghjklmwxcvbn":
         for n in range(8, 13):
             motifs.add(c * n)
-    with open(fichier, "w") as f:
+    with open(file, "w") as f:
         for m in sorted(motifs):
             f.write(m + "\n")
-    return fichier
+    return file
 
-def generate_dates(fichier, an_debut=1950, an_fin=2025):
+def generate_dates(file, year_start=1950, year_end=2025):
     """Stage: generate all DDMMYYYY dates (8 digits) as WPA candidates."""
     jours_par_mois = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    with open(fichier, "w") as f:
-        for annee in range(an_debut, an_fin + 1):
+    with open(file, "w") as f:
+        for annee in range(year_start, year_end + 1):
             for mois in range(1, 13):
                 for jour in range(1, jours_par_mois[mois - 1] + 1):
                     f.write("%02d%02d%04d\n" % (jour, mois, annee))
                     f.write("%04d%02d%02d\n" % (annee, mois, jour))
-    return fichier
+    return file
 
 _profils_cache = None
 
@@ -104,9 +104,9 @@ def _load_profiles():
     if _profils_cache is not None:
         return _profils_cache
     import json
-    chemin = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profils_box.json")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profils_box.json")
     try:
-        with open(chemin, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             _profils_cache = json.load(f).get("profils", [])
     except (OSError, ValueError):
         _profils_cache = []
@@ -123,9 +123,9 @@ def profile_for_essid(essid):
 
 def factory_keys(essid, bssid):
     """Stage 1: targeted factory keys = box-profile routing + routerkeygen-cli."""
-    profil = profile_for_essid(essid)
+    profile = profile_for_essid(essid)
     # Known non-target (community hotspot, etc.): skip the whole stage.
-    if profil and profil.get("algo") == "ignore":
+    if profile and profile.get("algo") == "ignore":
         return []
     try:
         out = subprocess.run(
@@ -163,10 +163,10 @@ def essid_words(essid):
             mots.add(t.capitalize())
     return sorted(mots)
 
-def generate_essid(fichier, essid):
+def generate_essid(file, essid):
     """Stage 2 seed file: custom-name words (John rules mutate them later)."""
     mots = essid_words(essid)
-    with open(fichier, "w") as f:
+    with open(file, "w") as f:
         for m in mots:
             f.write(m + "\n")
     return len(mots)
@@ -174,11 +174,11 @@ def generate_essid(fichier, essid):
 STAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
     {"nom": "ESSID profiling (custom name)", "type": "essid"},
-    {"nom": "real cracked keys (probable-wpa)", "type": "wordlist", "fichier": "/usr/share/wordlists/probable-wpa-top4800.txt"},
+    {"nom": "real cracked keys (probable-wpa)", "type": "wordlist", "file": "/usr/share/wordlists/probable-wpa-top4800.txt"},
     {"nom": "birth dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generate_dates},
-    {"nom": "10k common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
+    {"nom": "10k common passwords", "type": "wordlist", "file": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "keyboard patterns", "type": "genere", "generateur": generate_keyboard},
-    {"nom": "common + mutation rules", "type": "regles", "fichier": "/usr/share/wordlists/10k-common.txt"},
+    {"nom": "common + mutation rules", "type": "rules", "file": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "John incremental (1h)", "type": "temps", "source": "john_inc"},
     {"nom": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
 ]
@@ -191,25 +191,25 @@ def a_un_handshake(pcap, bssid=None):
     flags partial captures that neither the local engine nor the export can
     actually crack, so a capture could show an active Test/GPU button and then
     fail with "No crackable handshake"."""
-    sortie = "/dev/shm/raton_hs_check.hc22000"
+    output = "/dev/shm/raton_hs_check.hc22000"
     try:
-        os.remove(sortie)
+        os.remove(output)
     except OSError:
         pass
     try:
         subprocess.run(
-            ["hcxpcapngtool", "-o", sortie, pcap],
+            ["hcxpcapngtool", "-o", output, pcap],
             capture_output=True, text=True, timeout=30,
             stdin=subprocess.DEVNULL,
         )
     except Exception:
         return True   # tool missing or error: don't block, let Sly try
     try:
-        ok = os.path.getsize(sortie) > 0
+        ok = os.path.getsize(output) > 0
     except OSError:
         ok = False
     try:
-        os.remove(sortie)
+        os.remove(output)
     except OSError:
         pass
     return ok
@@ -246,7 +246,7 @@ def _save_verdict(bssid, result, etage=None):
         pass
 
 
-def _run(pcap, bssid, reseau, wordlist):
+def _run(pcap, bssid, network, wordlist):
     global _proc
     keyfile = "/tmp/raton_found.key"
     crack_state["etape_total"] = len(STAGES)
@@ -265,7 +265,7 @@ def _run(pcap, bssid, reseau, wordlist):
 
         # Prepare this stage's wordlist / source
         if etage["type"] == "constructeur":
-            cles = factory_keys(reseau, bssid)
+            cles = factory_keys(network, bssid)
             if not cles:
                 with _lock:
                     crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
@@ -275,7 +275,7 @@ def _run(pcap, bssid, reseau, wordlist):
                 f.write("\n".join(cles) + "\n")
         elif etage["type"] == "essid":
             seed = "/tmp/raton_stage_essid.txt"
-            n = generate_essid(seed, reseau)
+            n = generate_essid(seed, network)
             if n == 0:
                 with _lock:
                     crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
@@ -291,13 +291,13 @@ def _run(pcap, bssid, reseau, wordlist):
         elif etage["type"] == "genere":
             wl = "/tmp/raton_stage_gen.txt"
             etage["generateur"](wl)
-        elif etage["type"] == "regles":
+        elif etage["type"] == "rules":
             wl = "PIPE_JOHN"
-            dico_regles = etage["fichier"]
+            rules_dict = etage["file"]
         elif etage["type"] == "temps":
             wl = "TEMPS"
         else:
-            base = etage["fichier"]
+            base = etage["file"]
             wl = "/dev/shm/raton_wl.txt"
             with open(wl, "w") as f:
                 subprocess.run(["awk", "length>=8 && length<=63", base], stdout=f)
@@ -309,7 +309,7 @@ def _run(pcap, bssid, reseau, wordlist):
             crack_state["testes"] = 0
             crack_state["total"] = 0
             crack_state["candidat"] = ""
-            crack_state["flux"] = (etage["type"] == "regles")
+            crack_state["flux"] = (etage["type"] == "rules")
             crack_state["jauge_temps"] = est_temps
             crack_state["temps_total"] = 3600 if est_temps else 0
             crack_state["temps_ecoule"] = 0
@@ -324,7 +324,7 @@ def _run(pcap, bssid, reseau, wordlist):
         _head = None
         if wl == "PIPE_JOHN":
             _john = subprocess.Popen(
-                ["john", "--stdout", "--rules", "--wordlist=" + dico_regles],
+                ["john", "--stdout", "--rules", "--wordlist=" + rules_dict],
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             )
             _head = subprocess.Popen(
@@ -337,7 +337,7 @@ def _run(pcap, bssid, reseau, wordlist):
         elif wl == "PIPE_ESSID":
             gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raton_essid_gen.py")
             _john = subprocess.Popen(
-                ["python3", gen, dico_regles],
+                ["python3", gen, rules_dict],
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             )
             _head = subprocess.Popen(
@@ -449,7 +449,7 @@ def _robustness_score(etage_echec, total):
     if etage_echec is None:
         return {
             "label": "Robust",
-            "niveau": "ok",
+            "level": "ok",
             "detail": "Key resisted every offline cracking stage.",
         }
     libelles = {
@@ -466,7 +466,7 @@ def _robustness_score(etage_echec, total):
     label, detail = libelles.get(etage_echec, ("Weak", "Key recovered by an early stage."))
     return {
         "label": label,
-        "niveau": "risque",
+        "level": "risque",
         "detail": detail,
         "etage": etage_echec,
         "total": total,
@@ -504,7 +504,7 @@ if __name__ == "__main__":
     pcap = sys.argv[1]
     bssid = sys.argv[2]
     wl = sys.argv[3] if len(sys.argv) > 3 else WORDLISTS["rockyou"]
-    lancer(pcap, bssid, wordlist=wl)
+    launch(pcap, bssid, wordlist=wl)
     while not crack_state["fini"]:
         e = crack_state
         print(f"\r[{e['etape']}] {e['testes']}/{e['total']} {e['vitesse']} k/s  try={e['candidat']}   ", end="", flush=True)
