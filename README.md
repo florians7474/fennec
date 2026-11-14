@@ -1,5 +1,10 @@
 # Fennec 🦊
 
+![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%205-c51a4a)
+![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Status](https://img.shields.io/badge/status-active-success)
+
 Web-based launcher for Wi-Fi pentest modes on a Raspberry Pi 5.
 
 Fennec turns a Raspberry Pi 5 and a touchscreen into a small Wi-Fi auditing console. A full-screen web interface, six tiles, one tool running at a time. Each module stays independent and starts or stops on demand straight from the screen.
@@ -25,12 +30,12 @@ The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Off
 
 All six modules are operational: automatic installation, control from the tile, and a live view inside the interface.
 
-- **Pwnagotchi** captures handshakes in the background and mirrors its head live in the tile.
-- **Echo** plots captured handshakes on a live map using the position read at capture time (Pwnagotchi's GPS plugin writes a `.gps.json` next to each handshake when a fix is available), and also every network merely seen during a run: while Pwnagotchi is active a companion wardrive service reads bettercap's live view and logs each access point with the current GPS position (passive, WiGLE-style, no extra scan). Seen networks are placed at their **estimated location** — a signal-weighted centroid of the observations, refined on every pass — rather than where the Pi stood. The map has two view modes toggled on screen: **Status** (green whitelisted, amber handshake, grey seen; tap a point to allow it) and **Risk / attack surface** (red for open or WEP, amber for WPS enabled, green for WPA2/3, grey for unknown). The risk view colours only on observed facts, and an actual crack result takes over: once a network has been run through the cracking module its real verdict wins — solid if it resisted every stage, critical if it fell. Map tiles are served from a local cache and work offline (an on-screen button pre-downloads the visible area), a live GPS badge shows the satellite fix on the device so it can be checked without a laptop, and the view centres on the bulk of the points while ignoring far outliers.
-- **Sly** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
-- **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile. On Wi-Fi it only starts when the connected network is in your whitelist; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
-- **Hugin** is to Bjorn what Sly is to Pwnagotchi. It reads Bjorn's own results and shows them per device: open ports and services, vulnerabilities, the actions Bjorn ran (with status and date), and the files it produced (preview and download). It suggests candidate Metasploit modules two ways — by CVE (from a local index, no Metasploit on the Pi) and by open service (a built-in service→module map, so it lights up from the open ports even when no CVE was found) — clearly flagged as candidates, not confirmed vulnerabilities, and exports a ready-to-run `.rc` attack plan per module. Execution is deported: Metasploit runs on a separate lab machine and the Pi drives it over RPC — run a module with confirmation, watch a session open, then list the live sessions and run commands inside one (e.g. `id` returning `uid=0(root)`), all from Fennec. Validated end to end against a lab target. Lab use only, on authorized targets.
-- **Sentry** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Sentry into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts (TLS SNI and QUIC via tshark, plus every cleartext DNS query through an on-demand dnsmasq the Pi redirects port 53 to), with a persistent, timestamped history kept per network. A **Force DNS** toggle blocks DoT and the main DoH resolvers to push hardened devices back onto readable DNS, and a device running a VPN is detected and flagged (WireGuard, OpenVPN or IPsec/IKEv2 tunnel plus endpoint) instead of showing blank.
+- **Pwnagotchi — passive capture.** Captures handshakes in the background and mirrors its head live in the tile.
+- **Echo — map & wardriving.** Plots captured handshakes by GPS and logs every network merely seen during a run (passive, WiGLE-style, via bettercap), placing seen networks at a signal-weighted **estimated position** refined on each pass. Two on-screen views: **Status** (whitelist / handshake / seen) and **Risk** (open or WEP, WPS, WPA2/3), with a real Sly crack verdict overriding the guess. Map tiles are cached locally and work offline, with a live GPS badge and outlier-trimmed centring.
+- **Sly — offline WPA cracking.** Runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-tap handoff to GPU cracking. Captures with no usable handshake are flagged, so a network is never wrongly reported as robust.
+- **Bjorn — recon & targeted attacks.** Scans and probes the network the Pi is on, naming it and its subnet before you start, with a live console in the tile. On Wi-Fi it starts only for a whitelisted network; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
+- **Hugin — Bjorn companion** (what Sly is to Pwnagotchi). Reads Bjorn's results per device (ports, services, vulnerabilities, actions, files) and suggests Metasploit modules two ways — by CVE (local index) and by open service (service→module map) — flagged as candidates, with a ready-to-run `.rc` plan per module. Execution is **deported**: Metasploit runs on a separate lab machine driven over RPC (run a module, watch a session open, list sessions, run in-session commands). Lab use only, on authorized targets.
+- **Sentry — device radar & traffic watch.** Scans the subnet (nmap ARP) and lists every device (IP, MAC, vendor) with unknowns surfaced and a one-tap "mine" chip; tap for detail (ports, guessed type, hostname). **Watch** mode turns it into a passive monitor (bettercap MITM) revealing the domains each device contacts (TLS SNI/QUIC via tshark, plus cleartext DNS via an on-demand dnsmasq), with timestamped per-network history, a **Force DNS** toggle against DoT/DoH, and VPN detection.
 
 ## Legal scope
 
@@ -111,7 +116,7 @@ shut down.
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 - On-screen screen rotation: cycle the UI through 0/90/180/270 from the power menu (portrait and landscape), applied instantly with no reboot and no touch recalibration
 
-## Roadmap
+## Features
 
 - [x] Fennec launcher and tile interface
 - [x] Pwnagotchi module (install, control, display)
@@ -132,3 +137,12 @@ shut down.
 - [x] Hugin module – phase 2 (Metasploit correlation: local CVE index + service→module map)
 - [x] Hugin module – phase 3 (deported Metasploit execution over RPC: run, live sessions, in-session commands) — validated end to end
 - [x] Echo module – phase 2 (wardriving: every network seen logged with GPS, offline tiles, on-screen GPS fix indicator)
+
+## Planned
+
+- [ ] Custom carrier board (Raspberry Pi CM5) to turn the prototype into a self-contained device
+- [ ] WPA3 (SAE) auditing support
+
+## License
+
+Released under the [MIT License](LICENSE). This tool is for auditing networks you own or are explicitly authorized to test; any other use is your responsibility.
