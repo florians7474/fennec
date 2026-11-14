@@ -11,9 +11,3 @@ hugin_runs.json
 settings.json
 tiles/
 raton_verdicts.json
-# legacy French data-file names (kept ignored for leftover/backup files)
-liste_blanche.json
-scan_direct.json
-mes_appareils.json
-noms_appareils.json
-historique_trafic.json

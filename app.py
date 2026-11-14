@@ -20,15 +20,6 @@ SCAN_FILE  = os.path.join(BASE, "scan_cache.json")
 NAMES_FILE  = os.path.join(BASE, "device_names.json")   # {network: {mac: name}}
 HISTORY_FILE  = os.path.join(BASE, "traffic_history.json")  # {network: {mac: {domain: ts}}}
 
-# Legacy French data-file names, migrated to the English names above on startup.
-_LEGACY_FILES = {
-    WHITELIST_FILE: os.path.join(BASE, "liste_blanche.json"),
-    MINE_FILE: os.path.join(BASE, "mes_appareils.json"),
-    SCAN_FILE: os.path.join(BASE, "direct_scan.json"),
-    NAMES_FILE: os.path.join(BASE, "noms_appareils.json"),
-    HISTORY_FILE: os.path.join(BASE, "historique_trafic.json"),
-}
-
 app_state = {"active_mode": None, "network": None}
 
 MODES = {
@@ -754,72 +745,6 @@ def load_wardrive():
             return d if isinstance(d, dict) else {}
     except (OSError, ValueError):
         return {}
-
-
-def _migrate_legacy_files():
-    """One-time upgrade: copy data files that still carry their old French name to
-    the new English name, leaving the original in place as a backup. Idempotent —
-    skipped once the English file exists."""
-    import shutil
-    for new, old in _LEGACY_FILES.items():
-        try:
-            if os.path.exists(old) and not os.path.exists(new):
-                shutil.copy2(old, new)
-        except OSError:
-            pass
-
-
-def _migrate_legacy_keys():
-    """One-time upgrade: rename legacy French JSON keys to English in persisted
-    data files, backing up each file once before rewriting. Idempotent — once a
-    file has no French keys left, it is skipped."""
-    import shutil
-    keymap = {"nom": "name", "cle": "key", "trouve": "found", "enregistree": "saved"}
-
-    def _backup(path):
-        bak = path + ".fr.bak"
-        if not os.path.exists(bak):
-            shutil.copy2(path, bak)
-
-    # Whitelist: list of network dicts.
-    try:
-        if os.path.exists(WHITELIST_FILE):
-            data = _load(WHITELIST_FILE)
-            changed = False
-            if isinstance(data, list):
-                for e in data:
-                    if isinstance(e, dict):
-                        for old, new in keymap.items():
-                            if old in e:
-                                e[new] = e.pop(old)
-                                changed = True
-            if changed:
-                _backup(WHITELIST_FILE)
-                _save(WHITELIST_FILE, data)
-    except (OSError, ValueError):
-        pass
-
-    # Wardrive: dict keyed by BSSID, each value a network dict with "nom".
-    try:
-        if os.path.exists(WARDRIVE_FILE):
-            with open(WARDRIVE_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            changed = False
-            if isinstance(data, dict):
-                for e in data.values():
-                    if isinstance(e, dict) and "nom" in e:
-                        e["name"] = e.pop("nom")
-                        changed = True
-            if changed:
-                _backup(WARDRIVE_FILE)
-                with open(WARDRIVE_FILE, "w", encoding="utf-8") as f:
-                    json.dump(data, f)
-    except (OSError, ValueError):
-        pass
-
-
-_migrate_legacy_files()
-_migrate_legacy_keys()
 
 
 def _bettercap_creds():
