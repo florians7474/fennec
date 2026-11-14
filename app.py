@@ -1144,6 +1144,11 @@ _PORTRAIT_BASE = (
     "width:320px!important;height:480px!important;transform-origin:top left;}"
     ".grille{align-content:space-evenly!important;gap:10px 24px!important;"
     "padding:8px!important;}"
+    # Narrow header: drop the network name, keep only the icon (green when
+    # connected, grey when not) so the power button stays reachable.
+    ".conn span{display:none!important;}"
+    ".conn{max-width:none!important;padding:6px 8px!important;}"
+    ".conn.ok{color:#01F994!important;border-color:#01F994!important;}"
 )
 
 _ROTATION_CSS = {
