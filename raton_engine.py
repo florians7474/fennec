@@ -215,6 +215,37 @@ def a_un_handshake(pcap, bssid=None):
     return ok
 
 
+VERDICTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "raton_verdicts.json")
+
+
+def load_verdicts():
+    import json
+    try:
+        with open(VERDICTS_FILE, encoding="utf-8") as f:
+            d = json.load(f)
+            return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_verdict(bssid, result, etage=None):
+    """Persist a real crack outcome per BSSID so the Map can show the truth
+    (robust/cracked) instead of the model-level heuristic."""
+    import json
+    if not bssid:
+        return
+    try:
+        d = load_verdicts()
+        d[bssid.upper()] = {"result": result, "etage": etage, "date": int(time.time())}
+        tmp = VERDICTS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        os.replace(tmp, VERDICTS_FILE)
+    except OSError:
+        pass
+
+
 def _run(pcap, bssid, reseau, wordlist):
     global _proc
     keyfile = "/tmp/raton_found.key"
@@ -397,6 +428,7 @@ def _run(pcap, bssid, reseau, wordlist):
                 crack_state["robustesse"] = _robustness_score(i, crack_state["etape_total"])
                 crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "cracked"})
                 crack_state["message"] = "Cracked"
+            _save_verdict(bssid, "cracked", i)
             return
 
         with _lock:
@@ -410,6 +442,7 @@ def _run(pcap, bssid, reseau, wordlist):
         if not crack_state.get("stoppe"):
             crack_state["robustesse"] = _robustness_score(None, crack_state["etape_total"])
             crack_state["message"] = "Exhausted"
+            _save_verdict(bssid, "robust")
 
 def _robustness_score(etage_echec, total):
     """Robustness = the stage that cracked the key. Earlier stage = weaker key."""

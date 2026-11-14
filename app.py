@@ -801,6 +801,20 @@ def map_view():
     deja = {r["bssid"].upper() for r in load_whitelist()}
     wd = load_wardrive()
     wd_up = {k.upper(): v for k, v in wd.items()}  # for enc/wps lookup by BSSID
+    try:
+        verdicts = raton_engine.load_verdicts()
+    except Exception:
+        verdicts = {}
+
+    def risk_for(key, enc, wps, essid, handshake):
+        # A real Raton verdict wins over the heuristic (truth for audited boxes).
+        v = verdicts.get(key)
+        if v:
+            return "crit" if v.get("result") == "cracked" else "low"
+        # A captured handshake means the network is WPA/WPA2-PSK.
+        if handshake and not enc:
+            enc = "WPA2"
+        return _risk_level(enc, wps, essid)
     pts = {}  # keyed by uppercase BSSID so handshake and wardrive points dedup
     sans_position = 0
     # Handshake points (orange, or green if whitelisted) — take precedence.
@@ -822,7 +836,7 @@ def map_view():
                 "lon": lon,
                 "autorise": key in deja,
                 "handshake": True,
-                "risk": _risk_level(w.get("enc"), w.get("wps"), c["nom"]),
+                "risk": risk_for(key, w.get("enc"), w.get("wps"), c["nom"], True),
             }
         else:
             sans_position += 1
@@ -841,7 +855,7 @@ def map_view():
                 "lon": lon,
                 "autorise": key in deja,
                 "handshake": False,
-                "risk": _risk_level(w.get("enc"), w.get("wps"), w.get("nom")),
+                "risk": risk_for(key, w.get("enc"), w.get("wps"), w.get("nom"), False),
             }
     return render_template("map.html", points=list(pts.values()),
                            sans_position=sans_position)
