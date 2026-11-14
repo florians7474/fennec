@@ -11,13 +11,13 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
-    .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:12px 16px; overflow-y:auto; }
+    .title { font-size:16px; font-weight:600; flex:1; }
+    .body { flex:1 1 auto; display:flex; flex-direction:column; padding:12px 16px; overflow-y:auto; }
     .target { font-size:13px; color:#8b949e; margin-bottom:10px; }
     .target b { color:#e6edf3; }
     .step { display:flex; gap:9px; margin:9px 0 4px; }
@@ -61,12 +61,12 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/mode/cracking">&larr;</a>
-    <div class="titre">Export for GPU</div>
+    <div class="title">Export for GPU</div>
   </div>
 
-  <div class="corps">
+  <div class="body">
     <div class="target">Network: <b>{{ name }}</b> &middot; {{ bssid }}</div>
 
     <div id="wait" class="wait">Converting handshake…</div>
@@ -96,7 +96,7 @@
       document.getElementById('wait').classList.add('hide');
       if(e.ok){
         document.getElementById('result').classList.remove('hide');
-        document.getElementById('dl').href = e.telecharger;
+        document.getElementById('dl').href = e.download;
         document.getElementById('cmd').value = e.command;
         document.getElementById('hash').textContent = e.hash;
         var note = document.getElementById('note');

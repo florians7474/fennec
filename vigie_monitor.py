@@ -24,8 +24,8 @@ from collections import deque, OrderedDict
 monitor_state = {
     "active": False,
     "depuis": None,
-    "hotes": {},                 # ip -> OrderedDict(domain -> ts)
-    "brut": deque(maxlen=250),   # last raw lines (debugging)
+    "hosts": {},                 # ip -> OrderedDict(domain -> ts)
+    "raw": deque(maxlen=250),   # last raw lines (debugging)
 }
 
 _proc = None
@@ -68,10 +68,10 @@ def _rdns(ip):
     return val
 
 
-def _record(ip, domaine):
+def _record(ip, domain):
     with _lock:
-        d = monitor_state["hotes"].setdefault(ip, OrderedDict())
-        d[domaine] = time.time()
+        d = monitor_state["hosts"].setdefault(ip, OrderedDict())
+        d[domain] = time.time()
         while len(d) > 60:
             d.popitem(last=False)
 
@@ -82,9 +82,9 @@ def _record_vpn(ip, type_, dst):
                     "ts": time.time()}
 
 
-def _process(ligne):
+def _process(line):
     # dnsmasq query log: "query[TYPE] <domain> from <device-ip>"
-    m = _RE_DNSMASQ.search(ligne)
+    m = _RE_DNSMASQ.search(line)
     if m:
         dom = m.group(1).lower().rstrip(".")
         src = m.group(2).strip()
@@ -93,7 +93,7 @@ def _process(ligne):
             _record(src, dom)
         return
     # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> protocol
-    fields = ligne.rstrip("\n").split("\t")
+    fields = line.rstrip("\n").split("\t")
     while len(fields) < 5:
         fields.append("")
     src = fields[0].strip()
@@ -130,13 +130,13 @@ def _process(ligne):
 
 
 def _read(proc):
-    for ligne in iter(proc.stdout.readline, ""):
-        ligne = ligne.rstrip("\n")
-        if not ligne:
+    for line in iter(proc.stdout.readline, ""):
+        line = line.rstrip("\n")
+        if not line:
             continue
-        monitor_state["brut"].append(ligne)
+        monitor_state["raw"].append(line)
         try:
-            _process(ligne)
+            _process(line)
         except Exception:
             pass
 
@@ -161,9 +161,9 @@ def start(prefix=None):
     with _lock:
         monitor_state["active"] = True
         monitor_state["depuis"] = time.time()
-        monitor_state["hotes"] = {}
+        monitor_state["hosts"] = {}
         _vpn.clear()
-        monitor_state["brut"].clear()
+        monitor_state["raw"].clear()
     _thread = threading.Thread(target=_read, args=(_proc,), daemon=True)
     _thread.start()
     return True
@@ -192,7 +192,7 @@ def stop():
         monitor_state["active"] = False
 
 
-def forcer_dns(active):
+def force_dns(active):
     """Toggle 'Force DNS' (block DoT/DoH) via the sudo helper. Only meaningful
     while the Watch is running (the block sits on the MITM-forwarded traffic)."""
     global _force_dns
@@ -210,22 +210,22 @@ def forcer_dns(active):
     return _force_dns
 
 
-def vpn_info(cles):
+def vpn_info(keys):
     """VPN tunnel detected for one of these keys (device IP), else None."""
     with _lock:
-        for key in cles:
+        for key in keys:
             v = _vpn.get(key)
             if v:
                 return {"type": v["type"], "endpoint": v["endpoint"], "ip": v["ip"]}
     return None
 
 
-def timestamps(cles):
+def timestamps(keys):
     """Domains + last timestamp for one or more keys (IP)."""
     out = {}
     with _lock:
-        for key in cles:
-            for dom, ts in monitor_state["hotes"].get(key, {}).items():
+        for key in keys:
+            for dom, ts in monitor_state["hosts"].get(key, {}).items():
                 if dom not in out or ts > out[dom]:
                     out[dom] = ts
     return out
@@ -234,8 +234,8 @@ def timestamps(cles):
 def snapshot():
     """JSON-able view: active + domains per device + last raw lines."""
     with _lock:
-        hotes = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
-                 for ip, d in monitor_state["hotes"].items()}
-        brut = list(monitor_state["brut"])[-60:]
+        hosts = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
+                 for ip, d in monitor_state["hosts"].items()}
+        raw = list(monitor_state["raw"])[-60:]
     return {"active": monitor_state["active"], "force": _force_dns,
-            "hotes": hotes, "brut": brut}
+            "hosts": hosts, "raw": raw}

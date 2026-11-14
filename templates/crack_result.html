@@ -11,13 +11,13 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
-    .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:14px 18px; overflow-y:auto; }
+    .title { font-size:16px; font-weight:600; flex:1; }
+    .body { flex:1 1 auto; display:flex; flex-direction:column; padding:14px 18px; overflow-y:auto; }
     .target { font-size:13px; color:#8b949e; margin-bottom:12px; }
     .target b { color:#e6edf3; }
 
@@ -33,19 +33,19 @@
     .stage .num { color:#f0883e; }
     .bar { height:10px; background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; margin-bottom:10px; }
     .bar i { display:block; height:100%; width:0; background:#f0883e; transition:width .4s; }
-    .bar.streaming i { width:35% !important; animation:balaye 1.1s ease-in-out infinite; }
-    @keyframes balaye { 0%{margin-left:-35%;} 100%{margin-left:100%;} }
+    .bar.streaming i { width:35% !important; animation:sweep 1.1s ease-in-out infinite; }
+    @keyframes sweep { 0%{margin-left:-35%;} 100%{margin-left:100%;} }
     .stats { display:flex; justify-content:space-between; font-size:11px; color:#8b949e; margin-bottom:12px; }
     .try { font-size:12px; color:#c9d1d9; font-family:ui-monospace,Consolas,monospace;
            background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 10px;
            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .try span { color:#f0883e; }
 
-    .fin { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+    .final { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
     .verdict { font-size:20px; font-weight:700; margin-bottom:10px; }
-    .faible { color:#da3633; }
-    .solide { color:#2ea043; }
-    .neutre { color:#8b949e; }
+    .weak { color:#da3633; }
+    .solid { color:#2ea043; }
+    .neutral { color:#8b949e; }
     .detail { font-size:13px; color:#c9d1d9; line-height:1.6; max-width:360px; }
     .detail .key { font-family:ui-monospace,Consolas,monospace; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:2px 8px; }
     .stopbtn { display:block; margin:14px auto 0; border:1px solid #da3633; color:#da3633;
@@ -55,12 +55,12 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/">&larr;</a>
-    <div class="titre">Cracking</div>
+    <div class="title">Cracking</div>
   </div>
 
-  <div class="corps">
+  <div class="body">
     <div class="target">Network tested: <b>{{ c.name }}</b> &middot; {{ c.bssid }}</div>
 
     <div id="live">
@@ -72,7 +72,7 @@
 <button class="stopbtn" id="stopbtn" onclick="stopIt()">Stop</button>
     </div>
 
-    <div id="fin" class="fin hide">
+    <div id="final" class="final hide">
       <div class="verdict" id="verdict"></div>
       <div class="detail" id="detail"></div>
     </div>
@@ -127,20 +127,20 @@
         if(e.finished){
           clearInterval(timer);
           document.getElementById('live').classList.add('hide');
-          var fin = document.getElementById('fin');
+          var final = document.getElementById('final');
           var v = document.getElementById('verdict');
           var d = document.getElementById('detail');
-          fin.classList.remove('hide');
+          final.classList.remove('hide');
           var rob = e.robustness || {};
           if(e.no_handshake){
             v.textContent = 'No usable handshake';
-            v.className = 'verdict neutre';
+            v.className = 'verdict neutral';
             d.innerHTML =
               'This capture has no complete handshake, so there was nothing to test.' +
               '<br><br>Let Pwnagotchi keep running to capture a full handshake for this network, then run the test again.';
           } else if(e.found){
             v.textContent = rob.label || 'Weak key';
-            v.className = 'verdict faible';
+            v.className = 'verdict weak';
             d.innerHTML =
               (rob.detail || 'This key falls to a dictionary.') +
               '<br><br>Key found:<br><span class="key">' + e.key + '</span>' +
@@ -148,13 +148,13 @@
               '<br><br><span style="color:#2ea043;">&#10003; Key saved to Allowed networks.</span>';
           } else if(e.stopped){
             v.textContent = 'Test stopped';
-            v.className = 'verdict neutre';
+            v.className = 'verdict neutral';
             d.innerHTML =
               'You stopped the test before it finished, so the key was not fully evaluated.' +
               '<br><br>Run it again to go through all the stages.';
           } else {
             v.textContent = rob.label || 'Robust';
-            v.className = 'verdict solide';
+            v.className = 'verdict solid';
             d.innerHTML =
               (rob.detail || 'No key found after the local stages.') +
               '<br>This router holds up well.';

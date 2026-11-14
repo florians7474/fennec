@@ -24,12 +24,12 @@ HISTORY_FILE  = os.path.join(BASE, "traffic_history.json")  # {network: {mac: {d
 _LEGACY_FILES = {
     WHITELIST_FILE: os.path.join(BASE, "liste_blanche.json"),
     MINE_FILE: os.path.join(BASE, "mes_appareils.json"),
-    SCAN_FILE: os.path.join(BASE, "scan_direct.json"),
+    SCAN_FILE: os.path.join(BASE, "direct_scan.json"),
     NAMES_FILE: os.path.join(BASE, "noms_appareils.json"),
     HISTORY_FILE: os.path.join(BASE, "historique_trafic.json"),
 }
 
-etat = {"mode_actif": None, "network": None}
+app_state = {"active_mode": None, "network": None}
 
 MODES = {
     "pwnagotchi": {"name": "Pwnagotchi", "classe": "pwn",   "url": None},
@@ -53,8 +53,8 @@ def _save(file, data):
 def load_whitelist():
     return _load(WHITELIST_FILE)
 
-def save_whitelist(reseaux):
-    _save(WHITELIST_FILE, reseaux)
+def save_whitelist(networks):
+    _save(WHITELIST_FILE, networks)
 
 def load_mine():
     return _load(MINE_FILE)   # list of device ids declared "mine"
@@ -65,8 +65,8 @@ def save_mine(ids):
 def load_scan():
     return _load(SCAN_FILE)   # last saved direct scan
 
-def save_scan(reseaux):
-    _save(SCAN_FILE, reseaux)
+def save_scan(networks):
+    _save(SCAN_FILE, networks)
 
 # ---------- Device settings (per-Pi state, not in the repo) ----------
 
@@ -100,12 +100,12 @@ def detect_monitor_iface():
         try:
             with open(os.path.join(path, "phy80211/name")) as f:
                 phy = f.read().strip()
-            infos = subprocess.run(
+            info = subprocess.run(
                 ["iw", "phy", phy, "info"],
                 capture_output=True, text=True, timeout=10,
             ).stdout
             # We target the supported-modes section
-            if "* monitor" in infos:
+            if "* monitor" in info:
                 return iface
         except Exception:
             continue
@@ -129,7 +129,7 @@ def stop(mode):
     for service in reversed(SERVICES.get(mode, [])):
         _systemctl("stop", service)
 
-def est_actif(service):
+def is_active(service):
     try:
         r = subprocess.run(
             ["systemctl", "is-active", service],
@@ -162,8 +162,8 @@ def connection_state():
         )
     except Exception:
         return {"type": None, "name": "Offline"}
-    for ligne in r.stdout.splitlines():
-        fields = ligne.split(":")
+    for line in r.stdout.splitlines():
+        fields = line.split(":")
         if len(fields) >= 3 and fields[1] == "ethernet" and fields[2] == "connected":
             return {"type": "ethernet", "name": "Ethernet"}
     ssid, _ = wifi_active()
@@ -202,8 +202,8 @@ def wifi_active():
         )
     except Exception:
         return (None, None)
-    for ligne in r.stdout.splitlines():
-        p = _nmcli_split(ligne)
+    for line in r.stdout.splitlines():
+        p = _nmcli_split(line)
         if len(p) >= 4 and p[0] == "yes" and p[3] == WIFI_IFACE:
             return (p[1] or None, (p[2] or "").upper() or None)
     return (None, None)
@@ -218,8 +218,8 @@ def known_wifi_profiles():
         )
     except Exception:
         return ssids
-    for ligne in r.stdout.splitlines():
-        p = _nmcli_split(ligne)
+    for line in r.stdout.splitlines():
+        p = _nmcli_split(line)
         if len(p) >= 2 and p[1] in ("802-11-wireless", "wifi"):
             ssids.add(p[0])
     return ssids
@@ -273,21 +273,21 @@ def scan_network():
         )
     except Exception:
         return []
-    appareils, courant = [], None
-    for ligne in r.stdout.splitlines():
-        m = re.search(r"Nmap scan report for (.+)", ligne)
+    appareils, current = [], None
+    for line in r.stdout.splitlines():
+        m = re.search(r"Nmap scan report for (.+)", line)
         if m:
             target = m.group(1).strip()
             mip = re.search(r"\(([\d.]+)\)", target)
             ip = mip.group(1) if mip else target
-            courant = {"ip": ip, "mac": None, "vendor": None}
-            appareils.append(courant)
+            current = {"ip": ip, "mac": None, "vendor": None}
+            appareils.append(current)
             continue
-        mmac = re.search(r"MAC Address:\s*([0-9A-Fa-f:]{17})\s*(?:\((.*)\))?", ligne)
-        if mmac and courant is not None:
-            courant["mac"] = mmac.group(1).upper()
+        mmac = re.search(r"MAC Address:\s*([0-9A-Fa-f:]{17})\s*(?:\((.*)\))?", line)
+        if mmac and current is not None:
+            current["mac"] = mmac.group(1).upper()
             v = (mmac.group(2) or "").strip()
-            courant["vendor"] = v or None
+            current["vendor"] = v or None
     return appareils
 
 def vigie_devices():
@@ -371,8 +371,8 @@ def scan_ports(ip):
     except Exception:
         return []
     ports = []
-    for ligne in r.stdout.splitlines():
-        m = re.match(r"(\d+)/tcp\s+open\s+(\S+)", ligne.strip())
+    for line in r.stdout.splitlines():
+        m = re.match(r"(\d+)/tcp\s+open\s+(\S+)", line.strip())
         if m:
             ports.append({"port": int(m.group(1)), "service": m.group(2)})
     return ports
@@ -476,14 +476,14 @@ def merge_traffic(mac, live):
 
 @app.route("/")
 def home():
-    mode_actif = etat["mode_actif"]
+    active_mode = app_state["active_mode"]
     # Sly runs in a thread, not a service: the dot follows the engine's real state.
-    if mode_actif == "cracking" and not raton_engine.crack_state.get("active"):
-        mode_actif = None
-        etat["mode_actif"] = None
-    if mode_actif == "vigie" and not vigie_monitor.monitor_state.get("active"):
-        mode_actif = None
-        etat["mode_actif"] = None
+    if active_mode == "cracking" and not raton_engine.crack_state.get("active"):
+        active_mode = None
+        app_state["active_mode"] = None
+    if active_mode == "vigie" and not vigie_monitor.monitor_state.get("active"):
+        active_mode = None
+        app_state["active_mode"] = None
     # Echo is a viewer, not a service — show how many networks are mapped.
     bssids = set()
     for c in read_handshakes():
@@ -494,7 +494,7 @@ def home():
         bssids.add(b.upper())
     n = len(bssids)
     echo_count = f"{n / 1000:.1f}k" if n >= 1000 else str(n)
-    return render_template("home.html", active=mode_actif,
+    return render_template("home.html", active=active_mode,
                            connection=connection_state(), echo_count=echo_count)
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
@@ -528,16 +528,16 @@ def read_handshakes():
         base = f[:-5]
         if "_" not in base:
             continue
-        name, _, brut = base.rpartition("_")
-        brut = brut.lower()
-        if len(brut) != 12 or not all(c in "0123456789abcdef" for c in brut):
+        name, _, raw = base.rpartition("_")
+        raw = raw.lower()
+        if len(raw) != 12 or not all(c in "0123456789abcdef" for c in raw):
             continue
-        bssid = ":".join(brut[i:i+2] for i in range(0, 12, 2)).upper()
+        bssid = ":".join(raw[i:i+2] for i in range(0, 12, 2)).upper()
         if bssid not in captures:
             captures[bssid] = {"name": name, "bssid": bssid, "file": f}
     return sorted(captures.values(), key=lambda c: c["name"].lower())
 
-def scan_direct():
+def direct_scan():
     try:
         res = subprocess.run(
             ["nmcli", "-t", "-f", "SSID,SIGNAL,BSSID", "dev", "wifi", "list", "--rescan", "yes"],
@@ -545,22 +545,22 @@ def scan_direct():
         )
     except Exception:
         return []
-    reseaux = {}
-    for ligne in res.stdout.splitlines():
-        fields = re.split(r"(?<!\\):", ligne)
+    networks = {}
+    for line in res.stdout.splitlines():
+        fields = re.split(r"(?<!\\):", line)
         if len(fields) < 3:
             continue
         ssid = fields[0].replace("\\:", ":").strip()
         signal = fields[1].strip()
         bssid = fields[2].replace("\\:", ":").upper().strip()
-        if not bssid or bssid in reseaux:
+        if not bssid or bssid in networks:
             continue
         try:
             dbm = int(signal) // 2 - 100
         except ValueError:
             dbm = None
-        reseaux[bssid] = {"name": ssid or "(hidden)", "bssid": bssid, "signal": dbm}
-    return sorted(reseaux.values(), key=lambda r: -(r["signal"] if r["signal"] is not None else -999))
+        networks[bssid] = {"name": ssid or "(hidden)", "bssid": bssid, "signal": dbm}
+    return sorted(networks.values(), key=lambda r: -(r["signal"] if r["signal"] is not None else -999))
 
 @app.route("/mode/<name>")
 def mode(name):
@@ -589,24 +589,24 @@ def mode(name):
         return render_template("cracking.html", captures=captures, seen=seen)
 
     if name == "pwnagotchi":
-        active = est_actif("pwnagotchi")
-        etat["mode_actif"] = "pwnagotchi" if active else etat["mode_actif"]
+        active = is_active("pwnagotchi")
+        app_state["active_mode"] = "pwnagotchi" if active else app_state["active_mode"]
         url_ui = "/pwna-ui"
-        return render_template("mode.html", key=name, infos=MODES[name], active=active,
+        return render_template("mode.html", key=name, info=MODES[name], active=active,
                                url_ui=url_ui, url_iframe=None)
     if name == "bjorn":
-        active = est_actif("bjorn")
-        etat["mode_actif"] = "bjorn" if active else etat["mode_actif"]
+        active = is_active("bjorn")
+        app_state["active_mode"] = "bjorn" if active else app_state["active_mode"]
         hote = request.host.split(":")[0]
         url_iframe = f"http://{hote}:8000/"
         conn = connection_state()
         reseau_scan = {"type": conn["type"], "name": conn["name"],
                        "sous_reseau": local_subnet()}
-        return render_template("mode.html", key=name, infos=MODES[name], active=active,
+        return render_template("mode.html", key=name, info=MODES[name], active=active,
                                url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan,
                                err=request.args.get("err"))
-    active = (etat["mode_actif"] == name)
-    return render_template("mode.html", key=name, infos=MODES[name], active=active,
+    active = (app_state["active_mode"] == name)
+    return render_template("mode.html", key=name, info=MODES[name], active=active,
                            url_ui=None, url_iframe=None)
 
 @app.route("/toggle/<name>")
@@ -615,21 +615,21 @@ def toggle(name):
         return redirect(url_for("home"))
     if vigie_monitor.monitor_state["active"]:   # another mode starts: stop Sentry monitoring
         vigie_monitor.stop()
-    actuel = etat["mode_actif"]
-    if actuel == "vigie":
-        actuel = None
-    if actuel == name:
+    current = app_state["active_mode"]
+    if current == "vigie":
+        current = None
+    if current == name:
         stop(name)
-        etat["mode_actif"] = None
+        app_state["active_mode"] = None
     else:
         if name == "bjorn":
             ok, msg = bjorn_wifi_gate()
             if not ok:
                 return redirect(url_for("mode", name="bjorn", err=msg))
-        if actuel:
-            stop(actuel)
+        if current:
+            stop(current)
         start(name)
-        etat["mode_actif"] = name
+        app_state["active_mode"] = name
     return redirect(url_for("mode", name=name))
 
 @app.route("/cracking/test/<bssid>")
@@ -641,14 +641,14 @@ def crack_test(bssid):
     if not capture:
         return redirect(url_for("mode", name="cracking"))
     # Sly takes over: stop the running modes (Pwnagotchi / Bjorn / Sentry)
-    if est_actif("pwnagotchi"):
+    if is_active("pwnagotchi"):
         stop("pwnagotchi")
-    if est_actif("bjorn"):
+    if is_active("bjorn"):
         stop("bjorn")
     if vigie_monitor.monitor_state["active"]:
         vigie_monitor.stop()
-    etat["mode_actif"] = "cracking"
-    etat["network"] = capture["name"]
+    app_state["active_mode"] = "cracking"
+    app_state["network"] = capture["name"]
     pcap = os.path.join(HANDSHAKES_DIR, capture["file"])
     raton_engine.launch(pcap, bssid, capture["name"])
     return render_template("crack_result.html", c=capture)
@@ -694,7 +694,7 @@ def crack_export(bssid):
         "file": file,
         "hash": hash_hc,
         "command": command,
-        "telecharger": "/cracking/download/" + bssid,
+        "download": "/cracking/download/" + bssid,
         "type": type_attaque,
     })
 
@@ -731,12 +731,12 @@ def crack_gpu(bssid):
 def crack_status():
     e = raton_engine.crack_state
     if e.get("found") and e.get("key") and not e.get("saved"):
-        reseaux = load_whitelist()
-        for r in reseaux:
+        networks = load_whitelist()
+        for r in networks:
             if r["bssid"] == e.get("bssid"):
                 r["key"] = e["key"]
                 break
-        save_whitelist(reseaux)
+        save_whitelist(networks)
         e["saved"] = True
     return jsonify(e)
 
@@ -988,7 +988,7 @@ def _deg2tile(lat, lon, z):
     return xt, yt
 
 
-def _telecharger_zone(tiles):
+def _download_area(tiles):
     _tiles_dl.update({"active": True, "done": 0, "total": len(tiles), "failures": 0})
     for (z, x, y) in tiles:
         path = os.path.join(TILES_DIR, str(z), str(x), f"{y}.png")
@@ -1029,7 +1029,7 @@ def tiles_save():
     if len(tiles) > CAP:
         return jsonify(error=f"Too many tiles ({len(tiles)}). Zoom in first.",
                        count=len(tiles)), 400
-    threading.Thread(target=_telecharger_zone, args=(tiles,), daemon=True).start()
+    threading.Thread(target=_download_area, args=(tiles,), daemon=True).start()
     return jsonify(total=len(tiles))
 
 
@@ -1041,21 +1041,21 @@ def tiles_status():
 
 @app.route("/connection")
 def connection():
-    reseaux = load_whitelist()
+    networks = load_whitelist()
     ssid_act, bssid_act = wifi_active()
     known = known_wifi_profiles()
-    actuel = None
-    for r in reseaux:
+    current = None
+    for r in networks:
         # Connectable if we hold a key, or the Pi already knows this network.
         r["connectable"] = bool(r.get("key")) or (r.get("name") in known)
         # Match the live Wi-Fi by SSID: a multi-band network answers on several
         # BSSIDs, so the associated BSSID may differ from the whitelisted one.
         r["connected"] = bool(ssid_act) and r.get("name") == ssid_act
         if r["connected"]:
-            actuel = r
-    if ssid_act and not actuel:
-        actuel = {"name": ssid_act, "bssid": bssid_act, "connected": True}
-    return render_template("connection.html", reseaux=reseaux, actuel=actuel,
+            current = r
+    if ssid_act and not current:
+        current = {"name": ssid_act, "bssid": bssid_act, "connected": True}
+    return render_template("connection.html", networks=networks, current=current,
                            conn=connection_state(), err=request.args.get("err"))
 
 @app.route("/connection/to/<bssid>")
@@ -1076,8 +1076,8 @@ def connection_to(bssid):
     except Exception:
         return redirect(url_for("connection", err="Connection command failed"))
     if r.returncode != 0:
-        lignes = (r.stderr or r.stdout or "").strip().splitlines()
-        msg = lignes[-1].strip() if lignes else "Connection failed"
+        lines = (r.stderr or r.stdout or "").strip().splitlines()
+        msg = lines[-1].strip() if lines else "Connection failed"
         return redirect(url_for("connection", err=msg[:120]))
     return redirect(url_for("connection"))
 
@@ -1268,23 +1268,23 @@ def vigie_ports(ip):
 @app.route("/vigie/monitor/start")
 def vigie_monitor_start():
     # Monitoring takes over: stop the other active modes.
-    if etat["mode_actif"] in SERVICES:
-        stop(etat["mode_actif"])
+    if app_state["active_mode"] in SERVICES:
+        stop(app_state["active_mode"])
     if raton_engine.crack_state.get("active"):
         raton_engine.stop()
     ip = local_ip()
     prefix = ".".join(ip.split(".")[:3]) + "." if ip else None
     ok = vigie_monitor.start(prefix)
     if ok:
-        etat["mode_actif"] = "vigie"
+        app_state["active_mode"] = "vigie"
     return jsonify({"active": vigie_monitor.monitor_state["active"]})
 
 @app.route("/vigie/monitor/stop")
 def vigie_monitor_stop():
     vigie_monitor.stop()
     _history_flush(force=True)
-    if etat["mode_actif"] == "vigie":
-        etat["mode_actif"] = None
+    if app_state["active_mode"] == "vigie":
+        app_state["active_mode"] = None
     return jsonify({"active": False})
 
 @app.route("/vigie/monitor/data")
@@ -1296,13 +1296,13 @@ def vigie_monitor_force():
     # Only while watching: the DoT/DoH block sits on the MITM-forwarded traffic.
     if not vigie_monitor.monitor_state["active"]:
         return jsonify({"active": False, "force": False})
-    force = vigie_monitor.forcer_dns(request.args.get("on") == "1")
+    force = vigie_monitor.force_dns(request.args.get("on") == "1")
     return jsonify({"active": True, "force": force})
 
 @app.route("/vigie/traffic/<ip>")
 def vigie_traffic(ip):
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
-        return jsonify({"active": False, "domaines": []})
+        return jsonify({"active": False, "domains": []})
     d = last_scan.get(ip) or {}
     mac = d.get("mac") or arp_mac(ip)
     hote = (host_name(ip) or "").lower().rstrip(".")
@@ -1312,7 +1312,7 @@ def vigie_traffic(ip):
     return jsonify({
         "active": vigie_monitor.monitor_state["active"],
         "vpn": vigie_monitor.vpn_info([c for c in (ip, hote) if c]),
-        "domaines": [{"d": dom, "t": ts} for dom, ts in items],
+        "domains": [{"d": dom, "t": ts} for dom, ts in items],
     })
 
 @app.route("/vigie/rename/<mac>", methods=["POST"])
@@ -1324,7 +1324,7 @@ def vigie_rename(mac):
 
 @app.route("/whitelist")
 def whitelist_page():
-    return render_template("whitelist_page.html", reseaux=load_whitelist())
+    return render_template("whitelist_page.html", networks=load_whitelist())
 
 @app.route("/whitelist/add", methods=["POST"])
 def whitelist_add():
@@ -1334,13 +1334,13 @@ def whitelist_add():
     back = request.form.get("back", "")
     source = request.form.get("source", "direct")
     if bssid:
-        reseaux = load_whitelist()
-        if not any(r["bssid"] == bssid for r in reseaux):
-            entree = {"name": name or "Unnamed", "bssid": bssid}
+        networks = load_whitelist()
+        if not any(r["bssid"] == bssid for r in networks):
+            entry = {"name": name or "Unnamed", "bssid": bssid}
             if key:
-                entree["key"] = key
-            reseaux.append(entree)
-            save_whitelist(reseaux)
+                entry["key"] = key
+            networks.append(entry)
+            save_whitelist(networks)
     if back == "scan":
         return redirect(url_for("scan", source=source))
     return redirect(url_for("whitelist_page"))
@@ -1350,8 +1350,8 @@ def whitelist_edit():
     bssid = request.form.get("bssid", "").strip().upper()
     name = request.form.get("name", "").strip()
     key = request.form.get("key", "").strip()
-    reseaux = load_whitelist()
-    for r in reseaux:
+    networks = load_whitelist()
+    for r in networks:
         if r["bssid"] == bssid:
             r["name"] = name or r.get("name", "Unnamed")
             if key:
@@ -1359,21 +1359,21 @@ def whitelist_edit():
             else:
                 r.pop("key", None)
             break
-    save_whitelist(reseaux)
+    save_whitelist(networks)
     return redirect(url_for("whitelist_page"))
 
 @app.route("/whitelist/remove/<bssid>")
 def whitelist_remove(bssid):
-    reseaux = [r for r in load_whitelist() if r["bssid"] != bssid]
-    save_whitelist(reseaux)
-    if etat["network"] and etat["network"]["bssid"] == bssid:
-        etat["network"] = None
+    networks = [r for r in load_whitelist() if r["bssid"] != bssid]
+    save_whitelist(networks)
+    if app_state["network"] and app_state["network"]["bssid"] == bssid:
+        app_state["network"] = None
     return redirect(url_for("whitelist_page"))
 
 @app.route("/whitelist/reset")
 def whitelist_reset():
     save_whitelist([])
-    etat["network"] = None
+    app_state["network"] = None
     source = request.args.get("source")
     if source:
         return redirect(url_for("scan", source=source))
@@ -1383,15 +1383,15 @@ def whitelist_reset():
 def scan():
     source = request.args.get("source", "direct")
     if source == "pwna":
-        reseaux = read_handshakes()
+        networks = read_handshakes()
     else:
         source = "direct"
         if request.args.get("rescan"):
-            save_scan(scan_direct())
+            save_scan(direct_scan())
             return redirect(url_for("scan", source="direct"))
-        reseaux = load_scan()
+        networks = load_scan()
     seen = {r["bssid"] for r in load_whitelist()}
-    return render_template("scan.html", reseaux=reseaux, seen=seen, source=source)
+    return render_template("scan.html", networks=networks, seen=seen, source=source)
 
 @app.route("/scan/vider/<source>")
 def scan_clear(source):

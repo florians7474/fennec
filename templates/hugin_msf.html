@@ -11,15 +11,15 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+    .topbar { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
              background:#161b22; border-bottom:1px solid #30363d; }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
+    .title { font-size:16px; font-weight:600; flex:1; }
     .state { display:flex; align-items:center; gap:7px; font-size:12px; }
     .dot { width:9px; height:9px; border-radius:50%; background:#6e7681; }
     .dot.up { background:#2ea043; box-shadow:0 0 6px #2ea043; }
     .dot.down { background:#f85149; }
-    .corps { flex:1 1 auto; overflow-y:auto; padding:12px 14px; }
+    .body { flex:1 1 auto; overflow-y:auto; padding:12px 14px; }
     .err { margin-bottom:10px; padding:8px 12px; background:#2d1518; border:1px solid #6e2f36;
            border-radius:8px; color:#ffa198; font-size:12px; }
     .ok { margin-bottom:10px; padding:9px 12px; background:#10251a; border:1px solid #1e5a40;
@@ -49,13 +49,13 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/hugin">&larr;</a>
-    <div class="titre">Metasploit</div>
+    <div class="title">Metasploit</div>
     <div class="state"><span class="dot" id="dot"></span><span id="statetxt">…</span></div>
   </div>
 
-  <div class="corps">
+  <div class="body">
     {% if err %}<div class="err">{{ err }}</div>{% endif %}
     <div class="ok" id="okbox" style="display:none"></div>
 

@@ -11,12 +11,12 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
+    .title { font-size:16px; font-weight:600; flex:1; }
     .scan-btn { border:1px solid #2ea043; color:#2ea043; text-decoration:none; border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600; }
     .onglets { flex:0 0 auto; display:flex; background:#0d1117; border-bottom:1px solid #30363d; }
     .onglets a {
@@ -24,12 +24,12 @@
       color:#8b949e; text-decoration:none; border-bottom:2px solid transparent;
     }
     .onglets a.active { color:#e6edf3; border-bottom-color:#2ea043; }
-    .liste { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
-    .ligne {
+    .list { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
+    .line {
       display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
       background:#161b22; border:1px solid #30363d; border-radius:10px;
     }
-    .infos { flex:1; min-width:0; }
+    .info { flex:1; min-width:0; }
     .rnom { font-size:14px; font-weight:600; }
     .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; }
     .sig { font-size:11px; color:#8b949e; margin-right:4px; white-space:nowrap; }
@@ -50,7 +50,7 @@
       padding:18px; display:flex; flex-direction:column; gap:14px;
     }
     .map h3 { font-size:15px; font-weight:600; }
-    .map .lignes { display:flex; gap:8px; justify-content:flex-end; }
+    .map .lines { display:flex; gap:8px; justify-content:flex-end; }
     .map .annuler {
       border:1px solid #30363d; background:none; color:#e6edf3; border-radius:8px;
       padding:9px 14px; font-size:13px; cursor:pointer;
@@ -62,9 +62,9 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/whitelist">&larr;</a>
-    <div class="titre">Detected networks</div>
+    <div class="title">Detected networks</div>
     {% if source == 'direct' %}<a class="scan-btn" href="/scan?source=direct&rescan=1">Rescan</a>{% endif %}
   </div>
 
@@ -73,10 +73,10 @@
     <a href="/scan?source=pwna" class="{{ 'active' if source=='pwna' }}">Spotted by Pwnagotchi</a>
   </div>
 
-  <div class="liste">
-    {% for r in reseaux %}
-    <div class="ligne">
-      <div class="infos">
+  <div class="list">
+    {% for r in networks %}
+    <div class="line">
+      <div class="info">
         <div class="rnom">{{ r.name }}</div>
         <div class="rbssid">{{ r.bssid }}</div>
       </div>
@@ -103,7 +103,7 @@
   <div class="modal" id="modalConfirm">
     <div class="map">
       <h3>Clear everything?</h3>
-      <div class="lignes">
+      <div class="lines">
         <button type="button" class="annuler" onclick="closeConfirm()">Cancel</button>
         <button type="button" class="valider" onclick="confirmAction()">Clear all</button>
       </div>
@@ -117,13 +117,13 @@
     function confirmAction(){ if(confirmUrl){ window.location.href = confirmUrl; } }
 
     (function(){
-      var liste = document.querySelector('.liste');
-      if(!liste) return;
+      var list = document.querySelector('.list');
+      if(!list) return;
       var key = 'scroll:' + location.pathname;
-      try { var y = sessionStorage.getItem(key); if (y !== null) liste.scrollTop = parseInt(y,10); } catch(e){}
-      liste.addEventListener('click', function(e){
+      try { var y = sessionStorage.getItem(key); if (y !== null) list.scrollTop = parseInt(y,10); } catch(e){}
+      list.addEventListener('click', function(e){
         if(!e.target.closest('a,button')) return;
-        try { sessionStorage.setItem(key, liste.scrollTop); } catch(e){}
+        try { sessionStorage.setItem(key, list.scrollTop); } catch(e){}
       });
     })();
   </script>

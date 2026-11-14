@@ -11,15 +11,15 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:14px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .title { font-size:14px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dl { background:#8b7fd4; color:#1a1230; border:none; border-radius:8px; font-size:12px;
           font-weight:600; padding:7px 12px; text-decoration:none; white-space:nowrap; }
-    .corps { flex:1 1 auto; overflow:auto; padding:10px 12px; }
+    .body { flex:1 1 auto; overflow:auto; padding:10px 12px; }
     pre { font-family:ui-monospace,Consolas,monospace; font-size:11px; line-height:1.5;
           white-space:pre; color:#c9d1d9; }
     .note { color:#8b949e; font-size:12px; padding:6px 2px; }
@@ -27,13 +27,13 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/hugin/files">&larr;</a>
-    <div class="titre">{{ name }}</div>
+    <div class="title">{{ name }}</div>
     <a class="dl" href="/hugin/file?path={{ rel|urlencode }}&amp;dl=1">Download</a>
   </div>
 
-  <div class="corps">
+  <div class="body">
     {% if content is not none %}
       <pre>{{ content }}</pre>
       {% if truncated %}<div class="trunc">Preview truncated — download the file for the full content.</div>{% endif %}

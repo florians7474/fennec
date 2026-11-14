@@ -11,13 +11,13 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .tete { width:28px; height:28px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
+    .title { font-size:16px; font-weight:600; flex:1; }
     .scan-btn { border:1px solid #28c0d4; color:#28c0d4; background:none; border-radius:8px;
                 padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; }
     .scan-btn:disabled { opacity:.5; }
@@ -32,19 +32,19 @@
     .bilan { flex:0 0 auto; font-size:12px; color:#8b949e; padding:9px 14px; background:#10151c; }
     .bilan b { color:#e6edf3; }
     .bilan .inc { color:#f0883e; font-weight:700; }
-    .liste { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
-    .ligne {
+    .list { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
+    .line {
       display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
       background:#161b22; border:1px solid #30363d; border-radius:10px;
     }
-    .ligne.inconnu { border-color:#f0883e; }
+    .line.inconnu { border-color:#f0883e; }
     .lien { flex:1; min-width:0; display:flex; align-items:center; gap:10px;
             text-decoration:none; color:inherit; }
     .ico { width:26px; height:26px; flex:0 0 auto; color:#8b949e; }
     .ico.router { color:#28c0d4; }
     .ico.pi { color:#2ea043; }
-    .ligne.inconnu .ico { color:#f0883e; }
-    .infos { flex:1; min-width:0; }
+    .line.inconnu .ico { color:#f0883e; }
+    .info { flex:1; min-width:0; }
     .rnom { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace;
               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -73,10 +73,10 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/vigie.png" alt="">
-    <div class="titre">Sentry</div>
+    <div class="title">Sentry</div>
     <button class="scan-btn watch" id="watch" onclick="toggleWatch()">Watch</button>
     <button class="scan-btn force" id="force" onclick="toggleForce()" style="display:none">Force DNS</button>
     <button class="scan-btn" id="rescan" onclick="runScan()">Rescan</button>
@@ -86,7 +86,7 @@
 
   <div class="bilan" id="bilan">Scanning the network…</div>
 
-  <div class="liste" id="liste">
+  <div class="list" id="list">
     <div class="scanning">
       <div class="radar"><span class="pt" style="top:30%;left:60%"></span><span class="pt" style="top:62%;left:40%"></span></div>
       <div class="txt">Scanning the network…</div>
@@ -126,17 +126,17 @@
         '<b>' + n + '</b> device' + (n !== 1 ? 's' : '') + ' on the network' +
         (inconnus ? ' · <span class="inc">' + inconnus + ' unknown</span>' : '');
 
-      var liste = document.getElementById('liste');
-      if(!n){ liste.innerHTML = '<div class="vide">No device found.<br>Tap "Rescan" to scan the network.</div>'; return; }
-      liste.innerHTML = '';
+      var list = document.getElementById('list');
+      if(!n){ list.innerHTML = '<div class="vide">No device found.<br>Tap "Rescan" to scan the network.</div>'; return; }
+      list.innerHTML = '';
       devices.forEach(function(d){
         var row = document.createElement('div');
-        row.className = 'ligne' + (d.inconnu ? ' inconnu' : '');
+        row.className = 'line' + (d.inconnu ? ' inconnu' : '');
 
         var a = document.createElement('a');
         a.className = 'lien'; a.href = '/vigie/device/' + d.ip;
         a.innerHTML = '<span class="ico ' + d.type + '">' + iconSvg(d.type) + '</span>' +
-          '<div class="infos"><div class="rnom">' + esc(d.name) + '</div>' +
+          '<div class="info"><div class="rnom">' + esc(d.name) + '</div>' +
           '<div class="rbssid">' + esc(d.ip) + (d.mac ? ' · ' + esc(d.mac) : '') + '</div></div>';
         row.appendChild(a);
 
@@ -148,7 +148,7 @@
         else { chip = document.createElement('button'); chip.className = 'chip inc'; chip.textContent = 'Unknown';
                chip.onclick = function(){ mark(d, true); }; }
         row.appendChild(chip);
-        liste.appendChild(row);
+        list.appendChild(row);
       });
     }
 
@@ -164,14 +164,14 @@
     function runScan(){
       var btn = document.getElementById('rescan'); btn.disabled = true;
       document.getElementById('bilan').textContent = 'Scanning the network…';
-      document.getElementById('liste').innerHTML =
+      document.getElementById('list').innerHTML =
         '<div class="scanning"><div class="radar"><span class="pt" style="top:30%;left:60%"></span><span class="pt" style="top:62%;left:40%"></span></div><div class="txt">Scanning the network…</div></div>';
       fetch('/vigie/data').then(function(r){ return r.json(); }).then(function(data){
         devices = data.appareils || [];
         render();
         save();
       }).catch(function(){
-        document.getElementById('liste').innerHTML = '<div class="vide">Scan failed.<br>Tap "Rescan" to try again.</div>';
+        document.getElementById('list').innerHTML = '<div class="vide">Scan failed.<br>Tap "Rescan" to try again.</div>';
         document.getElementById('bilan').textContent = '';
       }).finally(function(){ btn.disabled = false; });
     }

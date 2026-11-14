@@ -11,15 +11,15 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:15px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .title { font-size:15px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#6e7681; }
     .dot.up { background:#2ea043; box-shadow:0 0 6px #2ea043; }
-    .corps { flex:1 1 auto; overflow-y:auto; padding:10px 14px; }
+    .body { flex:1 1 auto; overflow-y:auto; padding:10px 14px; }
     .sous { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; margin-bottom:12px; }
     .sect { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
             color:#8b7fd4; margin:14px 0 7px; }
@@ -90,13 +90,13 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/hugin">&larr;</a>
     <span class="dot {{ 'up' if m.alive }}"></span>
-    <div class="titre">{{ m.hostname or m.ip or m.mac }}</div>
+    <div class="title">{{ m.hostname or m.ip or m.mac }}</div>
   </div>
 
-  <div class="corps">
+  <div class="body">
     <div class="sous">{{ m.ip }}{% if m.mac %} · {{ m.mac }}{% endif %} · {{ 'alive' if m.alive else 'offline' }}</div>
 
     <div id="sess-sect" style="display:none">

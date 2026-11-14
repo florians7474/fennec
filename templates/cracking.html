@@ -11,21 +11,21 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 6px; }
     .tete { width:28px; height:28px; }
-    .titre { font-size:16px; font-weight:700; flex:1; }
+    .title { font-size:16px; font-weight:700; flex:1; }
     .aide { flex:0 0 auto; font-size:11px; color:#8b949e; padding:8px 14px; background:#10151c; }
-    .liste { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
-    .ligne {
+    .list { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
+    .line {
       display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
       background:#161b22; border:1px solid #30363d; border-radius:10px;
     }
-    .ligne.verrou { opacity:.5; }
-    .infos { flex:1; min-width:0; }
+    .line.verrou { opacity:.5; }
+    .info { flex:1; min-width:0; }
     .rnom { font-size:14px; font-weight:600; }
     .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; }
     .tester {
@@ -43,18 +43,18 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/raton.png" alt="">
-    <div class="titre">Sly</div>
+    <div class="title">Sly</div>
   </div>
 
   <div class="aide">Pwnagotchi captures. Only your allowed networks can be tested.</div>
 
-  <div class="liste">
+  <div class="list">
     {% for r in captures %}
-    <div class="ligne {{ '' if r.bssid in seen else 'verrou' }}">
-      <div class="infos">
+    <div class="line {{ '' if r.bssid in seen else 'verrou' }}">
+      <div class="info">
         <div class="rnom">{{ r.name }}</div>
         <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
       </div>

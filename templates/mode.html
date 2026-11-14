@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>{{ infos.name }}</title>
+  <title>{{ info.name }}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -11,13 +11,13 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3;
     }
-    .barre {
+    .topbar {
       height:48px; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .tete { width:28px; height:28px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
+    .title { font-size:16px; font-weight:600; flex:1; }
     .pastille { width:9px; height:9px; border-radius:50%; background:#5a6673; }
     .pastille.on { background:#2ea043; box-shadow:0 0 6px #2ea043; }
     .btn { border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600;
@@ -29,11 +29,11 @@
     .vue .pwna-live { width:100%; height:100%; object-fit:contain;
                       image-rendering:pixelated; background:#000; display:none; }
     .vue .pwna-live.prete { display:block; }
-    .chargement { display:flex; flex-direction:column; align-items:center; gap:14px; color:#8b949e; }
-    .chargement .anneau { width:40px; height:40px; border-radius:50%;
+    .loading { display:flex; flex-direction:column; align-items:center; gap:14px; color:#8b949e; }
+    .loading .anneau { width:40px; height:40px; border-radius:50%;
                           border:3px solid #21262d; border-top-color:#19e38c;
                           animation:tourne 0.9s linear infinite; }
-    .chargement .txt { font-size:13px; }
+    .loading .txt { font-size:13px; }
     @keyframes tourne { to { transform:rotate(360deg); } }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; max-width:340px; }
     .err { max-width:340px; margin-bottom:12px; padding:8px 12px; background:#2d1518;
@@ -44,10 +44,10 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/{{ key }}.png" alt="" onerror="this.style.display='none'">
-    <div class="titre">{{ infos.name }}</div>
+    <div class="title">{{ info.name }}</div>
     <span class="pastille {{ 'on' if active }}"></span>
     {% if active %}
       <a class="btn stop" href="/toggle/{{ key }}">Stop</a>
@@ -60,7 +60,7 @@
     {% if active and url_iframe %}
       <div class="cadre"><iframe id="bjorn-frame" src="{{ url_iframe }}"></iframe></div>
     {% elif active and url_ui %}
-      <div class="chargement" id="pwna-chargement">
+      <div class="loading" id="pwna-loading">
         <div class="anneau"></div>
         <div class="txt">Pwnagotchi is starting…</div>
       </div>
@@ -113,7 +113,7 @@
         });
       }
       var img = document.getElementById("pwna-live");
-      var charge = document.getElementById("pwna-chargement");
+      var charge = document.getElementById("pwna-loading");
       if (!img) return;
       // Preload into a temporary image: while Pwnagotchi's UI isn't ready
       // (error 503), keep the animation and retry, without ever showing the

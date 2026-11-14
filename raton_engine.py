@@ -96,21 +96,21 @@ def generate_dates(file, year_start=1950, year_end=2025):
                     f.write("%04d%02d%02d\n" % (annee, mois, jour))
     return file
 
-_profils_cache = None
+_profiles_cache = None
 
 def _load_profiles():
     """Load the box-profile knowledge base (tiny JSON next to this engine)."""
-    global _profils_cache
-    if _profils_cache is not None:
-        return _profils_cache
+    global _profiles_cache
+    if _profiles_cache is not None:
+        return _profiles_cache
     import json
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "box_profiles.json")
     try:
         with open(path, encoding="utf-8") as f:
-            _profils_cache = json.load(f).get("profiles", [])
+            _profiles_cache = json.load(f).get("profiles", [])
     except (OSError, ValueError):
-        _profils_cache = []
-    return _profils_cache
+        _profiles_cache = []
+    return _profiles_cache
 
 def profile_for_essid(essid):
     """Return the matching box profile for an ESSID, or None."""
@@ -134,13 +134,13 @@ def factory_keys(essid, bssid):
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
-    cles, vus = [], set()
-    for ligne in out.stdout.splitlines():
-        c = ligne.strip()
-        if 8 <= len(c) <= 63 and " " not in c and c not in vus:
-            vus.add(c)
-            cles.append(c)
-    return cles
+    keys, seen = [], set()
+    for line in out.stdout.splitlines():
+        c = line.strip()
+        if 8 <= len(c) <= 63 and " " not in c and c not in seen:
+            seen.add(c)
+            keys.append(c)
+    return keys
 
 def essid_words(essid):
     """Extract seed words from a *custom* network name.
@@ -150,13 +150,13 @@ def essid_words(essid):
     if profile_for_essid(essid):      # known box prefix -> generic name, skip
         return []
     mots = set()
-    nu = essid.strip()
-    compact = re.sub(r"[^A-Za-z0-9]", "", nu)
-    for v in (nu, compact):
+    trimmed = essid.strip()
+    compact = re.sub(r"[^A-Za-z0-9]", "", trimmed)
+    for v in (trimmed, compact):
         if v:
             mots.add(v)
             mots.add(v.lower())
-    for t in re.split(r"[^A-Za-z]+", nu):
+    for t in re.split(r"[^A-Za-z]+", trimmed):
         if len(t) >= 3:
             mots.add(t)
             mots.add(t.lower())
@@ -229,7 +229,7 @@ def load_verdicts():
         return {}
 
 
-def _save_verdict(bssid, result, etage=None):
+def _save_verdict(bssid, result, stage=None):
     """Persist a real crack outcome per BSSID so Echo can show the truth
     (robust/cracked) instead of the model-level heuristic."""
     import json
@@ -237,7 +237,7 @@ def _save_verdict(bssid, result, etage=None):
         return
     try:
         d = load_verdicts()
-        d[bssid.upper()] = {"result": result, "etage": etage, "date": int(time.time())}
+        d[bssid.upper()] = {"result": result, "stage": stage, "date": int(time.time())}
         tmp = VERDICTS_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(d, f)
@@ -259,26 +259,26 @@ def _run(pcap, bssid, network, wordlist):
             crack_state["message"] = "No handshake"
         return
 
-    for i, etage in enumerate(STAGES, start=1):
+    for i, stage in enumerate(STAGES, start=1):
         if not crack_state["active"]:
             break
 
         # Prepare this stage's wordlist / source
-        if etage["type"] == "constructeur":
-            cles = factory_keys(network, bssid)
-            if not cles:
+        if stage["type"] == "constructeur":
+            keys = factory_keys(network, bssid)
+            if not keys:
                 with _lock:
-                    crack_state["log"].append({"num": i, "name": etage["name"], "result": "skipped"})
+                    crack_state["log"].append({"num": i, "name": stage["name"], "result": "skipped"})
                 continue
             wl = "/tmp/raton_stage_const.txt"
             with open(wl, "w") as f:
-                f.write("\n".join(cles) + "\n")
-        elif etage["type"] == "essid":
+                f.write("\n".join(keys) + "\n")
+        elif stage["type"] == "essid":
             seed = "/tmp/raton_stage_essid.txt"
             n = generate_essid(seed, network)
             if n == 0:
                 with _lock:
-                    crack_state["log"].append({"num": i, "name": etage["name"], "result": "skipped"})
+                    crack_state["log"].append({"num": i, "name": stage["name"], "result": "skipped"})
                 continue
             gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raton_essid_gen.py")
             wl = "/dev/shm/raton_essid.txt"
@@ -288,28 +288,28 @@ def _run(pcap, bssid, network, wordlist):
                 subprocess.run(["head", "-n", "300000"], stdin=p1.stdout, stdout=f)
                 p1.stdout.close()
                 p1.wait()
-        elif etage["type"] == "genere":
+        elif stage["type"] == "genere":
             wl = "/tmp/raton_stage_gen.txt"
-            etage["generateur"](wl)
-        elif etage["type"] == "rules":
+            stage["generateur"](wl)
+        elif stage["type"] == "rules":
             wl = "PIPE_JOHN"
-            rules_dict = etage["file"]
-        elif etage["type"] == "temps":
+            rules_dict = stage["file"]
+        elif stage["type"] == "temps":
             wl = "TEMPS"
         else:
-            base = etage["file"]
+            base = stage["file"]
             wl = "/dev/shm/raton_wl.txt"
             with open(wl, "w") as f:
                 subprocess.run(["awk", "length>=8 && length<=63", base], stdout=f)
 
-        est_temps = (etage["type"] == "temps")
+        est_temps = (stage["type"] == "temps")
         with _lock:
-            crack_state["stage"] = etage["name"]
+            crack_state["stage"] = stage["name"]
             crack_state["stage_num"] = i
             crack_state["tested"] = 0
             crack_state["total"] = 0
             crack_state["candidate"] = ""
-            crack_state["streaming"] = (etage["type"] == "rules")
+            crack_state["streaming"] = (stage["type"] == "rules")
             crack_state["time_gauge"] = est_temps
             crack_state["time_total"] = 3600 if est_temps else 0
             crack_state["time_elapsed"] = 0
@@ -348,7 +348,7 @@ def _run(pcap, bssid, network, wordlist):
             aircrack_stdin = _head.stdout
             cmd = ["aircrack-ng", "-w", "-", "-l", keyfile, "-b", bssid, pcap]
         elif wl == "TEMPS":
-            if etage["source"] == "john_inc":
+            if stage["source"] == "john_inc":
                 src = ["john", "--stdout", "--incremental=ASCII"]
             else:
                 src = ["shuf", WORDLISTS["rockyou"]]
@@ -375,13 +375,13 @@ def _run(pcap, bssid, network, wordlist):
             return
 
         if est_temps:
-            fin = time.time() + 3600
-            def _horloge(p, src_proc, fin):
+            deadline = time.time() + 3600
+            def _clock(p, src_proc, deadline):
                 while p.poll() is None:
-                    reste = fin - time.time()
+                    remaining = deadline - time.time()
                     with _lock:
-                        crack_state["time_elapsed"] = max(0, min(3600, int(3600 - reste)))
-                    if reste <= 0:
+                        crack_state["time_elapsed"] = max(0, min(3600, int(3600 - remaining)))
+                    if remaining <= 0:
                         for q in (p, src_proc):
                             try:
                                 q.terminate()
@@ -389,7 +389,7 @@ def _run(pcap, bssid, network, wordlist):
                                 pass
                         break
                     time.sleep(1)
-            threading.Thread(target=_horloge, args=(_proc, _john, fin), daemon=True).start()
+            threading.Thread(target=_clock, args=(_proc, _john, deadline), daemon=True).start()
 
         buf = ""
         while True:
@@ -427,13 +427,13 @@ def _run(pcap, bssid, network, wordlist):
                 crack_state["key"] = key
                 crack_state["etape_echec"] = i
                 crack_state["robustness"] = _robustness_score(i, crack_state["stage_total"])
-                crack_state["log"].append({"num": i, "name": etage["name"], "result": "cracked"})
+                crack_state["log"].append({"num": i, "name": stage["name"], "result": "cracked"})
                 crack_state["message"] = "Cracked"
             _save_verdict(bssid, "cracked", i)
             return
 
         with _lock:
-            crack_state["log"].append({"num": i, "name": etage["name"], "result": "not found"})
+            crack_state["log"].append({"num": i, "name": stage["name"], "result": "not found"})
 
     with _lock:
         crack_state["active"] = False
@@ -445,15 +445,15 @@ def _run(pcap, bssid, network, wordlist):
             crack_state["message"] = "Exhausted"
             _save_verdict(bssid, "robust")
 
-def _robustness_score(etage_echec, total):
+def _robustness_score(failed_stage, total):
     """Robustness = the stage that cracked the key. Earlier stage = weaker key."""
-    if etage_echec is None:
+    if failed_stage is None:
         return {
             "label": "Robust",
             "level": "ok",
             "detail": "Key resisted every offline cracking stage.",
         }
-    libelles = {
+    labels = {
         1: ("Critical",  "Factory-default / vendor-pattern key, recovered instantly."),
         2: ("Critical",  "Key derived from the network name itself."),
         3: ("Very weak", "Key found in a database of already-cracked WPA keys."),
@@ -464,27 +464,27 @@ def _robustness_score(etage_echec, total):
         8: ("Moderate",  "Key recovered by a short brute-force pass (under 1h)."),
         9: ("Moderate",  "Key found in the rockyou wordlist."),
     }
-    label, detail = libelles.get(etage_echec, ("Weak", "Key recovered by an early stage."))
+    label, detail = labels.get(failed_stage, ("Weak", "Key recovered by an early stage."))
     return {
         "label": label,
         "level": "risque",
         "detail": detail,
-        "etage": etage_echec,
+        "stage": failed_stage,
         "total": total,
     }
 
-def _parser(ligne):
-    m = RE_TESTES.search(ligne)
+def _parser(line):
+    m = RE_TESTES.search(line)
     if m:
         with _lock:
             crack_state["tested"] = int(m.group(1))
             crack_state["total"] = int(m.group(2))
             crack_state["speed"] = float(m.group(3))
-    m = RE_CANDIDAT.search(ligne)
+    m = RE_CANDIDAT.search(line)
     if m:
         with _lock:
             crack_state["candidate"] = m.group(1).strip()
-    m = RE_TROUVE.search(ligne)
+    m = RE_TROUVE.search(line)
     if m:
         with _lock:
             crack_state["found"] = True

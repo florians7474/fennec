@@ -11,11 +11,11 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+    .topbar { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
              background:#161b22; border-bottom:1px solid #30363d; }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
-    .liste { flex:1 1 auto; overflow-y:auto; padding:10px 12px; }
+    .title { font-size:16px; font-weight:600; flex:1; }
+    .list { flex:1 1 auto; overflow-y:auto; padding:10px 12px; }
     .row { display:flex; align-items:center; gap:10px; padding:9px 11px; margin-bottom:7px;
            background:#161b22; border:1px solid #30363d; border-radius:9px; }
     .info { flex:1; min-width:0; }
@@ -30,12 +30,12 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/hugin">&larr;</a>
-    <div class="titre">Activity</div>
+    <div class="title">Activity</div>
   </div>
 
-  <div class="liste">
+  <div class="list">
     {% if runs %}
       {% for r in runs %}
       <div class="row">

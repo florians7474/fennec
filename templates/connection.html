@@ -11,21 +11,21 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .barre {
+    .topbar {
       height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .titre { font-size:16px; font-weight:600; flex:1; }
-    .etatconn { flex:0 0 auto; font-size:12px; padding:10px 14px; background:#10151c; }
-    .etatconn b { color:#28c0d4; }
-    .liste { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
-    .ligne {
+    .title { font-size:16px; font-weight:600; flex:1; }
+    .connstate { flex:0 0 auto; font-size:12px; padding:10px 14px; background:#10151c; }
+    .connstate b { color:#28c0d4; }
+    .list { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
+    .line {
       display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:8px;
       background:#161b22; border:1px solid #30363d; border-radius:10px;
     }
-    .ligne.actuel { border-color:#28c0d4; }
-    .infos { flex:1; min-width:0; }
+    .line.current { border-color:#28c0d4; }
+    .info { flex:1; min-width:0; }
     .rnom { font-size:14px; font-weight:600; }
     .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; }
     .btn { border:none; border-radius:8px; font-size:13px; font-weight:600; padding:8px 14px; text-decoration:none; white-space:nowrap; }
@@ -40,24 +40,24 @@
   </style>
 </head>
 <body>
-  <div class="barre">
+  <div class="topbar">
     <a class="back" href="/">&larr;</a>
-    <div class="titre">Network connection</div>
+    <div class="title">Network connection</div>
   </div>
 
-  <div class="etatconn">
-    {% if conn and conn.type == 'ethernet' %}Connected via <b>Ethernet</b>{% if actuel %} &middot; Wi-Fi: {{ actuel.name }}{% endif %}
-    {% elif actuel %}Connected to <b>{{ actuel.name }}</b>
+  <div class="connstate">
+    {% if conn and conn.type == 'ethernet' %}Connected via <b>Ethernet</b>{% if current %} &middot; Wi-Fi: {{ current.name }}{% endif %}
+    {% elif current %}Connected to <b>{{ current.name }}</b>
     {% else %}Not connected{% endif %}
   </div>
 
   {% if err %}<div class="err">{{ err }}</div>{% endif %}
 
-  <div class="liste">
-    {% if reseaux %}
-      {% for r in reseaux %}
-      <div class="ligne {{ 'actuel' if r.connected }}">
-        <div class="infos">
+  <div class="list">
+    {% if networks %}
+      {% for r in networks %}
+      <div class="line {{ 'current' if r.connected }}">
+        <div class="info">
           <div class="rnom">{{ r.name }}</div>
           <div class="rbssid">{{ r.bssid }}</div>
         </div>
@@ -78,13 +78,13 @@
 
   <script>
     (function(){
-      var liste = document.querySelector('.liste');
-      if(!liste) return;
+      var list = document.querySelector('.list');
+      if(!list) return;
       var key = 'scroll:' + location.pathname;
-      try { var y = sessionStorage.getItem(key); if (y !== null) liste.scrollTop = parseInt(y,10); } catch(e){}
-      liste.addEventListener('click', function(e){
+      try { var y = sessionStorage.getItem(key); if (y !== null) list.scrollTop = parseInt(y,10); } catch(e){}
+      list.addEventListener('click', function(e){
         if(!e.target.closest('a')) return;
-        try { sessionStorage.setItem(key, liste.scrollTop); } catch(e){}
+        try { sessionStorage.setItem(key, list.scrollTop); } catch(e){}
       });
     })();
   </script>

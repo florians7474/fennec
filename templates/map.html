@@ -109,16 +109,16 @@
     const marqueurs = [];
     let mode = 'status';  // 'status' | 'risk'
 
-    function couleurPour(p) {
+    function colorFor(p) {
       if (mode === 'risk') return RISK[p.risk] || COUL_VU;
       return p.autorise ? COUL_OK : (p.handshake ? COUL_HS : COUL_VU);
     }
 
     points.forEach((p, i) => {
-      const couleur = couleurPour(p);
+      const color = colorFor(p);
       const rayon = (p.autorise || p.handshake) ? 9 : 6;
       const m = L.circleMarker([p.lat, p.lon], {
-        radius: rayon, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
+        radius: rayon, color: color, weight: 2, fillColor: color, fillOpacity: 0.75
       }).addTo(map);
       m.bindPopup(popupContent(p, i));
       marqueurs.push(m);
@@ -126,7 +126,7 @@
 
     function recolor() {
       points.forEach((p, i) => {
-        const c = couleurPour(p);
+        const c = colorFor(p);
         marqueurs[i].setStyle({ color: c, fillColor: c });
       });
       document.getElementById('leg-status').style.display = mode === 'status' ? '' : 'none';
@@ -153,15 +153,15 @@
     function addToWhitelist(i) {
       const p = points[i];
       const m = marqueurs[i];
-      const corps = new URLSearchParams({ name: p.name, bssid: p.bssid });
+      const body = new URLSearchParams({ name: p.name, bssid: p.bssid });
       fetch('/whitelist/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: corps.toString()
+        body: body.toString()
       }).then(r => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         p.autorise = true;
-        const c = couleurPour(p);
+        const c = colorFor(p);
         m.setStyle({ color: c, fillColor: c });
         m.setPopupContent(popupContent(p, i));
       }).catch(() => {
@@ -178,26 +178,26 @@
     // points, dropping far outliers (a lone network seen elsewhere, or a GPS
     // glitch) that would otherwise zoom the whole view out and push the cluster
     // into a corner.
-    function mediane(arr) {
+    function median(arr) {
       const a = arr.slice().sort((x, y) => x - y);
       const m = Math.floor(a.length / 2);
       return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
     }
-    function pointsCentraux(pts) {
+    function centralPoints(pts) {
       if (pts.length <= 2) return pts;
-      const mlat = mediane(pts.map(p => p.lat)), mlon = mediane(pts.map(p => p.lon));
+      const mlat = median(pts.map(p => p.lat)), mlon = median(pts.map(p => p.lon));
       const d = pts.map(p => Math.hypot(p.lat - mlat, p.lon - mlon));
-      const seuil = Math.max(mediane(d.filter(x => x > 0)) * 5, 0.03);  // ~3 km floor
+      const seuil = Math.max(median(d.filter(x => x > 0)) * 5, 0.03);  // ~3 km floor
       const gardes = pts.filter((p, i) => d[i] <= seuil);
       return gardes.length ? gardes : pts;
     }
-    function ajuster() {
+    function fit() {
       map.invalidateSize();
       if (!points.length) { map.setView([48.8566, 2.3522], 15); return; }
-      const c = pointsCentraux(points);
+      const c = centralPoints(points);
       map.fitBounds(c.map(p => [p.lat, p.lon]), { padding: [30, 30], maxZoom: 17 });
     }
-    setTimeout(ajuster, 150);
+    setTimeout(fit, 150);
 
     // Live GPS indicator so the fix can be checked on the device (e.g. in the
     // car) without SSH. Needs Pwnagotchi running (bettercap provides the GPS).
