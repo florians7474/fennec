@@ -7,7 +7,10 @@ files are required: the app degrades gracefully when they are absent, so this
 runs anywhere (including CI).
 """
 
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import app
 
