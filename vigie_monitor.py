@@ -22,7 +22,7 @@ import time
 from collections import deque, OrderedDict
 
 monitor_state = {
-    "actif": False,
+    "active": False,
     "depuis": None,
     "hotes": {},                 # ip -> OrderedDict(domain -> ts)
     "brut": deque(maxlen=250),   # last raw lines (debugging)
@@ -144,7 +144,7 @@ def _read(proc):
 def start(prefix=None):
     """Start the script (bettercap + tshark) and the reader thread."""
     global _proc, _thread
-    if monitor_state["actif"]:
+    if monitor_state["active"]:
         return True
     try:
         _proc = subprocess.Popen(
@@ -159,7 +159,7 @@ def start(prefix=None):
     global _force_dns
     _force_dns = False
     with _lock:
-        monitor_state["actif"] = True
+        monitor_state["active"] = True
         monitor_state["depuis"] = time.time()
         monitor_state["hotes"] = {}
         _vpn.clear()
@@ -189,22 +189,22 @@ def stop():
     global _force_dns
     _force_dns = False   # the monitor script clears the block when it exits
     with _lock:
-        monitor_state["actif"] = False
+        monitor_state["active"] = False
 
 
-def forcer_dns(actif):
+def forcer_dns(active):
     """Toggle 'Force DNS' (block DoT/DoH) via the sudo helper. Only meaningful
     while the Watch is running (the block sits on the MITM-forwarded traffic)."""
     global _force_dns
-    if not monitor_state["actif"]:
+    if not monitor_state["active"]:
         return False
     try:
         subprocess.run(
             ["sudo", "-n", "/usr/local/bin/fennec-dns-force",
-             "on" if actif else "off"],
+             "on" if active else "off"],
             timeout=10,
         )
-        _force_dns = bool(actif)
+        _force_dns = bool(active)
     except Exception:
         pass
     return _force_dns
@@ -237,5 +237,5 @@ def snapshot():
         hotes = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
                  for ip, d in monitor_state["hotes"].items()}
         brut = list(monitor_state["brut"])[-60:]
-    return {"actif": monitor_state["actif"], "force": _force_dns,
+    return {"active": monitor_state["active"], "force": _force_dns,
             "hotes": hotes, "brut": brut}
