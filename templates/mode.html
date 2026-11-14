@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>{{ infos.nom }}</title>
+  <title>{{ infos.name }}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -46,13 +46,13 @@
 <body>
   <div class="barre">
     <a class="back" href="/">&larr;</a>
-    <img class="tete" src="/static/{{ cle }}.png" alt="" onerror="this.style.display='none'">
-    <div class="titre">{{ infos.nom }}</div>
+    <img class="tete" src="/static/{{ key }}.png" alt="" onerror="this.style.display='none'">
+    <div class="titre">{{ infos.name }}</div>
     <span class="pastille {{ 'on' if active }}"></span>
     {% if active %}
-      <a class="btn stop" href="/toggle/{{ cle }}">Stop</a>
+      <a class="btn stop" href="/toggle/{{ key }}">Stop</a>
     {% else %}
-      <a class="btn go" href="/toggle/{{ cle }}">Start</a>
+      <a class="btn go" href="/toggle/{{ key }}">Start</a>
     {% endif %}
   </div>
 
@@ -72,7 +72,7 @@
       {% if reseau_scan.type %}
         <div class="vide">
           Bjorn scans the network this Pi is connected to:<br>
-          <b>{{ reseau_scan.nom }}</b>{% if reseau_scan.sous_reseau %} &middot; {{ reseau_scan.sous_reseau }}{% endif %}<br><br>
+          <b>{{ reseau_scan.name }}</b>{% if reseau_scan.sous_reseau %} &middot; {{ reseau_scan.sous_reseau }}{% endif %}<br><br>
           Press "Start" to scan and probe the devices on it.
         </div>
       {% else %}

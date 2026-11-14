@@ -46,8 +46,8 @@
   </div>
 
   <div class="etatconn">
-    {% if conn and conn.type == 'ethernet' %}Connected via <b>Ethernet</b>{% if actuel %} &middot; Wi-Fi: {{ actuel.nom }}{% endif %}
-    {% elif actuel %}Connected to <b>{{ actuel.nom }}</b>
+    {% if conn and conn.type == 'ethernet' %}Connected via <b>Ethernet</b>{% if actuel %} &middot; Wi-Fi: {{ actuel.name }}{% endif %}
+    {% elif actuel %}Connected to <b>{{ actuel.name }}</b>
     {% else %}Not connected{% endif %}
   </div>
 
@@ -58,7 +58,7 @@
       {% for r in reseaux %}
       <div class="ligne {{ 'actuel' if r.connected }}">
         <div class="infos">
-          <div class="rnom">{{ r.nom }}</div>
+          <div class="rnom">{{ r.name }}</div>
           <div class="rbssid">{{ r.bssid }}</div>
         </div>
         {% if r.connected %}

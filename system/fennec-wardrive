@@ -104,7 +104,7 @@ def main():
             cur = store.get(bssid)
             if cur is None:
                 store[bssid] = {
-                    "nom": essid, "bssid": bssid, "channel": chan,
+                    "name": essid, "bssid": bssid, "channel": chan,
                     "enc": enc, "wps": wps, "rssi": rssi,
                     # incremental weighted centroid -> estimated AP position
                     "slat": lat * w, "slon": lon * w, "sw": w, "n": 1,
@@ -114,8 +114,8 @@ def main():
                 changed = True
             else:
                 cur["last"] = now
-                if essid and not cur.get("nom"):
-                    cur["nom"] = essid
+                if essid and not cur.get("name"):
+                    cur["name"] = essid
                 if enc:
                     cur["enc"] = enc
                 if wps:

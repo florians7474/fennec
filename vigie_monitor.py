@@ -58,12 +58,12 @@ def _rdns(ip):
     """Reverse DNS of a destination IP (cached), else the raw IP."""
     if ip in _cache_rdns:
         return _cache_rdns[ip]
-    nom = None
+    name = None
     try:
-        nom = socket.gethostbyaddr(ip)[0].lower().rstrip(".")
+        name = socket.gethostbyaddr(ip)[0].lower().rstrip(".")
     except Exception:
-        nom = None
-    val = nom if (nom and not _IGNORER_DOM.search(nom)) else ip
+        name = None
+    val = name if (name and not _IGNORER_DOM.search(name)) else ip
     _cache_rdns[ip] = val
     return val
 
@@ -119,11 +119,11 @@ def _process(ligne):
     # Neither SNI nor DNS (encrypted handshake, e.g. QUIC/ECH): record the destination.
     if not _RE_IP.match(dst) or _is_private(dst):
         return
-    cle = (src, dst)
+    key = (src, dst)
     now = time.time()
-    if now - _seen_dst.get(cle, 0) < 3:   # anti-flood: once / 3s per (src,dst)
+    if now - _seen_dst.get(key, 0) < 3:   # anti-flood: once / 3s per (src,dst)
         return
-    _seen_dst[cle] = now
+    _seen_dst[key] = now
     if len(_seen_dst) > 5000:
         _seen_dst.clear()
     _record(src, _rdns(dst))
@@ -213,8 +213,8 @@ def forcer_dns(active):
 def vpn_info(cles):
     """VPN tunnel detected for one of these keys (device IP), else None."""
     with _lock:
-        for cle in cles:
-            v = _vpn.get(cle)
+        for key in cles:
+            v = _vpn.get(key)
             if v:
                 return {"type": v["type"], "endpoint": v["endpoint"], "ip": v["ip"]}
     return None
@@ -224,8 +224,8 @@ def timestamps(cles):
     """Domains + last timestamp for one or more keys (IP)."""
     out = {}
     with _lock:
-        for cle in cles:
-            for dom, ts in monitor_state["hotes"].get(cle, {}).items():
+        for key in cles:
+            for dom, ts in monitor_state["hotes"].get(key, {}).items():
                 if dom not in out or ts > out[dom]:
                     out[dom] = ts
     return out

@@ -66,7 +66,7 @@
 <body>
   <div class="barre">
     <a class="back" href="/vigie">&larr;</a>
-    <div class="titre" id="titre">{{ d.nom }}</div>
+    <div class="titre" id="titre">{{ d.name }}</div>
     {% if d.mac %}<button class="edit" onclick="openName()" title="Rename">&#9998;</button>{% endif %}
     <span class="type" id="type">…</span>
   </div>
@@ -99,7 +99,7 @@
     <div class="map">
       <h3>Device name</h3>
       <input id="champNom" type="text" maxlength="40" placeholder="e.g. Aude's iPhone"
-             value="{{ d.nom if d.nom not in ['Unknown device', 'This Pi', 'Router'] else '' }}">
+             value="{{ d.name if d.name not in ['Unknown device', 'This Pi', 'Router'] else '' }}">
       <div class="lignes">
         <button type="button" class="annuler" onclick="closeName()">Cancel</button>
         <button type="button" class="valider" onclick="saveName()">Save</button>
@@ -184,18 +184,18 @@
                          var c = document.getElementById('champNom'); c.focus(); c.select(); }
     function closeName(){ document.getElementById('modalNom').classList.remove('on'); }
     function saveName(){
-      var nom = document.getElementById('champNom').value;
-      var body = new URLSearchParams(); body.set('nom', nom);
+      var name = document.getElementById('champNom').value;
+      var body = new URLSearchParams(); body.set('name', name);
       fetch('/vigie/rename/' + encodeURIComponent(MAC), { method:'POST', body: body })
         .then(function(r){ return r.json(); })
         .then(function(j){
-          var newNom = j.nom || VENDOR || 'Unknown device';
+          var newNom = j.name || VENDOR || 'Unknown device';
           document.getElementById('titre').textContent = newNom;
           // update the list cache so the name shows on return, without a rescan
           try {
             var c = JSON.parse(sessionStorage.getItem('vigie_devices') || '[]');
             c.forEach(function(d){
-              if(d.mac && MAC && d.mac.toUpperCase() === MAC.toUpperCase()){ d.nom = newNom; }
+              if(d.mac && MAC && d.mac.toUpperCase() === MAC.toUpperCase()){ d.name = newNom; }
             });
             sessionStorage.setItem('vigie_devices', JSON.stringify(c));
           } catch(e){}

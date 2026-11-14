@@ -22,12 +22,12 @@ crack_state = {
     "total": 0,
     "speed": 0.0,
     "candidate": "",
-    "trouve": False,
-    "cle": None,
+    "found": False,
+    "key": None,
     "finished": False,
     "message": "",
     "log": [],
-    "enregistree": False,
+    "saved": False,
     "robustness": None,
     "no_handshake": False,
     "stopped": False,
@@ -47,9 +47,9 @@ def _reset(bssid, network):
         "active": True, "bssid": bssid, "network": network,
         "stage": None, "stage_num": 0, "stage_total": 1,
         "tested": 0, "total": 0, "speed": 0.0, "candidate": "",
-        "trouve": False, "cle": None, "finished": False, "message": "",
+        "found": False, "key": None, "finished": False, "message": "",
         "log": [],
-        "enregistree": False,
+        "saved": False,
         "no_handshake": False,
         "stopped": False,
     })
@@ -172,15 +172,15 @@ def generate_essid(file, essid):
     return len(mots)
 
 STAGES = [
-    {"nom": "factory default keys", "type": "constructeur"},
-    {"nom": "ESSID profiling (custom name)", "type": "essid"},
-    {"nom": "real cracked keys (probable-wpa)", "type": "wordlist", "file": "/usr/share/wordlists/probable-wpa-top4800.txt"},
-    {"nom": "birth dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generate_dates},
-    {"nom": "10k common passwords", "type": "wordlist", "file": "/usr/share/wordlists/10k-common.txt"},
-    {"nom": "keyboard patterns", "type": "genere", "generateur": generate_keyboard},
-    {"nom": "common + mutation rules", "type": "rules", "file": "/usr/share/wordlists/10k-common.txt"},
-    {"nom": "John incremental (1h)", "type": "temps", "source": "john_inc"},
-    {"nom": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
+    {"name": "factory default keys", "type": "constructeur"},
+    {"name": "ESSID profiling (custom name)", "type": "essid"},
+    {"name": "real cracked keys (probable-wpa)", "type": "wordlist", "file": "/usr/share/wordlists/probable-wpa-top4800.txt"},
+    {"name": "birth dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generate_dates},
+    {"name": "10k common passwords", "type": "wordlist", "file": "/usr/share/wordlists/10k-common.txt"},
+    {"name": "keyboard patterns", "type": "genere", "generateur": generate_keyboard},
+    {"name": "common + mutation rules", "type": "rules", "file": "/usr/share/wordlists/10k-common.txt"},
+    {"name": "John incremental (1h)", "type": "temps", "source": "john_inc"},
+    {"name": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
 ]
 
 def a_un_handshake(pcap, bssid=None):
@@ -268,7 +268,7 @@ def _run(pcap, bssid, network, wordlist):
             cles = factory_keys(network, bssid)
             if not cles:
                 with _lock:
-                    crack_state["log"].append({"num": i, "nom": etage["nom"], "result": "skipped"})
+                    crack_state["log"].append({"num": i, "name": etage["name"], "result": "skipped"})
                 continue
             wl = "/tmp/raton_stage_const.txt"
             with open(wl, "w") as f:
@@ -278,7 +278,7 @@ def _run(pcap, bssid, network, wordlist):
             n = generate_essid(seed, network)
             if n == 0:
                 with _lock:
-                    crack_state["log"].append({"num": i, "nom": etage["nom"], "result": "skipped"})
+                    crack_state["log"].append({"num": i, "name": etage["name"], "result": "skipped"})
                 continue
             gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raton_essid_gen.py")
             wl = "/dev/shm/raton_essid.txt"
@@ -304,7 +304,7 @@ def _run(pcap, bssid, network, wordlist):
 
         est_temps = (etage["type"] == "temps")
         with _lock:
-            crack_state["stage"] = etage["nom"]
+            crack_state["stage"] = etage["name"]
             crack_state["stage_num"] = i
             crack_state["tested"] = 0
             crack_state["total"] = 0
@@ -412,28 +412,28 @@ def _run(pcap, bssid, network, wordlist):
             except Exception:
                 pass
 
-        cle = None
+        key = None
         try:
             with open(keyfile) as f:
-                cle = f.read().strip()
+                key = f.read().strip()
         except OSError:
             pass
 
-        if cle:
+        if key:
             with _lock:
                 crack_state["active"] = False
                 crack_state["finished"] = True
-                crack_state["trouve"] = True
-                crack_state["cle"] = cle
+                crack_state["found"] = True
+                crack_state["key"] = key
                 crack_state["etape_echec"] = i
                 crack_state["robustness"] = _robustness_score(i, crack_state["stage_total"])
-                crack_state["log"].append({"num": i, "nom": etage["nom"], "result": "cracked"})
+                crack_state["log"].append({"num": i, "name": etage["name"], "result": "cracked"})
                 crack_state["message"] = "Cracked"
             _save_verdict(bssid, "cracked", i)
             return
 
         with _lock:
-            crack_state["log"].append({"num": i, "nom": etage["nom"], "result": "not found"})
+            crack_state["log"].append({"num": i, "name": etage["name"], "result": "not found"})
 
     with _lock:
         crack_state["active"] = False
@@ -487,8 +487,8 @@ def _parser(ligne):
     m = RE_TROUVE.search(ligne)
     if m:
         with _lock:
-            crack_state["trouve"] = True
-            crack_state["cle"] = m.group(1)
+            crack_state["found"] = True
+            crack_state["key"] = m.group(1)
 
 def stop():
     global _proc
@@ -511,4 +511,4 @@ if __name__ == "__main__":
         print(f"\r[{e['stage']}] {e['tested']}/{e['total']} {e['speed']} k/s  try={e['candidate']}   ", end="", flush=True)
         time.sleep(0.5)
     print()
-    print("RESULT:", crack_state["message"], "KEY=", crack_state["cle"])
+    print("RESULT:", crack_state["message"], "KEY=", crack_state["key"])

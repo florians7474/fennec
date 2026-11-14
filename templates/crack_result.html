@@ -47,7 +47,7 @@
     .solide { color:#2ea043; }
     .neutre { color:#8b949e; }
     .detail { font-size:13px; color:#c9d1d9; line-height:1.6; max-width:360px; }
-    .detail .cle { font-family:ui-monospace,Consolas,monospace; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:2px 8px; }
+    .detail .key { font-family:ui-monospace,Consolas,monospace; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:2px 8px; }
     .stopbtn { display:block; margin:14px auto 0; border:1px solid #da3633; color:#da3633;
                background:none; border-radius:8px; padding:9px 20px; font-size:13px;
                font-weight:600; cursor:pointer; }
@@ -61,7 +61,7 @@
   </div>
 
   <div class="corps">
-    <div class="target">Network tested: <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
+    <div class="target">Network tested: <b>{{ c.name }}</b> &middot; {{ c.bssid }}</div>
 
     <div id="live">
       <div class="log" id="log"></div>
@@ -120,7 +120,7 @@
           var cls = s.result==='cracked' ? 'ok' : (s.result==='skipped' ? 'skip' : 'no');
           var ico = s.result==='cracked' ? '✓' : (s.result==='skipped' ? '⊘' : '✗');
           var lab = s.result==='cracked' ? 'cracked' : (s.result==='skipped' ? 'not applicable' : 'not found');
-          jhtml += '<div class="jline '+cls+'"><span class="ico">'+ico+'</span><span class="txt">Stage '+s.num+': '+s.nom+' — '+lab+'</span></div>';
+          jhtml += '<div class="jline '+cls+'"><span class="ico">'+ico+'</span><span class="txt">Stage '+s.num+': '+s.name+' — '+lab+'</span></div>';
         });
         document.getElementById('log').innerHTML = jhtml;
 
@@ -138,12 +138,12 @@
             d.innerHTML =
               'This capture has no complete handshake, so there was nothing to test.' +
               '<br><br>Let Pwnagotchi keep running to capture a full handshake for this network, then run the test again.';
-          } else if(e.trouve){
+          } else if(e.found){
             v.textContent = rob.label || 'Weak key';
             v.className = 'verdict faible';
             d.innerHTML =
               (rob.detail || 'This key falls to a dictionary.') +
-              '<br><br>Key found:<br><span class="cle">' + e.cle + '</span>' +
+              '<br><br>Key found:<br><span class="key">' + e.key + '</span>' +
               '<br><br>Change it to something long and random.' +
               '<br><br><span style="color:#2ea043;">&#10003; Key saved to Allowed networks.</span>';
           } else if(e.stopped){

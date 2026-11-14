@@ -55,7 +55,7 @@
     {% for r in captures %}
     <div class="ligne {{ '' if r.bssid in seen else 'verrou' }}">
       <div class="infos">
-        <div class="rnom">{{ r.nom }}</div>
+        <div class="rnom">{{ r.name }}</div>
         <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
       </div>
       {% if r.bssid in seen %}

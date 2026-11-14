@@ -43,9 +43,9 @@
       background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#e6edf3;
       padding:8px 10px; font-size:13px;
     }
-    .ajout input[name="nom"] { width:120px; }
+    .ajout input[name="name"] { width:120px; }
     .ajout input[name="bssid"] { flex:1 1 200px; font-family:ui-monospace,Consolas,monospace; }
-    .ajout input[name="cle"] { flex:1 1 200px; }
+    .ajout input[name="key"] { flex:1 1 200px; }
     .ajout button {
       border:none; border-radius:8px; background:#2ea043; color:#fff;
       font-size:13px; font-weight:600; padding:9px 14px; cursor:pointer;
@@ -92,12 +92,12 @@
       {% for r in reseaux %}
       <div class="ligne">
         <div class="infos">
-          <div class="rnom">{{ r.nom }}</div>
+          <div class="rnom">{{ r.name }}</div>
           <div class="rbssid">{{ r.bssid }}</div>
-          {% if r.cle %}<div class="rcle ok">&#128273; key saved</div>{% else %}<div class="rcle no">no key</div>{% endif %}
+          {% if r.key %}<div class="rcle ok">&#128273; key saved</div>{% else %}<div class="rcle no">no key</div>{% endif %}
         </div>
                 <a class="editer" href="#"
-           onclick='openEdit("{{ r.bssid }}", {{ r.nom|tojson }}, {{ (r.cle or "")|tojson }}); return false;'
+           onclick='openEdit("{{ r.bssid }}", {{ r.name|tojson }}, {{ (r.key or "")|tojson }}); return false;'
            title="Edit">&#9998;</a>
         <a class="retirer" href="/whitelist/remove/{{ r.bssid }}" title="Remove">&times;</a>
       </div>
@@ -108,9 +108,9 @@
   </div>
 
   <form class="ajout" method="post" action="/whitelist/add">
-    <input type="text" name="nom" placeholder="Name (e.g. Home)">
+    <input type="text" name="name" placeholder="Name (e.g. Home)">
     <input type="text" name="bssid" placeholder="AA:BB:CC:DD:EE:FF" required>
-    <input type="text" name="cle" placeholder="Wi-Fi key (optional)">
+    <input type="text" name="key" placeholder="Wi-Fi key (optional)">
     <button type="submit">Add</button>
   </form>
 
@@ -123,8 +123,8 @@
       <h3>Edit network</h3>
       <div class="sous" id="editBssidLabel"></div>
       <input type="hidden" name="bssid" id="editBssid">
-      <input type="text" name="nom" id="editNom" placeholder="Name">
-      <input type="text" name="cle" id="editCle" placeholder="Wi-Fi key (empty = remove)">
+      <input type="text" name="name" id="editNom" placeholder="Name">
+      <input type="text" name="key" id="editCle" placeholder="Wi-Fi key (empty = remove)">
       <div class="lignes">
         <button type="button" class="annuler" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="valider">Save</button>
@@ -148,11 +148,11 @@
     function closeConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
     function confirmAction(){ if(confirmUrl){ window.location.href = confirmUrl; } }
 
-    function openEdit(bssid, nom, cle){
+    function openEdit(bssid, name, key){
       document.getElementById('editBssid').value = bssid;
       document.getElementById('editBssidLabel').textContent = bssid;
-      document.getElementById('editNom').value = nom || '';
-      document.getElementById('editCle').value = cle || '';
+      document.getElementById('editNom').value = name || '';
+      document.getElementById('editCle').value = key || '';
       document.getElementById('modalEdit').classList.add('on');
     }
     function closeEdit(){

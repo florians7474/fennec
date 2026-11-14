@@ -73,7 +73,7 @@
     .hugin { background:linear-gradient(150deg,#a78bfa,#6d4fd0); }
     .echo  { background:linear-gradient(150deg,#2a3566,#141c33); }
     .hugin img { width:70px; height:70px; }
-    .nom { margin-top:7px; font-size:12px; font-weight:600; color:#e6edf3; }
+    .name { margin-top:7px; font-size:12px; font-weight:600; color:#e6edf3; }
     .etat { display:flex; align-items:center; gap:5px; margin-top:2px; font-size:10px; color:#8b949e; }
     .pastille { width:6px; height:6px; border-radius:50%; background:#5a6673; }
     .on .pastille { background:#2ea043; box-shadow:0 0 6px #2ea043; }
@@ -140,7 +140,7 @@
       </svg>
       {% endif %}
       </span>
-      <span id="conn-nom">{{ connection.nom }}</span>
+      <span id="conn-name">{{ connection.name }}</span>
     </a>
     <a class="reglages" href="/whitelist" title="Allowed networks">
       <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -159,37 +159,37 @@
 
     <a class="app {{ 'on' if active=='pwnagotchi' }}" href="/mode/pwnagotchi">
       <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
-      <div class="nom">Pwnagotchi</div>
+      <div class="name">Pwnagotchi</div>
       <div class="etat"><span class="pastille"></span>{{ 'active' if active=='pwnagotchi' else 'stopped' }}</div>
     </a>
 
     <a class="app" href="/map">
       <div class="icone echo"><img src="/static/echo.png" alt="Echo"></div>
-      <div class="nom">Echo</div>
+      <div class="name">Echo</div>
       <div class="etat">{{ echo_count }} mapped</div>
     </a>
 
     <a class="app {{ 'on' if active=='cracking' }}" href="/mode/cracking">
       <div class="icone cass"><img src="/static/raton.png" alt="Sly"></div>
-      <div class="nom">Sly</div>
+      <div class="name">Sly</div>
       <div class="etat"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
     </a>
 
     <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
       <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
-      <div class="nom">Bjorn</div>
+      <div class="name">Bjorn</div>
       <div class="etat"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
     </a>
 
     <a class="app" id="hugin-tile" href="/hugin">
       <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
-      <div class="nom">Hugin</div>
+      <div class="name">Hugin</div>
       <div class="etat"><span class="pastille"></span><span id="hugin-etat">Metasploit</span></div>
     </a>
 
     <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
       <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
-      <div class="nom">Sentry</div>
+      <div class="name">Sentry</div>
       <div class="etat"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
     </a>
 
@@ -302,14 +302,14 @@
       var WIFI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="0.6"/></svg>';
       var badge = document.getElementById('conn-badge');
       var ico = document.getElementById('conn-ico');
-      var nom = document.getElementById('conn-nom');
+      var name = document.getElementById('conn-name');
       if (!badge) return;
       function refresh(){
         fetch('/connection/state', {cache:'no-store'})
           .then(function(r){ return r.json(); })
           .then(function(d){
             ico.innerHTML = (d.type === 'ethernet') ? ETH : WIFI;
-            nom.textContent = d.nom || 'Offline';
+            name.textContent = d.name || 'Offline';
             badge.classList.toggle('ok', !!d.type);
           })
           .catch(function(){});

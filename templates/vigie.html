@@ -136,7 +136,7 @@
         var a = document.createElement('a');
         a.className = 'lien'; a.href = '/vigie/device/' + d.ip;
         a.innerHTML = '<span class="ico ' + d.type + '">' + iconSvg(d.type) + '</span>' +
-          '<div class="infos"><div class="rnom">' + esc(d.nom) + '</div>' +
+          '<div class="infos"><div class="rnom">' + esc(d.name) + '</div>' +
           '<div class="rbssid">' + esc(d.ip) + (d.mac ? ' · ' + esc(d.mac) : '') + '</div></div>';
         row.appendChild(a);
 

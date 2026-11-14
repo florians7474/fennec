@@ -77,7 +77,7 @@
     {% for r in reseaux %}
     <div class="ligne">
       <div class="infos">
-        <div class="rnom">{{ r.nom }}</div>
+        <div class="rnom">{{ r.name }}</div>
         <div class="rbssid">{{ r.bssid }}</div>
       </div>
       {% if r.signal is defined and r.signal is not none %}<span class="sig">{{ r.signal }} dBm</span>{% endif %}
@@ -85,7 +85,7 @@
         <span class="seen" title="Already allowed">&check;</span>
       {% else %}
         <form method="post" action="/whitelist/add">
-          <input type="hidden" name="nom" value="{{ r.nom }}">
+          <input type="hidden" name="name" value="{{ r.name }}">
           <input type="hidden" name="bssid" value="{{ r.bssid }}">
           <input type="hidden" name="back" value="scan">
           <input type="hidden" name="source" value="{{ source }}">
