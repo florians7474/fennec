@@ -369,9 +369,17 @@ console -> fennec, the folder was not).
   interface): while Pwnagotchi runs, the fennec-wardrive service (bound to
   pwnagotchi.service, driven by its tile) polls bettercap's REST API every few
   seconds, reads every AP in range plus the current GPS fix, and appends them to
-  handshakes/wardrive.json (keyed by BSSID, position kept where the signal was
-  strongest; only logged when there is a real fix). The Map merges these as grey
-  "seen" points, deduped by BSSID against the handshake points. Offline tiles:
+  handshakes/wardrive.json (keyed by BSSID; only logged when there is a real
+  fix). It also records WPS and keeps an incremental signal-weighted centroid
+  per BSSID, so a seen AP is plotted at its estimated real location, refined on
+  each pass, not where the Pi stood. The Map merges these as grey "seen" points,
+  deduped by BSSID against the handshake points. Two view modes toggle on screen:
+  Status (whitelist/handshake/seen) and Risk — open/WEP = critical, WPS = weak,
+  WPA2/3 = solid, unknown = grey, coloured only on observed facts. Real
+  crackability overrides the heuristic: Raton persists its outcome per BSSID
+  (raton_verdicts.json, robust/cracked), and the risk view shows that verdict
+  first (robust = solid, cracked = critical), falling back to the heuristic only
+  for untested networks; a captured handshake is treated as WPA2. Offline tiles:
   Fennec serves map tiles from a local cache (tiles/ dir) through a /tiles proxy
   that reads from disk, else fetches from OSM and caches when online, else
   returns a light placeholder; Leaflet is vendored in static/ so the map needs no
