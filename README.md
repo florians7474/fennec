@@ -93,7 +93,9 @@ After the reboot the interface runs full-screen on the touchscreen and is ready 
 
     http://fennec.local:5000/
 
-Click or tap a tile to activate the matching module.
+Click or tap a tile to activate the matching module. The power menu offers lock
+screen (hold to unlock), screen rotation (tap to turn the UI by 90°), reboot and
+shut down.
 
 ## Architecture
 
@@ -106,6 +108,7 @@ Click or tap a tile to activate the matching module.
 - **Hugin**: in-house Bjorn companion (reads Bjorn's CSV/output, Metasploit correlation by CVE and by open service, `.rc` attack plans, msgpack-RPC link to a remote Metasploit — never on the Pi — with run, live sessions and in-session commands)
 - On-screen keyboard for the touchscreen, so any field can be filled without a physical keyboard
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
+- On-screen screen rotation: cycle the UI through 0/90/180/270 from the power menu (portrait and landscape), applied instantly with no reboot and no touch recalibration
 
 ## Roadmap
 
@@ -113,7 +116,8 @@ Click or tap a tile to activate the matching module.
 - [x] Pwnagotchi module (install, control, display)
 - [x] One-command installer (SPI enabled, works on a fresh card in one pass)
 - [x] Touchscreen display and Chromium kiosk auto-starting at boot
-- [x] On-screen power menu: lock screen (nomadic), reboot, shut down
+- [x] On-screen power menu: lock screen (hold to unlock), screen rotation, reboot, shut down
+- [x] On-screen screen rotation (portrait/landscape, instant, no reboot)
 - [x] Bjorn module (install, control, live console)
 - [x] Sly module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)

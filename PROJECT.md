@@ -326,9 +326,26 @@ Notes:
   that never claims GPIO. Without it Bjorn aborts with "GPIO busy" because the
   e-paper driver wants pins the Fennec touchscreen already uses.
 
+## Screen & UI
+- Screen rotation: the power menu has a Rotate button that cycles the UI through
+  0/90/180/270. It is a software rotation — a CSS transform injected into every
+  HTML page by an after_request hook, plus a /rotate/toggle route — so it applies
+  instantly, with no reboot and no touch recalibration (the browser remaps the
+  touch coordinates with the transform). The choice is stored in settings.json
+  (git-ignored, per-device) and survives restarts. In portrait (90/270) the body
+  is pinned to 320x480 so the <html> flex box cannot warp the geometry, the home
+  grid reflows to two columns, and the header drops the network name to keep only
+  the Wi-Fi/Ethernet icon (green connected, grey not) so the power button stays
+  reachable in the narrow header.
+- Lock screen: a full-screen overlay for nomadic use that swallows accidental
+  touches. Unlock is press-and-hold (a bar fills over ~1.2 s) instead of a slide,
+  which is unreliable on the resistive panel.
+
 ## Dev loop
-Edited directly on the Pi and pushed from there.
-Editing any project file: nano ~/console/<file>.
+Changes are committed to this repository; the Pi pulls them with
+`cd ~/console && git pull && sudo systemctl restart fennec`.
+The local checkout on the Pi is still named ~/console (the repo was renamed
+console -> fennec, the folder was not).
 
 ## Other work left (outside Sly)
 - Wi-Fi lock: done. Step 2 (real Connexion via nmcli) and step 3 (Bjorn start
