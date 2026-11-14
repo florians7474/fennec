@@ -1,13 +1,19 @@
 *.bak
 *.pyc
 __pycache__/
-liste_blanche.json
-scan_direct.json
-mes_appareils.json
-noms_appareils.json
-historique_trafic.json
+whitelist.json
+scan_cache.json
+my_devices.json
+device_names.json
+traffic_history.json
 msf_config.json
 hugin_runs.json
 settings.json
 tiles/
 raton_verdicts.json
+# legacy French data-file names (kept ignored for leftover/backup files)
+liste_blanche.json
+scan_direct.json
+mes_appareils.json
+noms_appareils.json
+historique_trafic.json

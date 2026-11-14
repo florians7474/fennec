@@ -10,7 +10,7 @@ Local folder on the Pi: ~/console  (SSH: ssh florian@fennec.local)
 ## Legal scope
 Offensive actions (cracking, Bjorn scan, connecting) are only allowed on
 a user-declared whitelist of networks, identified by BSSID
-(liste_blanche.json, not tracked in git). Pwnagotchi wide capture stays free.
+(whitelist.json, not tracked in git). Pwnagotchi wide capture stays free.
 Ethernet access = implicit authorization (physical act), so the BSSID lock
 only applies to Wi-Fi.
 
@@ -69,10 +69,10 @@ coded in-house.
 - On-screen keyboard (static/keyboard.js): a self-contained touchscreen keyboard
   that pops up on any text field (Wi-Fi key, device rename…), since the kiosk has
   no physical keyboard. Included on the pages that take input.
-- Allowed networks (liste_blanche.json, gitignored): the BSSID whitelist, with
+- Allowed networks (whitelist.json, gitignored): the BSSID whitelist, with
   per-entry key, inline edit, and a Clear all that empties it.
 - Scan page, two tabs:
-  - Direct scan: a live nmcli scan stored as a snapshot (scan_direct.json,
+  - Direct scan: a live nmcli scan stored as a snapshot (scan_cache.json,
     gitignored). "Scan" from Allowed networks runs it; "Rescan" refreshes it;
     Clear all empties the snapshot (it stays empty until the next scan).
   - Spotted by Pwnagotchi: lists the .pcap captures; Clear all deletes them via
@@ -103,7 +103,7 @@ coded in-house.
 - Each device: IP, MAC, vendor. The Pi (own IP) is tagged "This Pi", the default
   gateway "Router"; both are excluded from the unknown count.
 - Mine vs unknown is keyed by MAC (stable across IP changes), stored in
-  mes_appareils.json (gitignored). One tap on an "Unknown" chip marks it mine.
+  my_devices.json (gitignored). One tap on an "Unknown" chip marks it mine.
 - Unknown devices sort to the top; header shows "N devices · M unknown".
 - Scans on open; "Rescan" reloads.
 - Tap a device -> detail (vigie_detail.html): a top-100 TCP port scan
@@ -113,7 +113,7 @@ coded in-house.
   re-sweep the whole subnet; if the cache is empty, the MAC is read from the
   ARP table (ip neigh) so naming and history still work.
 - Rename a device (pencil on the detail): the custom name is saved per network
-  (noms_appareils.json, gitignored), keyed by network id (gateway MAC) + device
+  (device_names.json, gitignored), keyed by network id (gateway MAC) + device
   MAC, so it survives rescans and is scoped to that network. It shows in the list
   and the detail.
 - Traffic watch ("Watch" button): starts a MITM of the whole subnet via bettercap
@@ -127,7 +127,7 @@ coded in-house.
   down on Stop and on Fennec exit (atexit), so the network is never left under ARP
   spoofing or without DNS.
 - Traffic history is persistent: domains per device are kept in
-  historique_trafic.json (gitignored), scoped per network, each with a last-seen
+  traffic_history.json (gitignored), scoped per network, each with a last-seen
   timestamp shown as "X ago". The detail shows the saved history even when the
   monitor is off, and merges live domains while it runs. Flushed to disk at most
   every ~20s and on Stop, to spare the SD card.
@@ -172,7 +172,7 @@ from the hash (PBKDF2 destroys it) — the only possible narrowing comes from
 knowing the target.
 
 Sources now integrated:
-- Box-profile base: profils_box.json (prefix ESSID -> vendor/model/algo),
+- Box-profile base: box_profiles.json (prefix ESSID -> vendor/model/algo),
   routed to routerkeygen-cli (compiled in /usr/local/bin/routerkeygen-cli).
   An ESSID flagged "ignore" (e.g. community hotspot) skips the factory stage.
 - ESSID profiling: raton_essid_gen.py mutates words extracted from a custom
@@ -183,7 +183,7 @@ Sources now integrated:
 
 ### Stage plan (escalation, stops as soon as a key falls)
 9 stages, in order:
-1. Factory default keys (profils_box.json + routerkeygen)
+1. Factory default keys (box_profiles.json + routerkeygen)
 2. ESSID profiling (custom-name words + mutations; skipped if the name is generic)
 3. Real cracked keys (probable-wpa-top4800)
 4. Birth dates (DDMMYYYY / YYYYMMDD)

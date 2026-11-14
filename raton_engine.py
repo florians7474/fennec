@@ -104,10 +104,10 @@ def _load_profiles():
     if _profils_cache is not None:
         return _profils_cache
     import json
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profils_box.json")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "box_profiles.json")
     try:
         with open(path, encoding="utf-8") as f:
-            _profils_cache = json.load(f).get("profils", [])
+            _profils_cache = json.load(f).get("profiles", [])
     except (OSError, ValueError):
         _profils_cache = []
     return _profils_cache

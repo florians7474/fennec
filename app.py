@@ -14,11 +14,20 @@ from flask import Flask, render_template, redirect, url_for, abort, request, jso
 app = Flask(__name__)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-WHITELIST_FILE = os.path.join(BASE, "liste_blanche.json")
-MINE_FILE = os.path.join(BASE, "mes_appareils.json")
-SCAN_FILE  = os.path.join(BASE, "scan_direct.json")
-NAMES_FILE  = os.path.join(BASE, "noms_appareils.json")   # {network: {mac: name}}
-HISTORY_FILE  = os.path.join(BASE, "historique_trafic.json")  # {network: {mac: {domaine: ts}}}
+WHITELIST_FILE = os.path.join(BASE, "whitelist.json")
+MINE_FILE = os.path.join(BASE, "my_devices.json")
+SCAN_FILE  = os.path.join(BASE, "scan_cache.json")
+NAMES_FILE  = os.path.join(BASE, "device_names.json")   # {network: {mac: name}}
+HISTORY_FILE  = os.path.join(BASE, "traffic_history.json")  # {network: {mac: {domain: ts}}}
+
+# Legacy French data-file names, migrated to the English names above on startup.
+_LEGACY_FILES = {
+    WHITELIST_FILE: os.path.join(BASE, "liste_blanche.json"),
+    MINE_FILE: os.path.join(BASE, "mes_appareils.json"),
+    SCAN_FILE: os.path.join(BASE, "scan_direct.json"),
+    NAMES_FILE: os.path.join(BASE, "noms_appareils.json"),
+    HISTORY_FILE: os.path.join(BASE, "historique_trafic.json"),
+}
 
 etat = {"mode_actif": None, "network": None}
 
@@ -747,6 +756,19 @@ def load_wardrive():
         return {}
 
 
+def _migrate_legacy_files():
+    """One-time upgrade: copy data files that still carry their old French name to
+    the new English name, leaving the original in place as a backup. Idempotent —
+    skipped once the English file exists."""
+    import shutil
+    for new, old in _LEGACY_FILES.items():
+        try:
+            if os.path.exists(old) and not os.path.exists(new):
+                shutil.copy2(old, new)
+        except OSError:
+            pass
+
+
 def _migrate_legacy_keys():
     """One-time upgrade: rename legacy French JSON keys to English in persisted
     data files, backing up each file once before rewriting. Idempotent — once a
@@ -796,6 +818,7 @@ def _migrate_legacy_keys():
         pass
 
 
+_migrate_legacy_files()
 _migrate_legacy_keys()
 
 
