@@ -776,11 +776,15 @@ def gps_state():
 
 
 def _risk_level(enc, wps, essid):
-    # Estimated crackability, from data bettercap already gives us plus Raton's
-    # box-profile brain. "crit" open/WEP, "high" WPS or guessable factory key,
-    # "low" otherwise.
-    e = (enc or "").upper()
-    if e in ("", "OPEN", "NONE") or "WEP" in e:
+    # Estimated crackability, from data bettercap gives us plus Raton's box-profile
+    # brain. "unknown" when we have no observed encryption (never guess from the
+    # name alone); "crit" open/WEP; "high" WPS or guessable factory key; "low"
+    # otherwise. This is a heuristic estimate, not a verdict — an actual Raton
+    # crack is the ground truth.
+    if not enc:
+        return "unknown"
+    e = enc.upper()
+    if e in ("OPEN", "NONE") or "WEP" in e:
         return "crit"
     try:
         prof = raton_engine.profile_for_essid(essid or "")
