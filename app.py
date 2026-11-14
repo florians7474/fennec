@@ -739,6 +739,42 @@ def load_wardrive():
         return {}
 
 
+def _bettercap_creds():
+    user = pw = ""
+    try:
+        with open("/etc/pwnagotchi/pwnagotchi-auto.cap", encoding="utf-8") as f:
+            for line in f:
+                m = re.match(r"\s*set\s+api\.rest\.username\s+(\S+)", line)
+                if m:
+                    user = m.group(1)
+                m = re.match(r"\s*set\s+api\.rest\.password\s+(\S+)", line)
+                if m:
+                    pw = m.group(1)
+    except OSError:
+        pass
+    return user, pw
+
+
+@app.route("/gps")
+def gps_state():
+    # Live GPS status read from bettercap (only up while Pwnagotchi runs), so the
+    # Map can show a fix indicator on the device — no SSH needed in the car.
+    import base64
+    user, pw = _bettercap_creds()
+    try:
+        auth = base64.b64encode(f"{user}:{pw}".encode()).decode()
+        req = urllib.request.Request(
+            "http://127.0.0.1:8081/api/session",
+            headers={"Authorization": "Basic " + auth})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            g = json.load(r).get("gps") or {}
+        return jsonify(ok=True,
+                       sats=int(g.get("NumSatellites") or 0),
+                       fix=str(g.get("FixQuality") or "0"))
+    except Exception:
+        return jsonify(ok=False)  # bettercap/Pwnagotchi not running
+
+
 @app.route("/map")
 def map_view():
     deja = {r["bssid"].upper() for r in load_whitelist()}
