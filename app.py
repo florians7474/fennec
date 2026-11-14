@@ -1135,14 +1135,21 @@ def rotate_toggle():
 # CSS applied to <body> for each orientation. 90° and 270° are portrait:
 # the body logical size is swapped to 320x480 and rotated to fill the
 # physical 480x320 panel, so the landscape layout reflows into portrait.
+# Shared portrait tweaks: body is pinned absolutely (so the <html> flex box
+# can't shrink it and warp the rotation geometry), and the home grid spreads
+# its rows over the full height instead of staying landscape-centered.
+_PORTRAIT_BASE = (
+    "html{overflow:hidden!important;}"
+    "body{position:absolute!important;top:0;left:0;"
+    "width:320px!important;height:480px!important;transform-origin:top left;}"
+    ".grille{align-content:space-evenly!important;gap:10px 24px!important;"
+    "padding:8px!important;}"
+)
+
 _ROTATION_CSS = {
-    90:  "html{width:480px;height:320px;overflow:hidden;}"
-         "body{width:320px!important;height:480px!important;"
-         "transform-origin:top left;transform:rotate(90deg) translate(0,-100%);}",
+    90:  _PORTRAIT_BASE + "body{transform:rotate(90deg) translate(0,-100%);}",
     180: "body{transform:rotate(180deg);transform-origin:50% 50%;}",
-    270: "html{width:480px;height:320px;overflow:hidden;}"
-         "body{width:320px!important;height:480px!important;"
-         "transform-origin:top left;transform:rotate(270deg) translate(-100%,0);}",
+    270: _PORTRAIT_BASE + "body{transform:rotate(270deg) translate(-100%,0);}",
 }
 
 
