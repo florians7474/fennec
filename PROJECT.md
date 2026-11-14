@@ -344,6 +344,13 @@ Notes:
 ## Dev loop
 Changes are committed to this repository; the Pi pulls them with
 `cd ~/console && git pull && sudo systemctl restart fennec`.
+Continuous integration (.github/workflows/ci.yml) runs on every push: it
+compiles all Python and runs tests/smoke.py, which imports the app and checks
+the main routes (home, map, connection, tiles status, gps) return 200 plus the
+risk-level logic. The app degrades gracefully without hardware, nmcli or
+handshake files, so the suite runs anywhere. It covers the web app only — not
+live NetworkManager or Wi-Fi adapter behaviour, which has to be verified on the
+Pi.
 The local checkout on the Pi is still named ~/console (the repo was renamed
 console -> fennec, the folder was not).
 

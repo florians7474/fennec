@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Smoke tests for the Fennec launcher.
+
+Imports the app and exercises the main read-only routes with Flask's test
+client, plus a few pure helper functions. No hardware, nmcli, or handshake
+files are required: the app degrades gracefully when they are absent, so this
+runs anywhere (including CI).
+"""
+
+import sys
+
+import app
+
+client = app.app.test_client()
+
+failures = []
+
+
+def check_route(path):
+    try:
+        r = client.get(path)
+    except Exception as e:
+        failures.append(f"{path} raised {e!r}")
+        return
+    if r.status_code != 200:
+        failures.append(f"{path} returned {r.status_code}")
+    else:
+        print(f"ok   {path} -> 200")
+
+
+for path in ["/", "/map", "/connection", "/tiles/status", "/gps"]:
+    check_route(path)
+
+
+def check(label, cond):
+    if cond:
+        print(f"ok   {label}")
+    else:
+        failures.append(label)
+
+
+check("risk unknown", app._risk_level(None, False) == "unknown")
+check("risk critical (WEP)", app._risk_level("WEP", False) == "crit")
+check("risk weak (WPS)", app._risk_level("WPA2", True) == "high")
+check("risk solid (WPA2)", app._risk_level("WPA2", False) == "low")
+
+if failures:
+    print("\nFAILED:")
+    for f in failures:
+        print(" -", f)
+    sys.exit(1)
+
+print("\nAll smoke tests passed.")
