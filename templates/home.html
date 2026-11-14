@@ -108,13 +108,12 @@
     .wifi .seg.on { stroke:#01F994; }
     .wifi .dot.on { fill:#01F994; }
     .lock-slide { position:absolute; bottom:24px; left:0; right:0; display:flex; justify-content:center; }
-    .lock-track { position:relative; width:300px; height:54px; border-radius:27px;
-      background:#161b22; border:1px solid #30363d; overflow:hidden; }
-    .lock-hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      color:#5a6673; font-size:13px; pointer-events:none; }
-    .lock-knob { position:absolute; top:3px; left:3px; width:46px; height:46px; border-radius:50%;
-      background:#01F994; color:#06281b; display:flex; align-items:center; justify-content:center;
-      font-size:22px; touch-action:none; z-index:2; }
+    .lock-hold { position:relative; width:300px; height:60px; border-radius:30px;
+      background:#161b22; border:1px solid #30363d; color:#8b949e; font-size:15px; font-weight:700;
+      overflow:hidden; touch-action:none; -webkit-user-select:none; user-select:none; }
+    .lock-hold-fill { position:absolute; left:0; top:0; bottom:0; width:0; background:#01F994; z-index:0; }
+    .lock-hold-label { position:relative; z-index:1; }
+    .lock-hold.active .lock-hold-label { color:#06281b; }
   </style>
 </head>
 <body>
@@ -225,10 +224,10 @@
       </svg>
     </div>
     <div class="lock-slide">
-      <div class="lock-track">
-        <div class="lock-hint">slide to unlock &rarr;</div>
-        <div class="lock-knob" id="lockknob">&rarr;</div>
-      </div>
+      <button class="lock-hold" id="lockhold">
+        <span class="lock-hold-fill" id="lockfill"></span>
+        <span class="lock-hold-label">Hold to unlock</span>
+      </button>
     </div>
   </div>
 
@@ -250,7 +249,8 @@
     }
 
     // Lock screen: full-screen overlay that swallows accidental touches (bag),
-    // with a looping Wi-Fi animation. Unlock only by dragging the slider.
+    // with a looping Wi-Fi animation. Unlock = press and hold (reliable on a
+    // resistive touchscreen, where a precise slide is too hard).
     (function () {
       var segs = ['d0', 'd1', 'd2', 'd3'];
       var step = 0, timer = null;
@@ -260,40 +260,44 @@
         }
         step = (step + 1) % (segs.length + 1);
       }
+      var overlay = document.getElementById('lockscr');
+      var btn = document.getElementById('lockhold');
+      var fill = document.getElementById('lockfill');
       window.lockScreen = function () {
         document.getElementById('pwrdlg').style.display = 'none';
-        knob.style.transform = 'translateX(0)'; x = 0;
-        document.getElementById('lockscr').style.display = 'flex';
+        reset();
+        overlay.style.display = 'flex';
         step = 0; paint();
         if (timer) clearInterval(timer);
         timer = setInterval(paint, 450);
       };
       function unlock() {
         if (timer) { clearInterval(timer); timer = null; }
-        document.getElementById('lockscr').style.display = 'none';
+        overlay.style.display = 'none';
       }
-      var knob = document.getElementById('lockknob');
-      var track = knob.parentElement;
-      var dragging = false, startX = 0, x = 0, maxX = 0;
-      knob.addEventListener('pointerdown', function (e) {
-        dragging = true;
-        try { knob.setPointerCapture(e.pointerId); } catch (_) {}
-        maxX = track.clientWidth - knob.offsetWidth - 6;
-        startX = e.clientX - x;
-      });
-      knob.addEventListener('pointermove', function (e) {
-        if (!dragging) return;
-        x = Math.max(0, Math.min(maxX, e.clientX - startX));
-        knob.style.transform = 'translateX(' + x + 'px)';
-      });
-      function end() {
-        if (!dragging) return;
-        dragging = false;
-        if (x >= maxX - 6) { unlock(); }
-        x = 0; knob.style.transform = 'translateX(0)';
+      // Hold for HOLD ms to unlock; a green bar fills as you hold.
+      var HOLD = 1200, t0 = 0, raf = null, holding = false;
+      function frame() {
+        var p = Math.min(1, (Date.now() - t0) / HOLD);
+        fill.style.width = (p * 100) + '%';
+        if (p >= 1) { reset(); unlock(); return; }
+        raf = requestAnimationFrame(frame);
       }
-      knob.addEventListener('pointerup', end);
-      knob.addEventListener('pointercancel', end);
+      function hold(e) {
+        e.preventDefault();
+        if (holding) return;
+        holding = true; btn.classList.add('active');
+        t0 = Date.now(); raf = requestAnimationFrame(frame);
+      }
+      function reset() {
+        holding = false; btn.classList.remove('active');
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+        fill.style.width = '0';
+      }
+      btn.addEventListener('pointerdown', hold);
+      btn.addEventListener('pointerup', reset);
+      btn.addEventListener('pointercancel', reset);
+      btn.addEventListener('pointerleave', reset);
     })();
   </script>
   <script>
