@@ -24,7 +24,7 @@ only applies to Wi-Fi.
 - Wi-Fi USB adapter (monitor mode, required — Pi 5 built-in chip can't do it):
   Alfa AWUS036AXM (MediaTek MT7921AU), plugs straight into USB. Auto-detected
   by Fennec (first wlan* whose phy advertises monitor mode), no config needed.
-- GPS: VK-162 USB GPS module (waterproof, for the Map / wardriving module —
+- GPS: VK-162 USB GPS module (waterproof, for the Echo / wardriving module —
   tags each captured network with its position)
 
 ### Test gear
@@ -42,7 +42,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Sly | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
-| Map | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
+| Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
@@ -364,14 +364,14 @@ console -> fennec, the folder was not).
   and VPN detection (WireGuard, OpenVPN, IPsec/IKEv2). v1 (device radar) and v2
   (per-device port scan/type,
   naming, traffic watch via MITM with saved history) were already done.
-- Map phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
-  handshake when a fix is available, and the Map tile plots them (colour-coded
+- Echo phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
+  handshake when a fix is available, and the Echo tile plots them (colour-coded
   by whitelist status, tap to add to the whitelist). The plugin is enabled in
   config.toml ([main.plugins.gps], device /dev/ttyACM0) and install.sh patches a
   bug in it (it replaced ".pcapng" while bettercap writes ".pcap", which made it
   overwrite the handshake instead of writing the .gps.json). Markers sit at the
   capture position (where the Pi was), not at the access point.
-- Map phase 2: done. Wardriving reuses bettercap instead of a separate
+- Echo phase 2: done. Wardriving reuses bettercap instead of a separate
   airodump-ng (which would conflict with Pwnagotchi over the single monitor
   interface): while Pwnagotchi runs, the fennec-wardrive service (bound to
   pwnagotchi.service, driven by its tile) polls bettercap's REST API every few
@@ -379,7 +379,7 @@ console -> fennec, the folder was not).
   handshakes/wardrive.json (keyed by BSSID; only logged when there is a real
   fix). It also records WPS and keeps an incremental signal-weighted centroid
   per BSSID, so a seen AP is plotted at its estimated real location, refined on
-  each pass, not where the Pi stood. The Map merges these as grey "seen" points,
+  each pass, not where the Pi stood. Echo merges these as grey "seen" points,
   deduped by BSSID against the handshake points. Two view modes toggle on screen:
   Status (whitelist/handshake/seen) and Risk — open/WEP = critical, WPS = weak,
   WPA2/3 = solid, unknown = grey, coloured only on observed facts. Real
@@ -391,8 +391,8 @@ console -> fennec, the folder was not).
   that reads from disk, else fetches from OSM and caches when online, else
   returns a light placeholder; Leaflet is vendored in static/ so the map needs no
   CDN; an "offline" button pre-downloads the visible area (bounded, run in a
-  background thread with a /tiles/status poll). A /gps route plus a badge on the
-  Map show the live satellite fix on the device (for checking in the car without
+  background thread with a /tiles/status poll). A /gps route plus a badge on
+  Echo shows the live satellite fix on the device (for checking in the car without
   SSH). Centering fits the bulk of the points, dropping far outliers.
 - Nomadic Wi-Fi reconnection: NetworkManager now retries autoconnect forever
   (/etc/NetworkManager/conf.d/wifi-retry.conf, installed by install.sh), so the

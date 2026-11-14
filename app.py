@@ -475,7 +475,7 @@ def home():
     if mode_actif == "vigie" and not vigie_monitor.monitor_state.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
-    # Echo (Map) is a viewer, not a service — show how many networks are mapped.
+    # Echo is a viewer, not a service — show how many networks are mapped.
     bssids = set()
     for c in read_handshakes():
         gp = os.path.join(HANDSHAKES_DIR, c["fichier"].replace(".pcap", ".gps.json"))
@@ -766,7 +766,7 @@ def _bettercap_creds():
 @app.route("/gps")
 def gps_state():
     # Live GPS status read from bettercap (only up while Pwnagotchi runs), so the
-    # Map can show a fix indicator on the device — no SSH needed in the car.
+    # Echo can show a fix indicator on the device — no SSH needed in the car.
     import base64
     user, pw = _bettercap_creds()
     try:

@@ -8,7 +8,7 @@
 # single monitor interface already held by bettercap.
 #
 # Output: /etc/pwnagotchi/wardrive.json, a dict keyed by BSSID, read by the
-# Fennec Map module to draw grey points (networks seen without a handshake).
+# Fennec Echo module to draw grey points (networks seen without a handshake).
 
 import base64
 import json

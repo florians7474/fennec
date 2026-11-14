@@ -230,7 +230,7 @@ def load_verdicts():
 
 
 def _save_verdict(bssid, result, etage=None):
-    """Persist a real crack outcome per BSSID so the Map can show the truth
+    """Persist a real crack outcome per BSSID so Echo can show the truth
     (robust/cracked) instead of the model-level heuristic."""
     import json
     if not bssid:
