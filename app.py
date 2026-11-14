@@ -1124,21 +1124,35 @@ def scan_clear(source):
 
 @app.route("/rotate/toggle", methods=["POST"])
 def rotate_toggle():
-    # Flip the Fennec UI 180° (software rotation). Instant, no reboot: the
-    # whole interface is rendered upside-down so the screen can be read from
-    # the opposite side (e.g. cables exiting on the other edge).
+    # Rotate the Fennec UI by +90° each press (0 -> 90 -> 180 -> 270 -> 0).
+    # Software rotation: instant, no reboot, no touch recalibration.
     s = load_settings()
-    s["rotated"] = not s.get("rotated", False)
+    s["rotation"] = (int(s.get("rotation", 0)) + 90) % 360
     save_settings(s)
-    return jsonify(rotated=s["rotated"])
+    return jsonify(rotation=s["rotation"])
+
+
+# CSS applied to <body> for each orientation. 90° and 270° are portrait:
+# the body logical size is swapped to 320x480 and rotated to fill the
+# physical 480x320 panel, so the landscape layout reflows into portrait.
+_ROTATION_CSS = {
+    90:  "html{width:480px;height:320px;overflow:hidden;}"
+         "body{width:320px!important;height:480px!important;"
+         "transform-origin:top left;transform:rotate(90deg) translate(0,-100%);}",
+    180: "body{transform:rotate(180deg);transform-origin:50% 50%;}",
+    270: "html{width:480px;height:320px;overflow:hidden;}"
+         "body{width:320px!important;height:480px!important;"
+         "transform-origin:top left;transform:rotate(270deg) translate(-100%,0);}",
+}
 
 
 @app.after_request
 def apply_screen_rotation(response):
-    # When the screen is flipped, inject a 180° CSS rotation into every full
-    # HTML page. Done centrally here so no individual template needs touching.
+    # Inject the orientation CSS into every full HTML page. Done centrally
+    # here so no individual template needs touching.
     try:
-        if not load_settings().get("rotated"):
+        css_rule = _ROTATION_CSS.get(int(load_settings().get("rotation", 0)))
+        if not css_rule:
             return response
         if response.direct_passthrough:
             return response
@@ -1147,9 +1161,7 @@ def apply_screen_rotation(response):
         html = response.get_data(as_text=True)
         if "</head>" not in html:
             return response
-        css = ('<style id="fennec-rotate">'
-               'body{transform:rotate(180deg);transform-origin:50% 50%;}'
-               '</style>')
+        css = '<style id="fennec-rotate">' + css_rule + '</style>'
         response.set_data(html.replace("</head>", css + "</head>", 1))
     except Exception:
         pass
