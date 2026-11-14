@@ -34,6 +34,13 @@
     }
     .gpsbadge.ok { color:#06281b; background:#01F994; border-color:#01F994; }
     .gpsbadge.nofix { color:#1c1400; background:#d29922; border-color:#d29922; }
+    .modebtn {
+      position:absolute; bottom:10px; right:10px; z-index:1000;
+      background:#161b22; color:#e6edf3; cursor:pointer;
+      border:1px solid #30363d; border-radius:8px;
+      font-size:12px; font-weight:600; line-height:1; padding:10px 12px;
+    }
+    .modebtn::before { content:"view: "; color:#8b949e; }
     .legende {
       position:absolute; bottom:10px; left:10px; z-index:1000;
       background:rgba(13,17,23,.85); color:#c9d1d9; font-size:10px;
@@ -66,11 +73,18 @@
     <div id="map"></div>
 
     {% if points %}
-    <div class="legende">
+    <div class="modebtn" id="modebtn" onclick="toggleMode()">status</div>
+    <div class="legende" id="leg-status">
       <span><span class="pt" style="background:#2ea043"></span>allowed</span>
       <span><span class="pt" style="background:#d29922"></span>handshake</span>
       <span><span class="pt" style="background:#8b949e"></span>seen</span>
       {% if sans_position %}<span>{{ sans_position }} without GPS</span>{% endif %}
+    </div>
+    <div class="legende" id="leg-risk" style="display:none">
+      <span><span class="pt" style="background:#da3633"></span>critical</span>
+      <span><span class="pt" style="background:#d29922"></span>weak</span>
+      <span><span class="pt" style="background:#2ea043"></span>solid</span>
+      <span><span class="pt" style="background:#8b949e"></span>unknown</span>
     </div>
     {% else %}
     <div class="vide">No geolocated handshake yet.<br>Capture outdoors with a GPS fix to see points here.
@@ -91,10 +105,17 @@
     }).addTo(map);
 
     const COUL_OK = '#2ea043', COUL_HS = '#d29922', COUL_VU = '#8b949e';
+    const RISK = { crit: '#da3633', high: '#d29922', low: '#2ea043' };
     const marqueurs = [];
+    let mode = 'status';  // 'status' | 'risk'
+
+    function couleurPour(p) {
+      if (mode === 'risk') return RISK[p.risk] || COUL_VU;
+      return p.autorise ? COUL_OK : (p.handshake ? COUL_HS : COUL_VU);
+    }
 
     points.forEach((p, i) => {
-      const couleur = p.autorise ? COUL_OK : (p.handshake ? COUL_HS : COUL_VU);
+      const couleur = couleurPour(p);
       const rayon = (p.autorise || p.handshake) ? 9 : 6;
       const m = L.circleMarker([p.lat, p.lon], {
         radius: rayon, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
@@ -102,6 +123,21 @@
       m.bindPopup(popupContent(p, i));
       marqueurs.push(m);
     });
+
+    function recolor() {
+      points.forEach((p, i) => {
+        const c = couleurPour(p);
+        marqueurs[i].setStyle({ color: c, fillColor: c });
+      });
+      document.getElementById('leg-status').style.display = mode === 'status' ? '' : 'none';
+      document.getElementById('leg-risk').style.display = mode === 'risk' ? '' : 'none';
+    }
+
+    function toggleMode() {
+      mode = (mode === 'status') ? 'risk' : 'status';
+      document.getElementById('modebtn').textContent = mode === 'risk' ? 'risk' : 'status';
+      recolor();
+    }
 
     function popupContent(p, i) {
       let html = '<div class="pop"><b>' + p.nom + '</b><br>'
@@ -125,7 +161,8 @@
       }).then(r => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         p.autorise = true;
-        m.setStyle({ color: COUL_OK, fillColor: COUL_OK });
+        const c = couleurPour(p);
+        m.setStyle({ color: c, fillColor: c });
         m.setPopupContent(popupContent(p, i));
       }).catch(() => {
         m.setPopupContent('<div class="pop"><b>' + p.nom + '</b><br>'

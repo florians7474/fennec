@@ -775,9 +775,28 @@ def gps_state():
         return jsonify(ok=False)  # bettercap/Pwnagotchi not running
 
 
+def _risk_level(enc, wps, essid):
+    # Estimated crackability, from data bettercap already gives us plus Raton's
+    # box-profile brain. "crit" open/WEP, "high" WPS or guessable factory key,
+    # "low" otherwise.
+    e = (enc or "").upper()
+    if e in ("", "OPEN", "NONE") or "WEP" in e:
+        return "crit"
+    try:
+        prof = raton_engine.profile_for_essid(essid or "")
+    except Exception:
+        prof = None
+    weak_default = bool(prof and prof.get("algo") and prof.get("algo") != "ignore")
+    if wps or weak_default:
+        return "high"
+    return "low"
+
+
 @app.route("/map")
 def map_view():
     deja = {r["bssid"].upper() for r in load_whitelist()}
+    wd = load_wardrive()
+    wd_up = {k.upper(): v for k, v in wd.items()}  # for enc/wps lookup by BSSID
     pts = {}  # keyed by uppercase BSSID so handshake and wardrive points dedup
     sans_position = 0
     # Handshake points (orange, or green if whitelisted) — take precedence.
@@ -791,6 +810,7 @@ def map_view():
             lat = lon = None
         if lat and lon:
             key = c["bssid"].upper()
+            w = wd_up.get(key, {})
             pts[key] = {
                 "nom": c["nom"],
                 "bssid": c["bssid"],
@@ -798,11 +818,13 @@ def map_view():
                 "lon": lon,
                 "autorise": key in deja,
                 "handshake": True,
+                "risk": _risk_level(w.get("enc"), w.get("wps"), c["nom"]),
             }
         else:
             sans_position += 1
     # Wardrive points (grey): every AP seen with a GPS fix, no handshake needed.
-    for bssid, w in load_wardrive().items():
+    # Their lat/lon is the signal-weighted centroid = estimated AP position.
+    for bssid, w in wd.items():
         key = bssid.upper()
         if key in pts:
             continue  # already plotted via its handshake
@@ -815,6 +837,7 @@ def map_view():
                 "lon": lon,
                 "autorise": key in deja,
                 "handshake": False,
+                "risk": _risk_level(w.get("enc"), w.get("wps"), w.get("nom")),
             }
     return render_template("map.html", points=list(pts.values()),
                            sans_position=sans_position)

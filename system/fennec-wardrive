@@ -99,11 +99,16 @@ def main():
             essid = ap.get("hostname") or ""
             chan = ap.get("channel") or 0
             enc = ap.get("encryption") or ""
+            wps = bool(ap.get("wps"))  # bettercap fills this only when WPS is seen
+            w = max(rssi + 100, 1)     # signal weight: stronger = closer = heavier
             cur = store.get(bssid)
             if cur is None:
                 store[bssid] = {
-                    "nom": essid, "bssid": bssid, "lat": lat, "lon": lon,
-                    "rssi": rssi, "channel": chan, "enc": enc,
+                    "nom": essid, "bssid": bssid, "channel": chan,
+                    "enc": enc, "wps": wps, "rssi": rssi,
+                    # incremental weighted centroid -> estimated AP position
+                    "slat": lat * w, "slon": lon * w, "sw": w, "n": 1,
+                    "lat": lat, "lon": lon,
                     "first": now, "last": now,
                 }
                 changed = True
@@ -111,12 +116,25 @@ def main():
                 cur["last"] = now
                 if essid and not cur.get("nom"):
                     cur["nom"] = essid
-                # Keep the position recorded where the signal was strongest,
-                # i.e. closest to the access point.
+                if enc:
+                    cur["enc"] = enc
+                if wps:
+                    cur["wps"] = True
                 if rssi > cur.get("rssi", -999):
                     cur["rssi"] = rssi
-                    cur["lat"] = lat
-                    cur["lon"] = lon
+                # Seed accumulators for records written before this feature.
+                if "sw" not in cur:
+                    w0 = max(cur.get("rssi", -70) + 100, 1)
+                    cur["slat"] = cur.get("lat", lat) * w0
+                    cur["slon"] = cur.get("lon", lon) * w0
+                    cur["sw"] = w0
+                    cur["n"] = cur.get("n", 1)
+                cur["slat"] += lat * w
+                cur["slon"] += lon * w
+                cur["sw"] += w
+                cur["n"] = cur.get("n", 1) + 1
+                cur["lat"] = cur["slat"] / cur["sw"]
+                cur["lon"] = cur["slon"] / cur["sw"]
                 changed = True
 
         if changed:
