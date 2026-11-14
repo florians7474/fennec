@@ -486,8 +486,10 @@ def home():
             bssids.add(c["bssid"].upper())
     for b in load_wardrive():
         bssids.add(b.upper())
+    n = len(bssids)
+    echo_count = f"{n / 1000:.1f}k" if n >= 1000 else str(n)
     return render_template("home.html", actif=mode_actif,
-                           connection=connection_state(), echo_count=len(bssids))
+                           connection=connection_state(), echo_count=echo_count)
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
