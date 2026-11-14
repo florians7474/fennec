@@ -1146,7 +1146,7 @@ _PORTRAIT_BASE = (
     "padding:8px!important;}"
     # Narrow header: drop the network name, keep only the icon (green when
     # connected, grey when not) so the power button stays reachable.
-    ".conn span{display:none!important;}"
+    ".conn #conn-nom{display:none!important;}"
     ".conn{max-width:none!important;padding:0!important;"
     "border:none!important;background:none!important;}"
     ".conn svg{width:22px!important;height:22px!important;}"
