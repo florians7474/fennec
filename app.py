@@ -77,7 +77,7 @@ import base64
 
 # systemd services managed by each mode, in start order
 SERVICES = {
-    "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi"],
+    "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi", "fennec-wardrive"],
     "bjorn": ["bjorn", "bjorn-console"],
 }
 
@@ -727,11 +727,23 @@ def crack_stop():
     raton_engine.stop()
     return jsonify({"ok": True})
 
+WARDRIVE_FILE = os.path.join(HANDSHAKES_DIR, "wardrive.json")
+
+def load_wardrive():
+    try:
+        with open(WARDRIVE_FILE, "r", encoding="utf-8") as f:
+            d = json.load(f)
+            return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
 @app.route("/map")
 def map_view():
-    deja = {r["bssid"] for r in load_whitelist()}
-    points = []
+    deja = {r["bssid"].upper() for r in load_whitelist()}
+    pts = {}  # keyed by uppercase BSSID so handshake and wardrive points dedup
     sans_position = 0
+    # Handshake points (orange, or green if whitelisted) — take precedence.
     for c in read_handshakes():
         chemin_gps = os.path.join(HANDSHAKES_DIR, c["fichier"].replace(".pcap", ".gps.json"))
         try:
@@ -741,16 +753,34 @@ def map_view():
         except (FileNotFoundError, json.JSONDecodeError):
             lat = lon = None
         if lat and lon:
-            points.append({
+            key = c["bssid"].upper()
+            pts[key] = {
                 "nom": c["nom"],
                 "bssid": c["bssid"],
                 "lat": lat,
                 "lon": lon,
-                "autorise": c["bssid"] in deja,
-            })
+                "autorise": key in deja,
+                "handshake": True,
+            }
         else:
             sans_position += 1
-    return render_template("map.html", points=points, sans_position=sans_position)
+    # Wardrive points (grey): every AP seen with a GPS fix, no handshake needed.
+    for bssid, w in load_wardrive().items():
+        key = bssid.upper()
+        if key in pts:
+            continue  # already plotted via its handshake
+        lat, lon = w.get("lat"), w.get("lon")
+        if lat and lon:
+            pts[key] = {
+                "nom": w.get("nom") or bssid,
+                "bssid": bssid,
+                "lat": lat,
+                "lon": lon,
+                "autorise": key in deja,
+                "handshake": False,
+            }
+    return render_template("map.html", points=list(pts.values()),
+                           sans_position=sans_position)
 
 # ---------- Connection ----------
 

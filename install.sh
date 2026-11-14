@@ -196,11 +196,12 @@ sudo cp "$SYS/fennec-dns-force" /usr/local/bin/fennec-dns-force
 sudo cp "$SYS/fennec-pwna-iface" /usr/local/bin/fennec-pwna-iface
 sudo cp "$SYS/fennec-wifi-connect" /usr/local/bin/fennec-wifi-connect
 sudo cp "$SYS/fennec-wifi-disconnect" /usr/local/bin/fennec-wifi-disconnect
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect
+sudo cp "$SYS/fennec-wardrive" /usr/local/bin/fennec-wardrive
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive
 
 # --- 7. systemd services (with venv substitution) ---
 echo "==> Installing the systemd services..."
-for svc in bettercap pwngrid-peer pwnagotchi; do
+for svc in bettercap pwngrid-peer pwnagotchi fennec-wardrive; do
     sudo sed "s#__VENV__#$VENV#g" "$SYS/$svc.service" \
         | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
 done

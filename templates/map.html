@@ -51,6 +51,7 @@
     <div class="legende">
       <span><span class="pt" style="background:#2ea043"></span>allowed</span>
       <span><span class="pt" style="background:#d29922"></span>handshake</span>
+      <span><span class="pt" style="background:#8b949e"></span>seen</span>
       {% if sans_position %}<span>{{ sans_position }} without GPS</span>{% endif %}
     </div>
     {% else %}
@@ -68,13 +69,14 @@
       maxZoom: 19, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
-    const COUL_OK = '#2ea043', COUL_HS = '#d29922';
+    const COUL_OK = '#2ea043', COUL_HS = '#d29922', COUL_VU = '#8b949e';
     const marqueurs = [];
 
     points.forEach((p, i) => {
-      const couleur = p.autorise ? COUL_OK : COUL_HS;
+      const couleur = p.autorise ? COUL_OK : (p.handshake ? COUL_HS : COUL_VU);
+      const rayon = (p.autorise || p.handshake) ? 9 : 6;
       const m = L.circleMarker([p.lat, p.lon], {
-        radius: 9, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
+        radius: rayon, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
       }).addTo(map);
       m.bindPopup(popupContent(p, i));
       marqueurs.push(m);

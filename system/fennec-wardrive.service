@@ -1,0 +1,12 @@
+[Unit]
+Description=Fennec wardrive logger (logs every AP seen + GPS while Pwnagotchi runs)
+After=pwnagotchi.service
+BindsTo=pwnagotchi.service
+
+[Service]
+ExecStart=/usr/local/bin/fennec-wardrive
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
