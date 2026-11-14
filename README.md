@@ -1,7 +1,9 @@
-<img width="580" height="460" alt="card_sentry" src="https://github.com/user-attachments/assets/1f342068-d42b-486f-a3e6-69e5f032b5d8" />
-<img width="580" height="461" alt="card_hugin" src="https://github.com/user-attachments/assets/2ef5a9d0-3802-4bec-aa3e-6f7bd0a62e2b" />
-<img width="580" height="453" alt="card_home" src="https://github.com/user-attachments/assets/1a8fd925-b89b-4968-95cc-0c2c8db6a194" />
 # Fennec 🦊
+
+![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%205-c51a4a)
+![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Status](https://img.shields.io/badge/status-active-success)
 
 A full-chain network audit and monitoring console on a Raspberry Pi 5.
 
@@ -11,13 +13,22 @@ It also works as a hands-on sandbox for learning offensive security end to end, 
 
 ## Preview
 
-> 
-
 https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
-<img width="580" height="453" alt="card_home" src="https://github.com/user-attachments/assets/a94f09ae-ccc2-4faf-8705-3449bebca135" />
-<img width="580" height="461" alt="card_hugin" src="https://github.com/user-attachments/assets/81fb1444-7bd2-424d-9f2f-4a40d6107644" />
-<img width="580" height="460" alt="card_sentry" src="https://github.com/user-attachments/assets/04647c0f-e198-4b67-a706-9b4724b0c61f" />
-<img width="580" height="450" alt="card_sly" src="https://github.com/user-attachments/assets/d2da69bf-743e-4b33-86ff-70e084117006" />
+
+▶ **38-second demo** — the whole kill chain: capture → map → crack → breach → root → watch.
+
+## Screens
+
+<table>
+  <tr>
+    <td><img width="420" alt="Home — six modules" src="https://github.com/user-attachments/assets/a94f09ae-ccc2-4faf-8705-3449bebca135" /></td>
+    <td><img width="420" alt="Sly — offline WPA cracking" src="https://github.com/user-attachments/assets/d2da69bf-743e-4b33-86ff-70e084117006" /></td>
+  </tr>
+  <tr>
+    <td><img width="420" alt="Sentry — device radar & traffic watch" src="https://github.com/user-attachments/assets/04647c0f-e198-4b67-a706-9b4724b0c61f" /></td>
+    <td><img width="420" alt="Hugin — exploit correlation" src="https://github.com/user-attachments/assets/81fb1444-7bd2-424d-9f2f-4a40d6107644" /></td>
+  </tr>
+</table>
 
 ## Modules
 
