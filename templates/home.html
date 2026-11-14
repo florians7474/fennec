@@ -94,6 +94,7 @@
     .pwr-off { background:#da3633; }
     .pwr-cancel { padding:11px 0; border:1px solid #30363d; border-radius:10px; background:transparent; color:#8b949e; font-size:13px; }
     .pwr-lock { background:#238636; }
+    .pwr-rotate { background:#6e40c9; }
 
     /* Lock screen (nomadic use: ignore accidental touches while in a bag) */
     .lock-overlay { display:none; position:absolute; inset:0; z-index:100;
@@ -204,6 +205,7 @@
     <div class="pwr-box">
       <div class="pwr-title">Power</div>
       <button class="pwr-act pwr-lock" onclick="lockScreen()">Lock screen</button>
+      <button class="pwr-act pwr-rotate" onclick="rotateScreen(this)">Rotate screen</button>
       <div class="pwr-btns">
         <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
         <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>
@@ -237,6 +239,14 @@
       box.innerHTML = '<div class="pwr-title">' +
         (action === 'reboot' ? 'Rebooting…' : 'Shutting down…') + '</div>';
       fetch('/power/' + action, { method: 'POST' });
+    }
+
+    // Flip the screen 180° (software). Instant and reversible: toggle, reload.
+    function rotateScreen(btn) {
+      btn.disabled = true;
+      fetch('/rotate/toggle', { method: 'POST' })
+        .then(function () { location.reload(); })
+        .catch(function () { location.reload(); });
     }
 
     // Lock screen: full-screen overlay that swallows accidental touches (bag),

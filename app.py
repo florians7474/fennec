@@ -58,6 +58,17 @@ def load_scan():
 def save_scan(reseaux):
     _save(SCAN_FILE, reseaux)
 
+# ---------- Device settings (per-Pi state, not in the repo) ----------
+
+SETTINGS_FILE = os.path.join(BASE, "settings.json")
+
+def load_settings():
+    data = _load(SETTINGS_FILE)
+    return data if isinstance(data, dict) else {}
+
+def save_settings(data):
+    _save(SETTINGS_FILE, data)
+
 # ---------- Modes ----------
 
 import subprocess
@@ -1110,6 +1121,40 @@ def scan_clear(source):
         return redirect(url_for("scan", source="pwna"))
     save_scan([])
     return redirect(url_for("scan", source="direct"))
+
+@app.route("/rotate/toggle", methods=["POST"])
+def rotate_toggle():
+    # Flip the Fennec UI 180° (software rotation). Instant, no reboot: the
+    # whole interface is rendered upside-down so the screen can be read from
+    # the opposite side (e.g. cables exiting on the other edge).
+    s = load_settings()
+    s["rotated"] = not s.get("rotated", False)
+    save_settings(s)
+    return jsonify(rotated=s["rotated"])
+
+
+@app.after_request
+def apply_screen_rotation(response):
+    # When the screen is flipped, inject a 180° CSS rotation into every full
+    # HTML page. Done centrally here so no individual template needs touching.
+    try:
+        if not load_settings().get("rotated"):
+            return response
+        if response.direct_passthrough:
+            return response
+        if "text/html" not in response.headers.get("Content-Type", ""):
+            return response
+        html = response.get_data(as_text=True)
+        if "</head>" not in html:
+            return response
+        css = ('<style id="fennec-rotate">'
+               'body{transform:rotate(180deg);transform-origin:50% 50%;}'
+               '</style>')
+        response.set_data(html.replace("</head>", css + "</head>", 1))
+    except Exception:
+        pass
+    return response
+
 
 @app.route("/power/<action>", methods=["POST"])
 def power(action):
