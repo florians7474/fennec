@@ -125,14 +125,28 @@
 
     // Recenter after the container has its final size. In portrait the rotation
     // CSS resizes the body after Leaflet first measures the map, so we tell
-    // Leaflet to re-read its size before fitting the markers.
+    // Leaflet to re-read its size before fitting. We fit to the bulk of the
+    // points, dropping far outliers (a lone network seen elsewhere, or a GPS
+    // glitch) that would otherwise zoom the whole view out and push the cluster
+    // into a corner.
+    function mediane(arr) {
+      const a = arr.slice().sort((x, y) => x - y);
+      const m = Math.floor(a.length / 2);
+      return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+    }
+    function pointsCentraux(pts) {
+      if (pts.length <= 2) return pts;
+      const mlat = mediane(pts.map(p => p.lat)), mlon = mediane(pts.map(p => p.lon));
+      const d = pts.map(p => Math.hypot(p.lat - mlat, p.lon - mlon));
+      const seuil = Math.max(mediane(d.filter(x => x > 0)) * 5, 0.03);  // ~3 km floor
+      const gardes = pts.filter((p, i) => d[i] <= seuil);
+      return gardes.length ? gardes : pts;
+    }
     function ajuster() {
       map.invalidateSize();
-      if (marqueurs.length) {
-        map.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
-      } else {
-        map.setView([48.8566, 2.3522], 15);
-      }
+      if (!points.length) { map.setView([48.8566, 2.3522], 15); return; }
+      const c = pointsCentraux(points);
+      map.fitBounds(c.map(p => [p.lat, p.lon]), { padding: [30, 30], maxZoom: 17 });
     }
     ajuster();
     setTimeout(ajuster, 250);
