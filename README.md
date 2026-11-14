@@ -5,11 +5,11 @@
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-active-success)
 
-Web-based launcher for Wi-Fi pentest modes on a Raspberry Pi 5.
+A full-chain network audit and monitoring console on a Raspberry Pi 5.
 
-Fennec turns a Raspberry Pi 5 and a touchscreen into a small Wi-Fi auditing console. A full-screen web interface, six tiles, one tool running at a time. Each module stays independent and starts or stops on demand straight from the screen.
+Fennec turns a Raspberry Pi 5 and a touchscreen into a self-contained network auditing console that covers the whole chain. It starts in the air (Wi-Fi reconnaissance, handshake capture and GPS mapping), moves to offline WPA cracking, and once on the network it discovers the devices, identifies and tests their weaknesses, and watches the traffic in real time. Everything runs from a full-screen web interface of six tiles, one tool at a time, each module independent and started or stopped on demand straight from the screen.
 
-The project also serves as a hands-on sandbox for learning offensive security. The goal is not to crack strong WPA2 but to reveal weak keys on your own networks.
+It also works as a hands-on sandbox for learning offensive security end to end, from the air to post-access reconnaissance, exploitation and surveillance. The cracking stage aims at weak and default keys rather than brute-forcing strong WPA2. Use it only on networks you own or are explicitly authorized to test.
 
 ## Preview
 
