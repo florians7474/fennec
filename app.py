@@ -775,23 +775,17 @@ def gps_state():
         return jsonify(ok=False)  # bettercap/Pwnagotchi not running
 
 
-def _risk_level(enc, wps, essid):
-    # Estimated crackability, from data bettercap gives us plus Raton's box-profile
-    # brain. "unknown" when we have no observed encryption (never guess from the
-    # name alone); "crit" open/WEP; "high" WPS or guessable factory key; "low"
-    # otherwise. This is a heuristic estimate, not a verdict — an actual Raton
-    # crack is the ground truth.
+def _risk_level(enc, wps):
+    # Colour only on concrete, observed facts (no guessing a weak factory key
+    # from the name — unreliable). Real crackability is decided by Raton, whose
+    # verdict overrides this in map_view. "unknown" with no observed encryption,
+    # "crit" open/WEP, "high" WPS enabled, "low" otherwise.
     if not enc:
         return "unknown"
     e = enc.upper()
     if e in ("OPEN", "NONE") or "WEP" in e:
         return "crit"
-    try:
-        prof = raton_engine.profile_for_essid(essid or "")
-    except Exception:
-        prof = None
-    weak_default = bool(prof and prof.get("algo") and prof.get("algo") != "ignore")
-    if wps or weak_default:
+    if wps:
         return "high"
     return "low"
 
@@ -814,7 +808,7 @@ def map_view():
         # A captured handshake means the network is WPA/WPA2-PSK.
         if handshake and not enc:
             enc = "WPA2"
-        return _risk_level(enc, wps, essid)
+        return _risk_level(enc, wps)
     pts = {}  # keyed by uppercase BSSID so handshake and wardrive points dedup
     sans_position = 0
     # Handshake points (orange, or green if whitelisted) — take precedence.
