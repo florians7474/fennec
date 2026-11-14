@@ -3,11 +3,6 @@
 <img width="580" height="453" alt="card_home" src="https://github.com/user-attachments/assets/1a8fd925-b89b-4968-95cc-0c2c8db6a194" />
 # Fennec 🦊
 
-![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%205-c51a4a)
-![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Status](https://img.shields.io/badge/status-active-success)
-
 A full-chain network audit and monitoring console on a Raspberry Pi 5.
 
 Fennec turns a Raspberry Pi 5 and a touchscreen into a self-contained network auditing console that covers the whole chain. It starts in the air (Wi-Fi reconnaissance, handshake capture and GPS mapping), moves to offline WPA cracking, and once on the network it discovers the devices, identifies and tests their weaknesses, and watches the traffic in real time. Everything runs from a full-screen web interface of six tiles, one tool at a time, each module independent and started or stopped on demand straight from the screen.
