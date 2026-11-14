@@ -368,6 +368,7 @@ def _run(pcap, bssid, network, wordlist):
             _proc = subprocess.Popen(
                 cmd, stdin=aircrack_stdin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 encoding="utf-8", errors="replace", bufsize=1,
+                preexec_fn=lambda: os.nice(10),  # keep a core free for the web UI
             )
         except FileNotFoundError:
             crack_state.update({"actif": False, "fini": True, "message": "aircrack-ng not found"})
