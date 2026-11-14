@@ -13,7 +13,11 @@ It also works as a hands-on sandbox for learning offensive security end to end, 
 
 ## Preview
 
-> _(interface screenshot to add here: `docs/preview.png`)_
+> 
+
+https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
+
+_(interface screenshot to add here: `docs/preview.png`)_
 
 ## Modules
 
