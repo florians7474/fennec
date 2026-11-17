@@ -89,6 +89,9 @@
     html[data-portrait] .scan-btn { padding:6px 10px; font-size:12px; }
     html[data-portrait] .list { padding:8px 10px; }
     html[data-portrait] .line { gap:8px; padding:9px 10px; }
+    /* Under the body rotation, animating the dot's opacity makes the whole
+       page jitter sideways each blink, so hold it steady in portrait. */
+    html[data-portrait] .bandeau .pulse { animation:none; opacity:1; }
   </style>
 </head>
 <body>
