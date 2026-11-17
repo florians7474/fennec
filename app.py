@@ -12,6 +12,21 @@ import hugin_msf
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, Response
 
 app = Flask(__name__)
+# The kiosk browser caches static assets; restarting Fennec doesn't clear that
+# cache, so updated JS/CSS never reached a running kiosk. Tell the browser not
+# to cache static files, and version their URLs (see asset_v below) so a pulled
+# change is picked up on the next load without a manual cache clear.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+
+@app.context_processor
+def _asset_version():
+    try:
+        v = int(os.path.getmtime(os.path.join(app.static_folder, "keyboard.js")))
+    except Exception:
+        v = 0
+    return {"asset_v": v}
+
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 WHITELIST_FILE = os.path.join(BASE, "whitelist.json")
