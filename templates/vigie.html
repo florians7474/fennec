@@ -81,17 +81,16 @@
     html[data-portrait] .topbar { height:auto; min-height:48px; flex-wrap:wrap;
       row-gap:7px; padding:7px 10px; }
     html[data-portrait] .topbar .title { flex:1 1 auto; }
-    /* Buttons always get their own full-width second row, so showing/hiding
-       Force DNS only adds a button to that row instead of changing the row
-       count (which otherwise shifts the whole rotated page on Watch). */
-    html[data-portrait] .actions { display:flex; flex:1 1 100%; gap:8px;
-      justify-content:flex-end; }
-    html[data-portrait] .scan-btn { padding:6px 10px; font-size:12px; }
+    /* Name hidden in portrait, so the action buttons fit on the same row as
+       the icon; keep them compact. */
+    html[data-portrait] .scan-btn { padding:6px 9px; font-size:12px; }
     html[data-portrait] .list { padding:8px 10px; }
     html[data-portrait] .line { gap:8px; padding:9px 10px; }
     /* Under the body rotation, animating the dot's opacity makes the whole
-       page jitter sideways each blink, so hold it steady in portrait. */
-    html[data-portrait] .bandeau .pulse { animation:none; opacity:1; }
+       page jitter sideways each blink, so hold it steady in portrait — but
+       give it a bright, glowing colour so it still reads as live. */
+    html[data-portrait] .bandeau .pulse { animation:none; opacity:1;
+      color:#ffffff; text-shadow:0 0 7px rgba(255,255,255,.9); }
   </style>
 </head>
 <body>
