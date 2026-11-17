@@ -78,9 +78,8 @@
     /* Portrait (90/270): the usable width drops to 320, so let the top bar
        wrap onto a second row instead of pushing its buttons off-screen, and
        keep the device rows fitting the narrower width. */
-    html[data-portrait] .topbar { height:auto; min-height:48px; flex-wrap:wrap;
-      row-gap:7px; padding:7px 10px; }
-    html[data-portrait] .topbar .title { flex:1 1 auto; }
+    html[data-portrait] .topbar { min-height:48px; flex-wrap:nowrap;
+      gap:6px; padding:7px 10px; }
     /* Name hidden in portrait, so the action buttons fit on the same row as
        the icon; keep them compact. */
     html[data-portrait] .scan-btn { padding:6px 9px; font-size:12px; }
@@ -90,7 +89,7 @@
        page jitter sideways each blink, so hold it steady in portrait — but
        give it a bright, glowing colour so it still reads as live. */
     html[data-portrait] .bandeau .pulse { animation:none; opacity:1;
-      color:#ffffff; text-shadow:0 0 7px rgba(255,255,255,.9); }
+      color:#19e38c; text-shadow:0 0 7px rgba(25,227,140,.9); }
   </style>
 </head>
 <body>

@@ -1366,9 +1366,10 @@ _PORTRAIT_BASE = (
     ".conn svg{width:22px!important;height:22px!important;}"
     ".conn.ok{color:#01F994!important;}"
     # Every app page: in portrait, drop the module name from the top bar and
-    # keep only its icon. The title stays as an invisible flex spacer so the
-    # action buttons stay pushed to the right.
-    ".topbar .title{visibility:hidden;}"
+    # keep only its icon. The title stays as a flex spacer that pushes the
+    # action buttons to the right, but can shrink to nothing (min-width:0) so
+    # it never forces the buttons onto a second line.
+    ".topbar .title{visibility:hidden;flex:1 1 0;min-width:0;}"
 )
 
 _ROTATION_CSS = {
