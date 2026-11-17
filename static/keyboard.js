@@ -64,10 +64,14 @@
       "#fk .fk-key.fk-space{flex:4;}" +
       "#fk .fk-key.fk-act{background:#238636;border-color:#2ea043;font-weight:600;}" +
       "#fk .fk-key.fk-on{background:#1f6feb;border-color:#388bfd;}" +
-      // In portrait the page body carries a CSS rotation, which makes a
-      // position:fixed keyboard land off to one side. Pin it absolutely to the
-      // rotated body instead so it sits full-width along the portrait bottom.
-      "html[data-portrait] #fk{position:absolute;left:0;right:0;bottom:0;}";
+      // In portrait the page body carries a CSS rotation, which made a
+      // position:fixed keyboard land off to one side and overflow. Pin it to
+      // the rotated body, give it an explicit width (so it can never overflow
+      // the 320px portrait width, whatever the containing block) and shrink the
+      // keys a little so it takes less of the screen.
+      "html[data-portrait] #fk{position:absolute;left:0;right:auto;bottom:0;width:320px;}" +
+      "html[data-portrait] #fk .fk-key{font-size:14px;padding:7px 0;}" +
+      "html[data-portrait] #fk .fk-prev{font-size:13px;padding:4px 7px;}";
     document.head.appendChild(s);
   }
 
