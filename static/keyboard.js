@@ -47,11 +47,7 @@
       "#fk{position:fixed;left:0;right:0;bottom:0;z-index:99999;" +
       "background:#161b22;border-top:1px solid #30363d;" +
       "padding:4px;box-sizing:border-box;font-family:system-ui,sans-serif;" +
-      "user-select:none;-webkit-user-select:none;touch-action:manipulation;" +
-      // Own compositing layer: the page body is rotated by a CSS transform in
-      // portrait, and without this a key repaint re-rasterizes that rotation
-      // and the whole keyboard jumps on each press.
-      "transform:translateZ(0);backface-visibility:hidden;will-change:transform;}" +
+      "user-select:none;-webkit-user-select:none;touch-action:manipulation;}" +
       "#fk.fk-hidden{display:none;}" +
       "#fk .fk-top{display:flex;align-items:center;gap:6px;padding:2px 4px 6px;}" +
       "#fk .fk-prev{flex:1;background:#0d1117;border:1px solid #30363d;" +
@@ -67,7 +63,11 @@
       "#fk .fk-key.fk-wide{flex:1.6;}" +
       "#fk .fk-key.fk-space{flex:4;}" +
       "#fk .fk-key.fk-act{background:#238636;border-color:#2ea043;font-weight:600;}" +
-      "#fk .fk-key.fk-on{background:#1f6feb;border-color:#388bfd;}";
+      "#fk .fk-key.fk-on{background:#1f6feb;border-color:#388bfd;}" +
+      // In portrait the page body carries a CSS rotation, which makes a
+      // position:fixed keyboard land off to one side. Pin it absolutely to the
+      // rotated body instead so it sits full-width along the portrait bottom.
+      "html[data-portrait] #fk{position:absolute;left:0;right:0;bottom:0;}";
     document.head.appendChild(s);
   }
 
