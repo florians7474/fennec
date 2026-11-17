@@ -41,6 +41,16 @@
     .cadre { position:relative; width:480px; height:272px; overflow:hidden; background:#000; }
     .cadre iframe { position:absolute; top:0; left:0; width:820px; height:465px; border:0;
                     transform:scale(0.5854); transform-origin:top left; }
+
+    /* Portrait (90/270): the Bjorn embed (cadre + scaled iframe) is sized for
+       the 480px landscape width, so refit it to the 320px portrait width and
+       let its view fill the remaining height. Only the Bjorn case is touched
+       (Pwnagotchi's view is left alone). */
+    html[data-portrait] .topbar { min-height:48px; flex-wrap:nowrap; gap:6px;
+      padding:7px 10px; }
+    html[data-portrait] .vue.plein { height:432px; }
+    html[data-portrait] .cadre { width:320px; height:182px; }
+    html[data-portrait] .cadre iframe { transform:scale(0.3902); }
   </style>
 </head>
 <body>
