@@ -1351,7 +1351,11 @@ def rotate_toggle():
 _PORTRAIT_BASE = (
     "html{overflow:hidden!important;}"
     "body{position:absolute!important;top:0;left:0;"
-    "width:320px!important;height:480px!important;transform-origin:top left;}"
+    "width:320px!important;height:480px!important;transform-origin:top left;"
+    # Put the rotated body on its own compositing layer, so a child repaint
+    # (e.g. a blinking indicator) doesn't re-rasterize the rotation and make
+    # the whole page jitter sideways each frame.
+    "backface-visibility:hidden!important;}"
     ".grille{align-content:space-evenly!important;gap:10px 24px!important;"
     "padding:8px!important;}"
     # Narrow header: drop the network name, keep only the icon (green when
