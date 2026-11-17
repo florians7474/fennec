@@ -63,6 +63,11 @@
     }
     .pop .ok { color:#2ea043; font-weight:600; }
     .pop .ko { color:#da3633; font-size:11px; }
+
+    /* Portrait (90/270): the top overlays collide at 320px wide (the centered
+       GPS badge runs into the back/offline buttons). Drop the badge onto its
+       own row just below them, left-aligned. */
+    html[data-portrait] .gpsbadge { top:52px; left:10px; transform:none; }
   </style>
 </head>
 <body>
@@ -103,6 +108,38 @@
       maxZoom: 19, attribution: '&copy; OpenStreetMap',
       keepBuffer: 4, updateWhenIdle: true, updateWhenZooming: false
     }).addTo(map);
+
+    // Portrait panning fix. The whole page is rotated with a CSS transform on
+    // <body>, so Leaflet's built-in drag applies finger movement in the map's
+    // own (rotated) axes and the map slides the wrong way. Replace it with a
+    // custom single-pointer pan (the resistive screen is single-touch, so no
+    // pinch to preserve) that rotates the physical finger delta back into the
+    // map's axes before panning. Zoom buttons and marker taps are left alone.
+    var rot = parseInt(document.documentElement.getAttribute('data-rot') || '0', 10);
+    if (rot === 90 || rot === 270) {
+      map.dragging.disable();
+      var el = map.getContainer();
+      var panning = false, lastX = 0, lastY = 0;
+      el.addEventListener('pointerdown', function (e) {
+        // Let taps on markers, popups and controls behave normally.
+        if (e.target.closest('.leaflet-interactive, .leaflet-marker-icon, .leaflet-control, .leaflet-popup')) return;
+        panning = true; lastX = e.clientX; lastY = e.clientY;
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+      el.addEventListener('pointermove', function (e) {
+        if (!panning) return;
+        var dx = e.clientX - lastX, dy = e.clientY - lastY;
+        lastX = e.clientX; lastY = e.clientY;
+        // Rotate the physical delta into the map's local axes.
+        var mx, my;
+        if (rot === 90) { mx = dy; my = -dx; } else { mx = -dy; my = dx; }
+        map.panBy([-mx, -my], { animate: false });
+      });
+      function stopPan() { panning = false; }
+      el.addEventListener('pointerup', stopPan);
+      el.addEventListener('pointercancel', stopPan);
+      el.addEventListener('pointerleave', stopPan);
+    }
 
     const COUL_OK = '#2ea043', COUL_HS = '#d29922', COUL_VU = '#8b949e';
     const RISK = { crit: '#da3633', high: '#d29922', low: '#2ea043' };

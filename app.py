@@ -1402,7 +1402,8 @@ def apply_screen_rotation(response):
         # when rotated 90/270. Media queries can't do this: the framebuffer
         # stays 480x320 landscape and portrait is only a CSS transform.
         if rotation in (90, 270):
-            html = html.replace("<html", '<html data-portrait="1"', 1)
+            html = html.replace(
+                "<html", '<html data-portrait="1" data-rot="%d"' % rotation, 1)
         response.set_data(html)
     except Exception:
         pass
