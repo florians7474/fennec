@@ -1375,7 +1375,8 @@ def apply_screen_rotation(response):
     # Inject the orientation CSS into every full HTML page. Done centrally
     # here so no individual template needs touching.
     try:
-        css_rule = _ROTATION_CSS.get(int(load_settings().get("rotation", 0)))
+        rotation = int(load_settings().get("rotation", 0))
+        css_rule = _ROTATION_CSS.get(rotation)
         if not css_rule:
             return response
         if response.direct_passthrough:
@@ -1386,7 +1387,14 @@ def apply_screen_rotation(response):
         if "</head>" not in html:
             return response
         css = '<style id="fennec-rotate">' + css_rule + '</style>'
-        response.set_data(html.replace("</head>", css + "</head>", 1))
+        html = html.replace("</head>", css + "</head>", 1)
+        # Mark the document as portrait so each page can add its own
+        # portrait-only layout rules (html[data-portrait] ...), applied only
+        # when rotated 90/270. Media queries can't do this: the framebuffer
+        # stays 480x320 landscape and portrait is only a CSS transform.
+        if rotation in (90, 270):
+            html = html.replace("<html", '<html data-portrait="1"', 1)
+        response.set_data(html)
     except Exception:
         pass
     return response

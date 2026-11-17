@@ -70,6 +70,16 @@
                  box-shadow:0 0 6px #28c0d4; }
     @keyframes sweep { to { transform:rotate(360deg); } }
     .scanning .txt { font-size:13px; color:#8b949e; }
+
+    /* Portrait (90/270): the usable width drops to 320, so let the top bar
+       wrap onto a second row instead of pushing its buttons off-screen, and
+       keep the device rows fitting the narrower width. */
+    html[data-portrait] .topbar { height:auto; min-height:48px; flex-wrap:wrap;
+      row-gap:6px; padding:7px 10px; }
+    html[data-portrait] .topbar .title { flex:1 1 auto; }
+    html[data-portrait] .scan-btn { padding:6px 10px; font-size:12px; }
+    html[data-portrait] .list { padding:8px 10px; }
+    html[data-portrait] .line { gap:8px; padding:9px 10px; }
   </style>
 </head>
 <body>
