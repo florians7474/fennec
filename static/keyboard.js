@@ -63,15 +63,7 @@
       "#fk .fk-key.fk-wide{flex:1.6;}" +
       "#fk .fk-key.fk-space{flex:4;}" +
       "#fk .fk-key.fk-act{background:#238636;border-color:#2ea043;font-weight:600;}" +
-      "#fk .fk-key.fk-on{background:#1f6feb;border-color:#388bfd;}" +
-      // In portrait the page body carries a CSS rotation, which made a
-      // position:fixed keyboard land off to one side and overflow. Pin it to
-      // the rotated body, give it an explicit width (so it can never overflow
-      // the 320px portrait width, whatever the containing block) and shrink the
-      // keys a little so it takes less of the screen.
-      "html[data-portrait] #fk{position:absolute;left:0;right:auto;bottom:0;width:320px;}" +
-      "html[data-portrait] #fk .fk-key{font-size:14px;padding:7px 0;}" +
-      "html[data-portrait] #fk .fk-prev{font-size:13px;padding:4px 7px;}";
+      "#fk .fk-key.fk-on{background:#1f6feb;border-color:#388bfd;}";
     document.head.appendChild(s);
   }
 
@@ -99,7 +91,12 @@
 
     rowsBox = document.createElement("div");
     kb.appendChild(rowsBox);
-    document.body.appendChild(kb);
+    // Attach to <html>, not <body>: in portrait the body carries a CSS rotation,
+    // and a position:fixed child of a transformed element is placed relative to
+    // that element (inconsistently across Chromium versions), which threw the
+    // keyboard off to one side. On <html> there is no transformed ancestor, so
+    // fixed positioning is reliable; place() then rotates it into place.
+    document.documentElement.appendChild(kb);
 
     // Keep taps on the keyboard from blurring the field.
     kb.addEventListener("mousedown", function (e) { e.preventDefault(); });
@@ -136,6 +133,9 @@
       });
       rowsBox.appendChild(r);
     });
+    // A layer change (shift / ?123) can change the height, which the portrait
+    // placement depends on, so reposition.
+    place();
   }
 
   function refreshPreview() {
@@ -187,6 +187,35 @@
     }
   }
 
+  // Position the keyboard. In landscape it stays a normal full-width bottom bar
+  // (the stylesheet default). In portrait the page is rotated by CSS, so the
+  // keyboard — living on <html>, unrotated — is sized to the portrait width and
+  // rotated onto the portrait bottom edge with explicit pixel values.
+  function place() {
+    if (!kb || kb.classList.contains("fk-hidden")) return;
+    var rot = parseInt(document.documentElement.getAttribute("data-rot") || "0", 10);
+    if (rot !== 90 && rot !== 270) {
+      kb.style.transform = "";
+      kb.style.width = kb.style.height = "";
+      kb.style.top = kb.style.left = kb.style.right = kb.style.bottom = "";
+      return;
+    }
+    var vw = window.innerWidth, vh = window.innerHeight;
+    kb.style.top = "0";
+    kb.style.left = "0";
+    kb.style.right = "auto";
+    kb.style.bottom = "auto";
+    kb.style.width = vh + "px";           // portrait width = physical height
+    kb.style.transformOrigin = "top left";
+    var kbH = kb.offsetHeight;            // measured once visible and sized
+    if (rot === 90) {
+      kb.style.transform = "rotate(90deg) translate(0,-100%)";
+    } else { // 270
+      kb.style.transform =
+        "translate(" + (vw - kbH) + "px,0) rotate(-90deg) translate(-100%,0)";
+    }
+  }
+
   function show(input) {
     target = input;
     layer = "abc";
@@ -194,6 +223,7 @@
     render();
     refreshPreview();
     kb.classList.remove("fk-hidden");
+    place();
   }
 
   function hide() {
