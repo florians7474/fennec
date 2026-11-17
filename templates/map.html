@@ -68,6 +68,9 @@
        GPS badge runs into the back/offline buttons). Drop the badge onto its
        own row just below them, left-aligned. */
     html[data-portrait] .gpsbadge { top:52px; left:10px; transform:none; }
+    /* Lift the legend above the view button so they don't overlap at the
+       bottom in the narrow portrait width. */
+    html[data-portrait] .legende { bottom:50px; }
   </style>
 </head>
 <body>
