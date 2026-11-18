@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Mirage · Portal preview</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:480px;height:320px;overflow:hidden;background:#0d1117;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    .top{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#161b22;border-bottom:1px solid #30363d;color:#e6edf3}
+    .back{color:#e6edf3;text-decoration:none;font-size:24px;padding:2px 8px}.title{font-size:14px;font-weight:700;flex:1}
+    .safe{font-size:10px;color:#8b949e}
+    iframe{display:block;width:480px;height:272px;border:0;background:white}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="/mirage/portal">&larr;</a>
+    <div class="title">{{ portal.label }}</div>
+    <div class="safe">safe preview</div>
+  </div>
+  <iframe sandbox src="/mirage/portal/content/index.html" title="Portal preview"></iframe>
+</body>
+</html>

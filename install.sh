@@ -197,7 +197,23 @@ sudo cp "$SYS/fennec-pwna-iface" /usr/local/bin/fennec-pwna-iface
 sudo cp "$SYS/fennec-wifi-connect" /usr/local/bin/fennec-wifi-connect
 sudo cp "$SYS/fennec-wifi-disconnect" /usr/local/bin/fennec-wifi-disconnect
 sudo cp "$SYS/fennec-wardrive" /usr/local/bin/fennec-wardrive
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive
+sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-portal-manage
+
+# Mirage portal: keep a pristine default and never overwrite an existing custom portal.
+sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
+sudo cp -a "$SYS/mirage-portal/." /opt/fennec-mirage/default-portal/
+if [ ! -f /opt/fennec-mirage/portal/index.html ]; then
+    sudo cp -a /opt/fennec-mirage/default-portal/. /opt/fennec-mirage/portal/
+    echo '{"label":"Default portal","kind":"default"}' | sudo tee /opt/fennec-mirage/portal.json > /dev/null
+elif [ ! -f /opt/fennec-mirage/portal.json ]; then
+    if cmp -s /opt/fennec-mirage/portal/index.html /opt/fennec-mirage/default-portal/index.html; then
+        echo '{"label":"Default portal","kind":"default"}' | sudo tee /opt/fennec-mirage/portal.json > /dev/null
+    else
+        echo '{"label":"Custom portal","kind":"custom"}' | sudo tee /opt/fennec-mirage/portal.json > /dev/null
+    fi
+fi
+sudo chmod -R a+rX /opt/fennec-mirage
 
 # --- 7. systemd services (with venv substitution) ---
 echo "==> Installing the systemd services..."
