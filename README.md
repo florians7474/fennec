@@ -40,6 +40,7 @@ https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
 | **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
 | **Hugin** | Bjorn companion: results, Metasploit correlation (CVE + service), deported execution & live sessions | ✅ Working |
 | **Sentry** | Network radar + per-device traffic watch | ✅ Working |
+| **Mirage** | Evil-twin AP + captive portal to recover a key when offline cracking fails | ✅ Working |
 
 The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and tapping it opens the connection manager: you scan for networks, pick the ones you are allowed to test, and connect the Pi to a whitelisted Wi-Fi or disconnect it (real nmcli on the built-in interface; the key comes from the whitelist or an existing profile, and a network answering on several bands is handled by SSID). An on-screen keyboard pops up on any text field, so keys and device names can be typed on the touchscreen without a physical keyboard. A power button in the top-right opens an on-screen menu to lock the screen, rotate the screen, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate press-and-hold brings the interface back.
 
@@ -51,6 +52,7 @@ All six modules are operational: automatic installation, control from the tile, 
 - **Bjorn — recon & targeted attacks.** Scans and probes the network the Pi is on, naming it and its subnet before you start, with a live console in the tile. On Wi-Fi it starts only for a whitelisted network; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
 - **Hugin — Bjorn companion** (what Sly is to Pwnagotchi). Reads Bjorn's results per device (ports, services, vulnerabilities, actions, files) and suggests Metasploit modules two ways — by CVE (local index) and by open service (service→module map) — flagged as candidates, with a ready-to-run `.rc` plan per module. Execution is **deported**: Metasploit runs on a separate lab machine driven over RPC (run a module, watch a session open, list sessions, run in-session commands). Lab use only, on authorized targets.
 - **Sentry — device radar & traffic watch.** Scans the subnet (nmap ARP) and lists every device (IP, MAC, vendor) with unknowns surfaced and a one-tap "mine" chip; tap for detail (ports, guessed type, hostname). **Watch** mode turns it into a passive monitor (bettercap MITM) revealing the domains each device contacts (TLS SNI/QUIC via tshark, plus cleartext DNS via an on-demand dnsmasq), with timestamped per-network history, a **Force DNS** toggle against DoT/DoH, and VPN detection.
+- **Mirage — evil-twin AP.** Clones the SSID of a whitelisted target on the USB adapter (hostapd), hands out DHCP and redirects every request to an onboard captive portal (dnsmasq catch-all), and lists the clients that join live. An optional deauth (bettercap) pushes a target's clients toward the twin, enabled only on WPA2 targets and only when a second monitor adapter is present, so a WPA3/PMF network leaves it disabled. The captive portal page is user-supplied: drop your own portal project into the portal directory. Whitelisted targets only.
 
 ## Legal scope
 
@@ -127,6 +129,7 @@ shut down.
 - **Hugin**: in-house Bjorn companion (reads Bjorn's CSV/output, Metasploit correlation by CVE and by open service, `.rc` attack plans, msgpack-RPC link to a remote Metasploit — never on the Pi — with run, live sessions and in-session commands)
 - **Sentry**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM, tshark for SNI/QUIC and an on-demand dnsmasq for DNS, optional Force DNS against DoT/DoH, VPN detection, persistent per-network history)
 - **Connection**: joins or leaves a whitelisted Wi-Fi via nmcli on the built-in interface; keeps the USB adapter free for monitor mode
+- **Mirage**: in-house evil-twin launcher (hostapd rogue AP cloning a whitelisted SSID on the USB adapter, dnsmasq DHCP + DNS catch-all, a captive-portal web layer serving a user-supplied portal directory, live client view from the dnsmasq leases, optional bettercap deauth gated to WPA2 targets and a second monitor adapter)
 - On-screen keyboard for the touchscreen, so any field can be filled without a physical keyboard
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 - On-screen screen rotation: cycle the UI through 0/90/180/270 from the power menu (portrait and landscape), applied instantly with no reboot and no touch recalibration
