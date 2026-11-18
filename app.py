@@ -1033,7 +1033,7 @@ def crack_stop():
     raton_engine.stop()
     return jsonify({"ok": True})
 
-WARDRIVE_FILE = os.path.join(HANDSHAKES_DIR, "wardrive.json")
+WARDRIVE_FILE = "/etc/pwnagotchi/wardrive.json"
 
 def load_wardrive():
     try:
