@@ -177,6 +177,25 @@ def scan_security_channel(ssid):
             return (fields[2].strip() or None), (fields[1].strip() or None)
     return None, None
 
+def all_securities():
+    """Map SSID -> security string, from one nmcli scan (for the whitelist badges)."""
+    out = {}
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "SSID,SECURITY", "dev", "wifi", "list", "--rescan", "auto"],
+            capture_output=True, text=True, timeout=20,
+        )
+    except Exception:
+        return out
+    for line in r.stdout.splitlines():
+        fields = re.split(r"(?<!\\):", line)
+        if len(fields) < 2:
+            continue
+        name = fields[0].replace("\\:", ":").strip()
+        if name and name not in out:
+            out[name] = fields[1].strip()
+    return out
+
 def deauth_possible(security):
     """Deauth works on WPA2/WEP/open. Pure WPA3 (SAE) enforces PMF, which blocks it.
     Unknown security -> allowed (we can't prove it's WPA3)."""
@@ -701,8 +720,14 @@ def mode(name):
         # donc on ne propose meme pas le bouton dans ce cas.
         deauth_wpa3 = not deauth_possible(meta.get("security"))
         deauth_avail = active and bool(second) and not deauth_wpa3
+        nets = load_whitelist()
+        secmap = all_securities()
+        for r in nets:
+            s = secmap.get(r.get("name"))
+            r["security"] = s or None
+            r["deauthable"] = deauth_possible(s) if s else None
         return render_template("mirage.html", key=name, info=MODES[name],
-                               active=active, networks=load_whitelist(), cible=cible,
+                               active=active, networks=nets, cible=cible,
                                security=meta.get("security"),
                                deauth_active=deauth_active, deauth_avail=deauth_avail,
                                deauth_wpa3=deauth_wpa3)

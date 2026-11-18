@@ -33,6 +33,9 @@
     .info { flex:1; min-width:0; }
     .rnom { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .rbssid { font-size:11px; color:#8b949e; }
+    .rsec { font-size:10px; margin-top:2px; font-weight:600; }
+    .rsec.ok { color:#2ea043; }
+    .rsec.no { color:#da3633; }
     .clone { background:#f0689b; color:#2a0a18; }
     .tag { font-size:11px; color:#f0689b; font-weight:700; }
     .clients { margin-bottom:14px; padding:10px 12px; background:#10161f;
@@ -105,6 +108,9 @@
           <div class="info">
             <div class="rnom">{{ r.name }}</div>
             <div class="rbssid">{{ r.bssid }}</div>
+            {% if r.security %}
+              <div class="rsec {{ 'ok' if r.deauthable else 'no' }}">{{ r.security }} · {{ 'deauth ok' if r.deauthable else 'no deauth' }}</div>
+            {% endif %}
           </div>
           {% if active and cible == r.name %}
             <span class="tag">cloning</span>
