@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Mirage · Portal</title>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;width:480px;height:320px;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3}
+    .top{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#161b22;border-bottom:1px solid #30363d}
+    .back{color:#e6edf3;text-decoration:none;font-size:24px;padding:2px 8px}
+    .icon{width:28px;height:28px}.title{font-size:16px;font-weight:700;flex:1}
+    .view{height:272px;overflow-y:auto;padding:12px}
+    .label{font-size:10px;color:#8b949e;letter-spacing:.6px;text-transform:uppercase;margin:0 2px 7px}
+    .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:12px}
+    .row{display:flex;align-items:center;gap:10px}.grow{flex:1;min-width:0}
+    .name{font-weight:700;font-size:14px}.meta{font-size:11px;color:#8b949e;margin-top:3px}
+    .btn{border:0;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;cursor:pointer}
+    .pink{background:#f0689b;color:#2a0a18}.dark{background:#21262d;color:#e6edf3}.danger{background:#da3633;color:white}
+    .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .upload{display:block;margin-top:8px}.upload input{width:100%;font-size:12px;color:#8b949e}
+    .hint{font-size:11px;line-height:1.45;color:#8b949e;margin-top:8px}
+    .msg{font-size:11px;padding:8px 10px;border-radius:8px;margin-bottom:10px;background:#10231a;color:#3fb950}
+    .err{background:#2b1114;color:#ff7b72}.locked{color:#d29922;font-size:11px;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="/mode/mirage">&larr;</a>
+    <img class="icon" src="/static/mirage.png" alt="">
+    <div class="title">Portal</div>
+  </div>
+  <div class="view">
+    {% if ok %}<div class="msg">{{ ok }}</div>{% endif %}
+    {% if err %}<div class="msg err">{{ err }}</div>{% endif %}
+
+    <div class="label">Active portal</div>
+    <div class="card">
+      <div class="row">
+        <div class="grow">
+          <div class="name">{{ portal.label }}</div>
+          <div class="meta">{{ portal.files }} files · {{ portal.size }}</div>
+        </div>
+        <a class="btn dark" href="/mirage/portal/preview">Preview</a>
+      </div>
+      {% if active %}
+        <div class="locked">Stop Mirage before replacing the portal.</div>
+      {% else %}
+        <form class="upload" action="/mirage/portal/upload" method="post" enctype="multipart/form-data">
+          <input type="file" name="portal" accept=".zip,application/zip" required>
+          <div class="actions">
+            <button class="btn pink" type="submit">Replace portal</button>
+          </div>
+        </form>
+        <div class="hint">Upload a ZIP containing index.html and its static assets. Best managed from a desktop browser.</div>
+      {% endif %}
+    </div>
+
+    <div class="label">Default</div>
+    <div class="card">
+      <div class="row">
+        <div class="grow">
+          <div class="name">Fennec placeholder</div>
+          <div class="meta">Restore the portal shipped with Mirage.</div>
+        </div>
+        {% if not active and portal.kind != 'default' %}
+        <form action="/mirage/portal/reset" method="post">
+          <button class="btn danger" type="submit">Restore</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>
