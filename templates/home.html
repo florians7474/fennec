@@ -50,14 +50,9 @@
     .reglages:active { opacity:1; }
     .reglages svg { width:22px; height:22px; display:block; }
 
-    .pager { flex:1 1 auto; display:flex; overflow-x:auto; overflow-y:hidden;
-      scroll-snap-type:x mandatory; scroll-behavior:smooth; }
-    .pager::-webkit-scrollbar { display:none; }
-    .page { flex:0 0 480px; width:480px; scroll-snap-align:start;
-      display:flex; flex-wrap:wrap; justify-content:center; align-content:center; gap:8px 28px; padding:0 10px; }
-    .dots { flex:0 0 auto; height:18px; display:flex; align-items:center; justify-content:center; gap:7px; }
-    .dot { width:6px; height:6px; border-radius:50%; background:#30363d; transition:background .2s; }
-    .dot.on { background:#01F994; }
+    .grille { flex:1 1 auto; display:flex; flex-wrap:wrap; justify-content:center;
+      align-content:center; gap:8px 28px; padding:6px 10px; overflow-y:auto; }
+    .grille::-webkit-scrollbar { display:none; }
     .app { display:flex; flex-direction:column; align-items:center; text-decoration:none; width:104px; color:#e6edf3; }
     .icone {
       width:72px; height:72px; border-radius:19px; display:flex; align-items:center; justify-content:center;
@@ -164,61 +159,51 @@
     </button>
   </div>
 
-  <div class="pager" id="pager">
+  <div class="grille">
 
-    <div class="page">
+    <a class="app {{ 'on' if active=='pwnagotchi' }}" href="/mode/pwnagotchi">
+      <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
+      <div class="name">Pwnagotchi</div>
+      <div class="state"><span class="pastille"></span>{{ 'active' if active=='pwnagotchi' else 'stopped' }}</div>
+    </a>
 
-      <a class="app {{ 'on' if active=='pwnagotchi' }}" href="/mode/pwnagotchi">
-        <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
-        <div class="name">Pwnagotchi</div>
-        <div class="state"><span class="pastille"></span>{{ 'active' if active=='pwnagotchi' else 'stopped' }}</div>
-      </a>
+    <a class="app" href="/map">
+      <div class="icone echo"><img src="/static/echo.png" alt="Echo"></div>
+      <div class="name">Echo</div>
+      <div class="state">{{ echo_count }} mapped</div>
+    </a>
 
-      <a class="app" href="/map">
-        <div class="icone echo"><img src="/static/echo.png" alt="Echo"></div>
-        <div class="name">Echo</div>
-        <div class="state">{{ echo_count }} mapped</div>
-      </a>
+    <a class="app {{ 'on' if active=='cracking' }}" href="/mode/cracking">
+      <div class="icone cass"><img src="/static/raton.png" alt="Sly"></div>
+      <div class="name">Sly</div>
+      <div class="state"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
+    </a>
 
-      <a class="app {{ 'on' if active=='cracking' }}" href="/mode/cracking">
-        <div class="icone cass"><img src="/static/raton.png" alt="Sly"></div>
-        <div class="name">Sly</div>
-        <div class="state"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
-      </a>
+    <a class="app {{ 'on' if active=='mirage' }}" href="/mode/mirage">
+      <div class="icone mirage"><img src="/static/mirage.png" alt="Mirage"></div>
+      <div class="name">Mirage</div>
+      <div class="state"><span class="pastille"></span>{{ 'active' if active=='mirage' else 'stopped' }}</div>
+    </a>
 
-      <a class="app {{ 'on' if active=='mirage' }}" href="/mode/mirage">
-        <div class="icone mirage"><img src="/static/mirage.png" alt="Mirage"></div>
-        <div class="name">Mirage</div>
-        <div class="state"><span class="pastille"></span>{{ 'active' if active=='mirage' else 'stopped' }}</div>
-      </a>
+    <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
+      <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
+      <div class="name">Bjorn</div>
+      <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
+    </a>
 
-      <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
-        <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
-        <div class="name">Bjorn</div>
-        <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
-      </a>
+    <a class="app" id="hugin-tile" href="/hugin">
+      <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
+      <div class="name">Hugin</div>
+      <div class="state"><span class="pastille"></span><span id="hugin-state">Metasploit</span></div>
+    </a>
 
-      <a class="app" id="hugin-tile" href="/hugin">
-        <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
-        <div class="name">Hugin</div>
-        <div class="state"><span class="pastille"></span><span id="hugin-state">Metasploit</span></div>
-      </a>
-
-    </div>
-
-    <div class="page">
-
-      <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
-        <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
-        <div class="name">Sentry</div>
-        <div class="state"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
-      </a>
-
-    </div>
+    <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
+      <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
+      <div class="name">Sentry</div>
+      <div class="state"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
+    </a>
 
   </div>
-
-  <div class="dots" id="dots"></div>
 
   <div id="pwrdlg" class="pwr-overlay">
     <div class="pwr-box">
@@ -358,32 +343,6 @@
       }
       refresh();
       setInterval(refresh, 15000);
-    })();
-  </script>
-  <script>
-    // Home en pages facon smartphone : points indicateurs + swipe horizontal.
-    (function () {
-      var pager = document.getElementById('pager');
-      var dots = document.getElementById('dots');
-      if (!pager || !dots) return;
-      var pages = pager.querySelectorAll('.page');
-      if (pages.length <= 1) return;
-      for (var i = 0; i < pages.length; i++) {
-        var d = document.createElement('div');
-        d.className = 'dot' + (i === 0 ? ' on' : '');
-        (function (idx) {
-          d.addEventListener('click', function () {
-            pager.scrollTo({ left: idx * pager.clientWidth, behavior: 'smooth' });
-          });
-        })(i);
-        dots.appendChild(d);
-      }
-      function sync() {
-        var idx = Math.round(pager.scrollLeft / pager.clientWidth);
-        var all = dots.children;
-        for (var i = 0; i < all.length; i++) all[i].classList.toggle('on', i === idx);
-      }
-      pager.addEventListener('scroll', sync, { passive: true });
     })();
   </script>
 </body>
