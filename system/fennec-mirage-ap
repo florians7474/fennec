@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Lève le faux AP Mirage (hostapd + dnsmasq) sur wlan1.
+# AP ouvert + DHCP + DNS catch-all : toute requête du client est renvoyée vers le Pi.
+# Usage: fennec-mirage-ap "SSID" CANAL
+set -euo pipefail
+
+IFACE=wlan1
+AP_IP=10.0.0.1
+SSID="${1:-Fennec-test}"
+CANAL="${2:-1}"
+RUN=/tmp/fennec-mirage
+
+mkdir -p "$RUN"
+
+nmcli dev set "$IFACE" managed no 2>/dev/null || true
+ip addr flush dev "$IFACE" 2>/dev/null || true
+ip addr add "$AP_IP/24" dev "$IFACE"
+ip link set "$IFACE" up
+
+cat > "$RUN/hostapd.conf" <<EOF
+interface=$IFACE
+driver=nl80211
+ssid=$SSID
+hw_mode=g
+channel=$CANAL
+EOF
+
+cat > "$RUN/dnsmasq.conf" <<EOF
+interface=$IFACE
+bind-interfaces
+dhcp-range=10.0.0.10,10.0.0.100,12h
+dhcp-option=3,$AP_IP
+dhcp-option=6,$AP_IP
+address=/#/$AP_IP
+EOF
+
+pkill -f "$RUN/dnsmasq.conf" 2>/dev/null || true
+sleep 1
+
+dnsmasq -C "$RUN/dnsmasq.conf"
+exec hostapd "$RUN/hostapd.conf"

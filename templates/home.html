@@ -72,6 +72,8 @@
     .vigie { background:linear-gradient(150deg,#28c0d4,#1577a0); }
     .hugin { background:linear-gradient(150deg,#a78bfa,#6d4fd0); }
     .echo  { background:linear-gradient(150deg,#2a3566,#141c33); }
+    .mirage { background:linear-gradient(150deg,#f0689b,#b0295b); }
+    .mirage img { width:70px; height:70px; }
     .hugin img { width:70px; height:70px; }
     .name { margin-top:7px; font-size:12px; font-weight:600; color:#e6edf3; }
     .state { display:flex; align-items:center; gap:5px; margin-top:2px; font-size:10px; color:#8b949e; }
@@ -179,6 +181,12 @@
       <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
       <div class="name">Bjorn</div>
       <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
+    </a>
+
+    <a class="app {{ 'on' if active=='mirage' }}" href="/mode/mirage">
+      <div class="icone mirage"><img src="/static/mirage.png" alt="Mirage"></div>
+      <div class="name">Mirage</div>
+      <div class="state"><span class="pastille"></span>{{ 'active' if active=='mirage' else 'stopped' }}</div>
     </a>
 
     <a class="app" id="hugin-tile" href="/hugin">

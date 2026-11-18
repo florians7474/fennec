@@ -41,6 +41,7 @@ MODES = {
     "pwnagotchi": {"name": "Pwnagotchi", "classe": "pwn",   "url": None},
     "cracking":    {"name": "Sly",      "classe": "cass",  "url": None},
     "bjorn":      {"name": "Bjorn",      "classe": "bjorn", "url": None},
+    "mirage":     {"name": "Mirage",     "classe": "mirage", "url": None},
 }
 
 # ---------- JSON files ----------
@@ -95,6 +96,7 @@ import base64
 SERVICES = {
     "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi", "fennec-wardrive"],
     "bjorn": ["bjorn", "bjorn-console"],
+    "mirage": ["fennec-mirage"],
 }
 
 import glob
@@ -611,6 +613,11 @@ def mode(name):
         return render_template("mode.html", key=name, info=MODES[name], active=active,
                                url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan,
                                err=request.args.get("err"))
+    if name == "mirage":
+        active = is_active("fennec-mirage")
+        app_state["active_mode"] = "mirage" if active else app_state["active_mode"]
+        return render_template("mode.html", key=name, info=MODES[name], active=active,
+                               url_ui=None, url_iframe=None)
     active = (app_state["active_mode"] == name)
     return render_template("mode.html", key=name, info=MODES[name], active=active,
                            url_ui=None, url_iframe=None)
