@@ -144,14 +144,22 @@ def _phy_supports_monitor(phy):
                 break
     return False
 
+def _wireless_ifaces():
+    """All wireless interfaces (any name), i.e. netdevs that expose a phy80211."""
+    names = []
+    for path in sorted(glob.glob("/sys/class/net/*")):
+        if os.path.isdir(os.path.join(path, "phy80211")):
+            names.append(os.path.basename(path))
+    return names
+
 def monitor_iface_except(exclude):
-    """First monitor-capable wlan interface that is NOT `exclude` (the AP iface)."""
-    for path in sorted(glob.glob("/sys/class/net/wlan*")):
-        iface = os.path.basename(path)
+    """First monitor-capable wireless interface that is NOT `exclude` (the AP iface).
+    Matches any name (wlan*, wlx<mac>, ...), not just wlan*."""
+    for iface in _wireless_ifaces():
         if iface == exclude:
             continue
         try:
-            with open(os.path.join(path, "phy80211/name")) as f:
+            with open(f"/sys/class/net/{iface}/phy80211/name") as f:
                 phy = f.read().strip()
         except OSError:
             continue
