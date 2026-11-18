@@ -1,0 +1,11 @@
+[Unit]
+Description=WPS pixie-dust attack (module Fennec)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fennec-wps
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

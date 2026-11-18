@@ -33,6 +33,10 @@
       font-size:13px; font-weight:600; padding:8px 14px; white-space:nowrap;
     }
     .tester.off { background:#30363d; color:#6e7681; cursor:default; }
+    .wps {
+      border:none; border-radius:8px; background:#1f6feb; color:#fff; text-decoration:none;
+      font-size:13px; font-weight:600; padding:8px 14px; white-space:nowrap;
+    }
     .rbssid .nohs { color:#6e7681; }
     .exporter {
       border:1px solid #f0883e; border-radius:8px; background:none; color:#f0883e;
@@ -59,6 +63,9 @@
         <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
       </div>
       {% if r.bssid in seen %}
+        {% if r.wps and wps_ok %}
+          <a class="wps" href="/cracking/wps/{{ r.bssid }}">WPS</a>
+        {% endif %}
         {% if r.handshake %}
           <a class="tester" href="/cracking/test/{{ r.bssid }}">Test</a>
           <a class="exporter" href="/cracking/gpu/{{ r.bssid }}">GPU</a>

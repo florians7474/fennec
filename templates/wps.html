@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>WPS</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .topbar {
+      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .title { font-size:16px; font-weight:700; flex:1; }
+    .btn { border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600;
+           color:#fff; text-decoration:none; }
+    .btn.stop { background:#da3633; }
+    .body { flex:1 1 auto; overflow-y:auto; padding:12px; }
+    .cible { font-size:13px; color:#8b949e; margin-bottom:10px; }
+    .cible b { color:#e6edf3; }
+    .status { font-size:14px; font-weight:700; margin-bottom:10px; }
+    .status.run { color:#1f6feb; }
+    .status.ok { color:#2ea043; }
+    .status.ko { color:#da3633; }
+    .key { font-size:16px; font-weight:800; color:#2ea043; word-break:break-all;
+           background:#0f2418; border:1px solid #1d5c38; border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+    .log { font-family:ui-monospace,Consolas,monospace; font-size:10px; line-height:1.4;
+           color:#8b949e; background:#0b0f14; border:1px solid #21262d; border-radius:8px;
+           padding:8px; white-space:pre-wrap; word-break:break-all; max-height:150px; overflow-y:auto; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="/mode/cracking">&larr;</a>
+    <div class="title">WPS</div>
+    <a class="btn stop" href="/cracking/wps/stop">Stop</a>
+  </div>
+
+  <div class="body">
+    <div class="cible">Target: <b>{{ name }}</b> &middot; {{ bssid }}</div>
+    <div class="status run" id="status">Attack running…</div>
+    <div class="key" id="key" style="display:none"></div>
+    <pre class="log" id="log"></pre>
+  </div>
+
+  <script>
+    (function () {
+      var st = document.getElementById('status');
+      var keyBox = document.getElementById('key');
+      var log = document.getElementById('log');
+      function refresh() {
+        fetch('/cracking/wps/state', { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d.log) { log.textContent = d.log; log.scrollTop = log.scrollHeight; }
+            if (d.status === 'found') {
+              st.textContent = 'Key recovered — saved to your allowed networks';
+              st.className = 'status ok';
+              keyBox.textContent = d.psk || '';
+              keyBox.style.display = 'block';
+              return;
+            }
+            if (!d.active && d.status === 'failed') {
+              st.textContent = 'No key — WPS locked or chip not vulnerable';
+              st.className = 'status ko';
+              return;
+            }
+            if (!d.active && !d.status) {
+              st.textContent = 'Stopped';
+              st.className = 'status ko';
+              return;
+            }
+            st.textContent = 'Attack running…';
+            st.className = 'status run';
+            setTimeout(refresh, 2500);
+          })
+          .catch(function () { setTimeout(refresh, 3000); });
+      }
+      refresh();
+    })();
+  </script>
+</body>
+</html>

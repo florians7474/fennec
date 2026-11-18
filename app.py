@@ -702,17 +702,23 @@ def mode(name):
                 return render_template("crack_result.html", c=capture)
         seen = {r["bssid"] for r in load_whitelist()}
         captures = read_handshakes()
+        wd_up = {k.upper(): v for k, v in load_wardrive().items()}
         for cap in captures:
             # Only check for a handshake on allowed networks (the only ones that
             # show a Test button), to avoid useless scans.
             cap["handshake"] = cap["bssid"] in seen and capture_has_handshake(cap["file"])
+            # WPS seen for this BSSID (recorded by the wardrive logger).
+            w = wd_up.get(cap["bssid"].upper())
+            cap["wps"] = bool(w and w.get("wps"))
         # Testable captures first (allowed + handshake), then allowed without a
         # handshake, then locked ones; alphabetical within each group.
         captures.sort(key=lambda c: (
             0 if c["handshake"] else (1 if c["bssid"] in seen else 2),
             c["name"].lower(),
         ))
-        return render_template("cracking.html", captures=captures, seen=seen)
+        # The WPS attack needs a monitor-capable adapter.
+        wps_ok = detect_monitor_iface() is not None
+        return render_template("cracking.html", captures=captures, seen=seen, wps_ok=wps_ok)
 
     if name == "pwnagotchi":
         active = is_active("pwnagotchi")
@@ -970,6 +976,57 @@ def crack_status():
         save_whitelist(networks)
         e["saved"] = True
     return jsonify(e)
+
+@app.route("/cracking/wps/<bssid>")
+def wps_start(bssid):
+    # WPS pixie-dust (reaver) sur une cible autorisee. Gate : whitelist + carte monitor.
+    net = next((r for r in load_whitelist()
+                if r["bssid"].upper() == bssid.upper()), None)
+    iface = detect_monitor_iface()
+    if not net or not iface:
+        return redirect(url_for("mode", name="cracking"))
+    w = {k.upper(): v for k, v in load_wardrive().items()}.get(bssid.upper()) or {}
+    chan = w.get("channel") or ""
+    with open("/tmp/fennec-wps-target", "w", encoding="utf-8") as f:
+        f.write("%s\n%s\n%s\n" % (iface, bssid, chan))
+    try:
+        os.remove("/tmp/fennec-wps-result.json")
+    except OSError:
+        pass
+    _systemctl("stop", "fennec-wps")
+    _systemctl("start", "fennec-wps")
+    return render_template("wps.html", bssid=bssid, name=net.get("name") or bssid)
+
+@app.route("/cracking/wps/state")
+def wps_state():
+    active = is_active("fennec-wps")
+    res = {}
+    try:
+        with open("/tmp/fennec-wps-result.json", encoding="utf-8") as f:
+            res = json.load(f)
+    except (OSError, ValueError):
+        pass
+    log = ""
+    try:
+        with open("/tmp/fennec-wps.log", encoding="utf-8") as f:
+            log = f.read()[-1600:]
+    except OSError:
+        pass
+    # On success, write the recovered key into the whitelist once.
+    if res.get("status") == "found" and res.get("psk"):
+        nets = load_whitelist()
+        for r in nets:
+            if r["bssid"].upper() == str(res.get("bssid", "")).upper() and r.get("key") != res["psk"]:
+                r["key"] = res["psk"]
+                save_whitelist(nets)
+                break
+    return jsonify(active=active, status=res.get("status"),
+                   psk=res.get("psk"), log=log)
+
+@app.route("/cracking/wps/stop")
+def wps_stop():
+    _systemctl("stop", "fennec-wps")
+    return redirect(url_for("mode", name="cracking"))
 
 @app.route("/cracking/stop")
 def crack_stop():
