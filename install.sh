@@ -200,8 +200,9 @@ sudo cp "$SYS/fennec-wardrive" /usr/local/bin/fennec-wardrive
 sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
 sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-portal-manage
 
-# Mirage portal: keep a pristine default and never overwrite an existing custom portal.
+# Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
+sudo rm -rf /opt/fennec-mirage/default-portal/*
 sudo cp -a "$SYS/mirage-portal/." /opt/fennec-mirage/default-portal/
 if [ ! -f /opt/fennec-mirage/portal/index.html ]; then
     sudo cp -a /opt/fennec-mirage/default-portal/. /opt/fennec-mirage/portal/
@@ -212,6 +213,9 @@ elif [ ! -f /opt/fennec-mirage/portal.json ]; then
     else
         echo '{"label":"Custom portal","kind":"custom"}' | sudo tee /opt/fennec-mirage/portal.json > /dev/null
     fi
+elif grep -q '"kind"[[:space:]]*:[[:space:]]*"default"' /opt/fennec-mirage/portal.json; then
+    sudo rm -rf /opt/fennec-mirage/portal/*
+    sudo cp -a /opt/fennec-mirage/default-portal/. /opt/fennec-mirage/portal/
 fi
 sudo chmod -R a+rX /opt/fennec-mirage
 
