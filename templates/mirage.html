@@ -23,6 +23,9 @@
     .btn { border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600;
            color:#fff; text-decoration:none; }
     .btn.stop { background:#da3633; }
+    .btn.portal { background:#21262d; color:#e6edf3; padding:8px 12px; }
+    .portal-line { text-align:center; color:#8b949e; font-size:10px; margin:-7px 0 10px; }
+    .portal-line b { color:#e6edf3; font-weight:600; }
     .vue { height:272px; overflow-y:auto; padding:12px; }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; text-align:center; padding:30px 20px; }
     .cloned { text-align:center; color:#f0689b; font-size:13px; margin-bottom:12px; }
@@ -61,6 +64,9 @@
     <a class="back" href="/">&larr;</a>
     <img class="tete" src="/static/{{ key }}.png" alt="" onerror="this.style.display='none'">
     <div class="title">{{ info.name }}</div>
+    {% if not active %}
+      <a class="btn portal" href="/mirage/portal">Portal</a>
+    {% endif %}
     <span class="pastille {{ 'on' if active }}"></span>
     {% if active %}
       <a class="btn stop" href="/mirage/stop">Stop</a>
@@ -70,6 +76,7 @@
   <div class="vue">
     {% if active and cible %}
       <div class="cloned">Cloning <b>{{ cible }}</b></div>
+      <div class="portal-line">Portal · <b>{{ portal.label }}</b></div>
     {% endif %}
 
     {% if active %}
