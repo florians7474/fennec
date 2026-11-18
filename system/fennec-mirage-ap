@@ -6,11 +6,21 @@ set -euo pipefail
 
 IFACE=wlan1
 AP_IP=10.0.0.1
-SSID="${1:-Fennec-test}"
-CANAL="${2:-1}"
 RUN=/tmp/fennec-mirage
+TARGET=/tmp/fennec-mirage-target   # ecrit par Fennec : ligne 1 = SSID, ligne 2 = canal
 
 mkdir -p "$RUN"
+
+# SSID et canal : argument explicite, sinon cible choisie dans l'interface,
+# sinon valeur de test par defaut.
+SSID="${1:-}"
+CANAL="${2:-}"
+if [ -z "$SSID" ] && [ -f "$TARGET" ]; then
+  SSID="$(sed -n '1p' "$TARGET")"
+  [ -z "$CANAL" ] && CANAL="$(sed -n '2p' "$TARGET")"
+fi
+SSID="${SSID:-Fennec-test}"
+CANAL="${CANAL:-1}"
 
 nmcli dev set "$IFACE" managed no 2>/dev/null || true
 ip addr flush dev "$IFACE" 2>/dev/null || true

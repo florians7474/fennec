@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>{{ info.name }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3;
+    }
+    .topbar {
+      height:48px; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .tete { width:28px; height:28px; }
+    .title { font-size:16px; font-weight:600; flex:1; }
+    .pastille { width:9px; height:9px; border-radius:50%; background:#5a6673; }
+    .pastille.on { background:#2ea043; box-shadow:0 0 6px #2ea043; }
+    .btn { border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600;
+           color:#fff; text-decoration:none; }
+    .btn.stop { background:#da3633; }
+    .vue { height:272px; overflow-y:auto; padding:12px; }
+    .vide { color:#8b949e; font-size:13px; line-height:1.6; text-align:center; padding:30px 20px; }
+    .cloned { text-align:center; color:#f0689b; font-size:13px; margin-bottom:12px; }
+    .cloned b { color:#e6edf3; }
+    .row { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
+           background:#161b22; border:1px solid #30363d; border-radius:10px; }
+    .row.active { border-color:#f0689b; }
+    .info { flex:1; min-width:0; }
+    .rnom { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rbssid { font-size:11px; color:#8b949e; }
+    .clone { background:#f0689b; color:#2a0a18; }
+    .tag { font-size:11px; color:#f0689b; font-weight:700; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="/">&larr;</a>
+    <img class="tete" src="/static/{{ key }}.png" alt="" onerror="this.style.display='none'">
+    <div class="title">{{ info.name }}</div>
+    <span class="pastille {{ 'on' if active }}"></span>
+    {% if active %}
+      <a class="btn stop" href="/mirage/stop">Stop</a>
+    {% endif %}
+  </div>
+
+  <div class="vue">
+    {% if active and cible %}
+      <div class="cloned">Cloning <b>{{ cible }}</b></div>
+    {% endif %}
+
+    {% if not networks %}
+      <div class="vide">
+        No allowed networks yet.<br>
+        Add a network to your whitelist first, then pick it here to clone.
+      </div>
+    {% else %}
+      {% for r in networks %}
+        <div class="row {{ 'active' if active and cible == r.name }}">
+          <div class="info">
+            <div class="rnom">{{ r.name }}</div>
+            <div class="rbssid">{{ r.bssid }}</div>
+          </div>
+          {% if active and cible == r.name %}
+            <span class="tag">cloning</span>
+          {% else %}
+            <a class="btn clone" href="/mirage/start/{{ r.bssid }}">Clone</a>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -615,9 +615,16 @@ def mode(name):
                                err=request.args.get("err"))
     if name == "mirage":
         active = is_active("fennec-mirage")
-        app_state["active_mode"] = "mirage" if active else app_state["active_mode"]
-        return render_template("mode.html", key=name, info=MODES[name], active=active,
-                               url_ui=None, url_iframe=None)
+        if active:
+            app_state["active_mode"] = "mirage"
+        cible = None
+        try:
+            with open("/tmp/fennec-mirage-target", encoding="utf-8") as f:
+                cible = f.readline().strip() or None
+        except OSError:
+            pass
+        return render_template("mirage.html", key=name, info=MODES[name],
+                               active=active, networks=load_whitelist(), cible=cible)
     active = (app_state["active_mode"] == name)
     return render_template("mode.html", key=name, info=MODES[name], active=active,
                            url_ui=None, url_iframe=None)
@@ -644,6 +651,33 @@ def toggle(name):
         start(name)
         app_state["active_mode"] = name
     return redirect(url_for("mode", name=name))
+
+@app.route("/mirage/start/<bssid>")
+def mirage_start(bssid):
+    # Gate : Mirage ne peut cloner qu'un reseau de la whitelist.
+    net = next((r for r in load_whitelist()
+                if r["bssid"].upper() == bssid.upper()), None)
+    if not net:
+        return redirect(url_for("mode", name="mirage"))
+    # La cible (SSID a cloner) est passee au service via ce fichier.
+    with open("/tmp/fennec-mirage-target", "w", encoding="utf-8") as f:
+        f.write((net.get("name") or "") + "\n")
+    if vigie_monitor.monitor_state["active"]:
+        vigie_monitor.stop()
+    current = app_state["active_mode"]
+    if current and current not in ("mirage", "vigie"):
+        stop(current)
+    _systemctl("stop", "fennec-mirage")
+    _systemctl("start", "fennec-mirage")
+    app_state["active_mode"] = "mirage"
+    return redirect(url_for("mode", name="mirage"))
+
+@app.route("/mirage/stop")
+def mirage_stop():
+    _systemctl("stop", "fennec-mirage")
+    if app_state["active_mode"] == "mirage":
+        app_state["active_mode"] = None
+    return redirect(url_for("mode", name="mirage"))
 
 @app.route("/cracking/test/<bssid>")
 def crack_test(bssid):
