@@ -9,7 +9,7 @@ import raton_engine
 import vigie_monitor
 import hugin
 import hugin_msf
-from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, Response
+from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, send_from_directory, Response
 
 app = Flask(__name__)
 # The kiosk browser caches static assets; restarting Fennec doesn't clear that
@@ -769,7 +769,8 @@ def mode(name):
                                active=active, networks=nets, cible=cible,
                                security=meta.get("security"),
                                deauth_active=deauth_active, deauth_avail=deauth_avail,
-                               deauth_wpa3=deauth_wpa3)
+                               deauth_wpa3=deauth_wpa3,
+                               portal=mirage_portal_info())
     active = (app_state["active_mode"] == name)
     return render_template("mode.html", key=name, info=MODES[name], active=active,
                            url_ui=None, url_iframe=None)
@@ -796,6 +797,144 @@ def toggle(name):
         start(name)
         app_state["active_mode"] = name
     return redirect(url_for("mode", name=name))
+
+
+def _human_bytes(size):
+    if size < 1024:
+        return f"{size} B"
+    if size < 1024 * 1024:
+        return f"{size / 1024:.1f} KB"
+    return f"{size / (1024 * 1024):.1f} MB"
+
+
+def mirage_portal_info():
+    """Small read-only summary of the portal currently served by Mirage."""
+    meta = {}
+    try:
+        with open(MIRAGE_PORTAL_META, encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        pass
+
+    count = 0
+    total = 0
+    try:
+        for root, _dirs, files in os.walk(MIRAGE_PORTAL_DIR):
+            for name in files:
+                path = os.path.join(root, name)
+                try:
+                    if os.path.isfile(path):
+                        count += 1
+                        total += os.path.getsize(path)
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+    installed = os.path.isfile(os.path.join(MIRAGE_PORTAL_DIR, "index.html"))
+    kind = meta.get("kind") if isinstance(meta, dict) else None
+    label = meta.get("label") if isinstance(meta, dict) else None
+    if not label:
+        label = "Default portal" if installed else "Portal not installed"
+    if not kind:
+        kind = "default" if installed else "missing"
+    return {
+        "label": label,
+        "kind": kind,
+        "files": count,
+        "bytes": total,
+        "size": _human_bytes(total),
+        "installed": installed,
+    }
+
+
+@app.route("/mirage/portal")
+def mirage_portal_page():
+    return render_template(
+        "mirage_portal.html",
+        portal=mirage_portal_info(),
+        active=is_active("fennec-mirage"),
+        ok=request.args.get("ok"),
+        err=request.args.get("err"),
+    )
+
+
+@app.route("/mirage/portal/upload", methods=["POST"])
+def mirage_portal_upload():
+    if is_active("fennec-mirage"):
+        return redirect(url_for("mirage_portal_page",
+                                err="Stop Mirage before replacing the portal."))
+
+    upload = request.files.get("portal")
+    if not upload or not upload.filename:
+        return redirect(url_for("mirage_portal_page", err="Choose a ZIP file first."))
+    if not upload.filename.lower().endswith(".zip"):
+        return redirect(url_for("mirage_portal_page", err="Portal must be a ZIP archive."))
+    if request.content_length and request.content_length > MIRAGE_PORTAL_MAX_UPLOAD + 1024 * 1024:
+        return redirect(url_for("mirage_portal_page", err="Portal archive is too large."))
+
+    try:
+        upload.save(MIRAGE_PORTAL_UPLOAD)
+        if os.path.getsize(MIRAGE_PORTAL_UPLOAD) > MIRAGE_PORTAL_MAX_UPLOAD:
+            raise ValueError("Portal archive is too large.")
+        r = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-mirage-portal-manage", "install"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode != 0:
+            msg = (r.stderr or r.stdout or "Portal installation failed.").strip()
+            return redirect(url_for("mirage_portal_page", err=msg[:180]))
+    except Exception as exc:
+        return redirect(url_for("mirage_portal_page", err=str(exc)[:180]))
+    finally:
+        try:
+            os.remove(MIRAGE_PORTAL_UPLOAD)
+        except OSError:
+            pass
+
+    return redirect(url_for("mirage_portal_page", ok="Portal replaced."))
+
+
+@app.route("/mirage/portal/reset", methods=["POST"])
+def mirage_portal_reset():
+    if is_active("fennec-mirage"):
+        return redirect(url_for("mirage_portal_page",
+                                err="Stop Mirage before restoring the portal."))
+    try:
+        r = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-mirage-portal-manage", "reset"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if r.returncode != 0:
+            msg = (r.stderr or r.stdout or "Portal restore failed.").strip()
+            return redirect(url_for("mirage_portal_page", err=msg[:180]))
+    except Exception as exc:
+        return redirect(url_for("mirage_portal_page", err=str(exc)[:180]))
+    return redirect(url_for("mirage_portal_page", ok="Default portal restored."))
+
+
+@app.route("/mirage/portal/preview")
+def mirage_portal_preview():
+    return render_template("mirage_portal_preview.html",
+                           portal=mirage_portal_info())
+
+
+@app.route("/mirage/portal/content/")
+@app.route("/mirage/portal/content/<path:relpath>")
+def mirage_portal_content(relpath="index.html"):
+    """Read-only preview. Scripts, forms and network calls are disabled by CSP."""
+    if not mirage_portal_info()["installed"]:
+        abort(404)
+    response = send_from_directory(MIRAGE_PORTAL_DIR, relpath)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' data:; "
+        "script-src 'none'; connect-src 'none'; form-action 'none'; "
+        "object-src 'none'; base-uri 'none'; frame-ancestors 'self';"
+    )
+    return response
+
 
 @app.route("/mirage/start/<bssid>")
 def mirage_start(bssid):
