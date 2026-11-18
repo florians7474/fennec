@@ -50,9 +50,23 @@
     .reglages:active { opacity:1; }
     .reglages svg { width:22px; height:22px; display:block; }
 
-    .grille { flex:1 1 auto; display:flex; flex-wrap:wrap; justify-content:center;
-      align-content:center; gap:8px 28px; padding:6px 10px; overflow-y:auto; }
-    .grille::-webkit-scrollbar { display:none; }
+    .pager { flex:1 1 auto; display:flex; overflow-x:auto; overflow-y:hidden;
+      scroll-snap-type:x mandatory; scroll-behavior:smooth; }
+    .pager::-webkit-scrollbar { display:none; }
+    .page { flex:0 0 100%; width:100%; scroll-snap-align:start;
+      display:flex; flex-wrap:wrap; justify-content:center; align-content:center; gap:8px 28px; padding:0 10px; }
+    .dots { flex:0 0 auto; height:18px; display:flex; align-items:center; justify-content:center; gap:7px; }
+    .dot { width:6px; height:6px; border-radius:50%; background:#30363d; transition:background .2s; }
+    .dot.on { background:#01F994; }
+    .nav-arrow { position:absolute; top:50%; transform:translateY(-50%); z-index:40;
+      width:38px; height:56px; display:flex; align-items:center; justify-content:center;
+      background:rgba(22,27,34,.72); border:1px solid #30363d; color:#e6edf3;
+      border-radius:12px; padding:0; }
+    .nav-arrow:active { background:#21262d; }
+    .nav-arrow.left { left:4px; }
+    .nav-arrow.right { right:4px; }
+    .nav-arrow svg { width:22px; height:22px; display:block; }
+    .nav-arrow.hidden { display:none; }
     .app { display:flex; flex-direction:column; align-items:center; text-decoration:none; width:104px; color:#e6edf3; }
     .icone {
       width:72px; height:72px; border-radius:19px; display:flex; align-items:center; justify-content:center;
@@ -159,51 +173,68 @@
     </button>
   </div>
 
-  <div class="grille">
+  <div class="pager" id="pager">
 
-    <a class="app {{ 'on' if active=='pwnagotchi' }}" href="/mode/pwnagotchi">
-      <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
-      <div class="name">Pwnagotchi</div>
-      <div class="state"><span class="pastille"></span>{{ 'active' if active=='pwnagotchi' else 'stopped' }}</div>
-    </a>
+    <div class="page">
 
-    <a class="app" href="/map">
-      <div class="icone echo"><img src="/static/echo.png" alt="Echo"></div>
-      <div class="name">Echo</div>
-      <div class="state">{{ echo_count }} mapped</div>
-    </a>
+      <a class="app {{ 'on' if active=='pwnagotchi' }}" href="/mode/pwnagotchi">
+        <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
+        <div class="name">Pwnagotchi</div>
+        <div class="state"><span class="pastille"></span>{{ 'active' if active=='pwnagotchi' else 'stopped' }}</div>
+      </a>
 
-    <a class="app {{ 'on' if active=='cracking' }}" href="/mode/cracking">
-      <div class="icone cass"><img src="/static/raton.png" alt="Sly"></div>
-      <div class="name">Sly</div>
-      <div class="state"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
-    </a>
+      <a class="app" href="/map">
+        <div class="icone echo"><img src="/static/echo.png" alt="Echo"></div>
+        <div class="name">Echo</div>
+        <div class="state">{{ echo_count }} mapped</div>
+      </a>
 
-    <a class="app {{ 'on' if active=='mirage' }}" href="/mode/mirage">
-      <div class="icone mirage"><img src="/static/mirage.png" alt="Mirage"></div>
-      <div class="name">Mirage</div>
-      <div class="state"><span class="pastille"></span>{{ 'active' if active=='mirage' else 'stopped' }}</div>
-    </a>
+      <a class="app {{ 'on' if active=='cracking' }}" href="/mode/cracking">
+        <div class="icone cass"><img src="/static/raton.png" alt="Sly"></div>
+        <div class="name">Sly</div>
+        <div class="state"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
+      </a>
 
-    <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
-      <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
-      <div class="name">Bjorn</div>
-      <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
-    </a>
+      <a class="app {{ 'on' if active=='mirage' }}" href="/mode/mirage">
+        <div class="icone mirage"><img src="/static/mirage.png" alt="Mirage"></div>
+        <div class="name">Mirage</div>
+        <div class="state"><span class="pastille"></span>{{ 'active' if active=='mirage' else 'stopped' }}</div>
+      </a>
 
-    <a class="app" id="hugin-tile" href="/hugin">
-      <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
-      <div class="name">Hugin</div>
-      <div class="state"><span class="pastille"></span><span id="hugin-state">Metasploit</span></div>
-    </a>
+      <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
+        <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
+        <div class="name">Bjorn</div>
+        <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
+      </a>
 
-    <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
-      <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
-      <div class="name">Sentry</div>
-      <div class="state"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
-    </a>
+      <a class="app" id="hugin-tile" href="/hugin">
+        <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
+        <div class="name">Hugin</div>
+        <div class="state"><span class="pastille"></span><span id="hugin-state">Metasploit</span></div>
+      </a>
+
+    </div>
+
+    <div class="page">
+
+      <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
+        <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
+        <div class="name">Sentry</div>
+        <div class="state"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
+      </a>
+
+    </div>
 
   </div>
+
+  <div class="dots" id="dots"></div>
+
+  <button class="nav-arrow left hidden" id="navLeft" aria-label="Previous">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
+  <button class="nav-arrow right" id="navRight" aria-label="Next">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+  </button>
 
   <div id="pwrdlg" class="pwr-overlay">
     <div class="pwr-box">
@@ -343,6 +374,47 @@
       }
       refresh();
       setInterval(refresh, 15000);
+    })();
+  </script>
+  <script>
+    // Home en pages facon smartphone : fleches de navigation + points indicateurs.
+    (function () {
+      var pager = document.getElementById('pager');
+      var dots = document.getElementById('dots');
+      var navL = document.getElementById('navLeft');
+      var navR = document.getElementById('navRight');
+      if (!pager) return;
+      var pages = pager.querySelectorAll('.page');
+      if (pages.length <= 1) {
+        if (navL) navL.classList.add('hidden');
+        if (navR) navR.classList.add('hidden');
+        return;
+      }
+      if (dots) {
+        for (var i = 0; i < pages.length; i++) {
+          var d = document.createElement('div');
+          d.className = 'dot' + (i === 0 ? ' on' : '');
+          dots.appendChild(d);
+        }
+      }
+      function cur() { return Math.round(pager.scrollLeft / pager.clientWidth); }
+      function go(i) {
+        i = Math.max(0, Math.min(pages.length - 1, i));
+        pager.scrollTo({ left: i * pager.clientWidth, behavior: 'smooth' });
+      }
+      if (navL) navL.addEventListener('click', function () { go(cur() - 1); });
+      if (navR) navR.addEventListener('click', function () { go(cur() + 1); });
+      function sync() {
+        var idx = cur();
+        if (dots) {
+          var all = dots.children;
+          for (var i = 0; i < all.length; i++) all[i].classList.toggle('on', i === idx);
+        }
+        if (navL) navL.classList.toggle('hidden', idx <= 0);
+        if (navR) navR.classList.toggle('hidden', idx >= pages.length - 1);
+      }
+      pager.addEventListener('scroll', sync, { passive: true });
+      sync();
     })();
   </script>
 </body>
