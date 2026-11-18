@@ -29,6 +29,10 @@ def _asset_version():
 
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+MIRAGE_PORTAL_DIR = "/opt/fennec-mirage/portal"
+MIRAGE_PORTAL_META = "/opt/fennec-mirage/portal.json"
+MIRAGE_PORTAL_UPLOAD = "/tmp/fennec-mirage-portal-upload.zip"
+MIRAGE_PORTAL_MAX_UPLOAD = 20 * 1024 * 1024
 WHITELIST_FILE = os.path.join(BASE, "whitelist.json")
 MINE_FILE = os.path.join(BASE, "my_devices.json")
 SCAN_FILE  = os.path.join(BASE, "scan_cache.json")
