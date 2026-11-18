@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+# Serveur du portail Mirage.
+# Role : declencher la detection de portail captif des appareils (pour afficher
+# "se connecter au reseau") et servir les fichiers du dossier du portail.
+# La page du portail et la reception de la saisie ne sont PAS ici : depose ton
+# projet de portail dans PORTAIL (index.html + assets).
+import http.server, socketserver, os
+
+PORTAIL = "/opt/fennec-mirage/portal"
+BIND = "10.0.0.1"
+PORT = 80
+
+# Sondes de detection de portail captif des OS courants.
+SONDES = {
+    "/generate_204", "/gen_204", "/ncsi.txt", "/connecttest.txt",
+    "/hotspot-detect.html", "/library/test/success.html",
+    "/redirect", "/canonical.html", "/success.txt",
+}
+
+class H(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *a, **k):
+        super().__init__(*a, directory=PORTAIL, **k)
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        path = self.path.split("?")[0]
+        # Une sonde de detection -> on renvoie vers la page du portail, ce qui
+        # fait apparaitre l'ecran "se connecter au reseau" sur l'appareil.
+        if path in SONDES:
+            self.send_response(302)
+            self.send_header("Location", f"http://{BIND}/")
+            self.end_headers()
+            return
+        # Sinon on sert le fichier demande, avec repli sur index.html.
+        local = os.path.join(PORTAIL, path.lstrip("/"))
+        if not os.path.isfile(local):
+            self.path = "/index.html"
+        return super().do_GET()
+
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer((BIND, PORT), H) as httpd:
+    httpd.serve_forever()

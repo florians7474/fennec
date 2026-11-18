@@ -35,7 +35,14 @@ address=/#/$AP_IP
 EOF
 
 pkill -f "$RUN/dnsmasq.conf" 2>/dev/null || true
+pkill -f fennec-mirage-portal 2>/dev/null || true
 sleep 1
 
+# DHCP + DNS catch-all
 dnsmasq -C "$RUN/dnsmasq.conf"
+
+# Portail captif (sert /opt/fennec-mirage/portal et declenche la detection)
+mkdir -p /opt/fennec-mirage/portal
+python3 /usr/local/bin/fennec-mirage-portal &
+
 exec hostapd "$RUN/hostapd.conf"

@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/fennec-mirage-ap
 ExecStopPost=-/usr/bin/pkill -f /tmp/fennec-mirage/dnsmasq.conf
+ExecStopPost=-/usr/bin/pkill -f fennec-mirage-portal
 ExecStopPost=-/usr/sbin/ip addr flush dev wlan1
 Restart=no
 
