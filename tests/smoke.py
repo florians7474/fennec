@@ -31,7 +31,7 @@ def check_route(path):
         print(f"ok   {path} -> 200")
 
 
-for path in ["/", "/map", "/connection", "/tiles/status", "/gps"]:
+for path in ["/", "/map", "/connection", "/tiles/status", "/gps",\n             "/mirage/portal", "/mirage/portal/preview"]:
     check_route(path)
 
 
