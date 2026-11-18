@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Install or reset Mirage's static captive portal.
+
+This helper runs as root through a narrow sudoers rule. Flask only writes the
+uploaded ZIP to a fixed /tmp path; this script validates and installs it.
+"""
+import json
+import os
+import shutil
+import stat
+import sys
+import zipfile
+from pathlib import Path, PurePosixPath
+
+BASE = Path("/opt/fennec-mirage")
+PORTAL = BASE / "portal"
+DEFAULT = BASE / "default-portal"
+UPLOAD = Path("/tmp/fennec-mirage-portal-upload.zip")
+STAGING = BASE / ".portal-staging"
+META = BASE / "portal.json"
+
+MAX_FILES = 250
+MAX_TOTAL = 20 * 1024 * 1024
+ALLOWED_EXT = {
+    ".html", ".htm", ".css", ".js", ".json", ".txt",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
+    ".woff", ".woff2", ".ttf", ".otf",
+}
+
+
+def fail(message):
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def safe_member(info):
+    name = info.filename.replace("\\", "/")
+    p = PurePosixPath(name)
+    if not name or p.is_absolute() or ".." in p.parts:
+        fail("Archive contains an unsafe path.")
+    mode = (info.external_attr >> 16) & 0xFFFF
+    if mode and stat.S_ISLNK(mode):
+        fail("Archive contains a symbolic link.")
+    return p
+
+
+def write_meta(label, kind):
+    BASE.mkdir(parents=True, exist_ok=True)
+    META.write_text(json.dumps({"label": label, "kind": kind}), encoding="utf-8")
+    os.chmod(META, 0o644)
+
+
+def install():
+    if not UPLOAD.is_file():
+        fail("Upload file not found.")
+    if UPLOAD.stat().st_size > MAX_TOTAL:
+        fail("Portal archive is too large.")
+
+    shutil.rmtree(STAGING, ignore_errors=True)
+    unpacked = STAGING / "unpacked"
+    unpacked.mkdir(parents=True, exist_ok=True)
+
+    total = 0
+    count = 0
+    try:
+        with zipfile.ZipFile(UPLOAD) as zf:
+            for info in zf.infolist():
+                p = safe_member(info)
+                if info.is_dir():
+                    continue
+                count += 1
+                total += info.file_size
+                if count > MAX_FILES or total > MAX_TOTAL:
+                    fail("Portal archive exceeds the allowed size.")
+                if Path(p.name).suffix.lower() not in ALLOWED_EXT:
+                    fail("Unsupported file type: " + p.name)
+                dest = unpacked.joinpath(*p.parts)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(info) as src, open(dest, "wb") as out:
+                    shutil.copyfileobj(src, out)
+    except zipfile.BadZipFile:
+        fail("Invalid ZIP archive.")
+
+    root = unpacked
+    if not (root / "index.html").is_file():
+        indexes = list(unpacked.rglob("index.html"))
+        if len(indexes) != 1:
+            fail("The portal must contain exactly one index.html.")
+        root = indexes[0].parent
+
+    BASE.mkdir(parents=True, exist_ok=True)
+    incoming = BASE / ".portal-new"
+    backup = BASE / ".portal-backup"
+    shutil.rmtree(incoming, ignore_errors=True)
+    shutil.rmtree(backup, ignore_errors=True)
+    shutil.copytree(root, incoming)
+
+    try:
+        if PORTAL.exists():
+            PORTAL.rename(backup)
+        incoming.rename(PORTAL)
+        shutil.rmtree(backup, ignore_errors=True)
+    except Exception:
+        if not PORTAL.exists() and backup.exists():
+            backup.rename(PORTAL)
+        raise
+    finally:
+        shutil.rmtree(STAGING, ignore_errors=True)
+        shutil.rmtree(incoming, ignore_errors=True)
+        try:
+            UPLOAD.unlink()
+        except OSError:
+            pass
+
+    write_meta("Custom portal", "custom")
+
+
+def reset():
+    if not (DEFAULT / "index.html").is_file():
+        fail("Default Mirage portal is not installed.")
+
+    incoming = BASE / ".portal-new"
+    backup = BASE / ".portal-backup"
+    shutil.rmtree(incoming, ignore_errors=True)
+    shutil.rmtree(backup, ignore_errors=True)
+    shutil.copytree(DEFAULT, incoming)
+
+    try:
+        if PORTAL.exists():
+            PORTAL.rename(backup)
+        incoming.rename(PORTAL)
+        shutil.rmtree(backup, ignore_errors=True)
+    except Exception:
+        if not PORTAL.exists() and backup.exists():
+            backup.rename(PORTAL)
+        raise
+    finally:
+        shutil.rmtree(incoming, ignore_errors=True)
+
+    write_meta("Default portal", "default")
+
+
+if len(sys.argv) != 2 or sys.argv[1] not in {"install", "reset"}:
+    fail("Usage: fennec-mirage-portal-manage install|reset")
+
+install() if sys.argv[1] == "install" else reset()
