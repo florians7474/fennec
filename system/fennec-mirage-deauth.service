@@ -1,0 +1,11 @@
+[Unit]
+Description=Mirage deauth (module Fennec)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fennec-mirage-deauth
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

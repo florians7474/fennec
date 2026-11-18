@@ -119,6 +119,51 @@ def detect_monitor_iface():
             continue
     return None
 
+def monitor_iface_except(exclude):
+    """First monitor-capable wlan interface that is NOT `exclude` (the AP iface)."""
+    for path in sorted(glob.glob("/sys/class/net/wlan*")):
+        iface = os.path.basename(path)
+        if iface == exclude:
+            continue
+        try:
+            with open(os.path.join(path, "phy80211/name")) as f:
+                phy = f.read().strip()
+            info = subprocess.run(
+                ["iw", "phy", phy, "info"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout
+            if "* monitor" in info:
+                return iface
+        except Exception:
+            continue
+    return None
+
+def scan_security_channel(bssid):
+    """Security and channel of a BSSID, read from an nmcli scan. (sec, chan) or (None, None)."""
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "BSSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "no"],
+            capture_output=True, text=True, timeout=20,
+        )
+    except Exception:
+        return None, None
+    for line in r.stdout.splitlines():
+        fields = re.split(r"(?<!\\):", line)
+        if len(fields) < 3:
+            continue
+        b = fields[0].replace("\\:", ":").upper().strip()
+        if b == bssid.upper():
+            return (fields[2].strip() or None), (fields[1].strip() or None)
+    return None, None
+
+def deauth_possible(security):
+    """Deauth works on WPA2/WEP/open. Pure WPA3 (SAE) enforces PMF, which blocks it.
+    Unknown security -> allowed (we can't prove it's WPA3)."""
+    if not security:
+        return True
+    s = security.upper()
+    return not ("WPA3" in s and "WPA2" not in s)
+
 def _systemctl(action, service):
     try:
         subprocess.run(
@@ -623,8 +668,27 @@ def mode(name):
                 cible = f.readline().strip() or None
         except OSError:
             pass
+        meta = {}
+        try:
+            with open("/tmp/fennec-mirage-meta.json", encoding="utf-8") as f:
+                meta = json.load(f)
+        except (OSError, ValueError):
+            pass
+        deauth_active = is_active("fennec-mirage-deauth")
+        second = monitor_iface_except("wlan1")
+        deauth_ok = deauth_possible(meta.get("security"))
+        deauth_avail = active and bool(second) and deauth_ok
+        if not second:
+            deauth_reason = "Needs a second monitor adapter"
+        elif not deauth_ok:
+            deauth_reason = "WPA3 target: deauth blocked (PMF)"
+        else:
+            deauth_reason = None
         return render_template("mirage.html", key=name, info=MODES[name],
-                               active=active, networks=load_whitelist(), cible=cible)
+                               active=active, networks=load_whitelist(), cible=cible,
+                               security=meta.get("security"),
+                               deauth_active=deauth_active, deauth_avail=deauth_avail,
+                               deauth_reason=deauth_reason)
     active = (app_state["active_mode"] == name)
     return render_template("mode.html", key=name, info=MODES[name], active=active,
                            url_ui=None, url_iframe=None)
@@ -662,6 +726,10 @@ def mirage_start(bssid):
     # La cible (SSID a cloner) est passee au service via ce fichier.
     with open("/tmp/fennec-mirage-target", "w", encoding="utf-8") as f:
         f.write((net.get("name") or "") + "\n")
+    # Metadonnees de la cible (securite + canal), pour decider du deauth.
+    sec, chan = scan_security_channel(net["bssid"])
+    with open("/tmp/fennec-mirage-meta.json", "w", encoding="utf-8") as f:
+        json.dump({"bssid": net["bssid"], "security": sec, "chan": chan}, f)
     if vigie_monitor.monitor_state["active"]:
         vigie_monitor.stop()
     current = app_state["active_mode"]
@@ -674,9 +742,35 @@ def mirage_start(bssid):
 
 @app.route("/mirage/stop")
 def mirage_stop():
+    _systemctl("stop", "fennec-mirage-deauth")
     _systemctl("stop", "fennec-mirage")
     if app_state["active_mode"] == "mirage":
         app_state["active_mode"] = None
+    return redirect(url_for("mode", name="mirage"))
+
+@app.route("/mirage/deauth/start")
+def mirage_deauth_start():
+    # Double gate : 2eme interface monitor libre, et cible non-WPA3.
+    iface = monitor_iface_except("wlan1")
+    if not iface:
+        return redirect(url_for("mode", name="mirage"))
+    try:
+        with open("/tmp/fennec-mirage-meta.json", encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        meta = {}
+    if not deauth_possible(meta.get("security")):
+        return redirect(url_for("mode", name="mirage"))
+    with open("/tmp/fennec-mirage-deauth", "w", encoding="utf-8") as f:
+        f.write((iface or "") + "\n")
+        f.write((meta.get("bssid") or "") + "\n")
+        f.write((meta.get("chan") or "") + "\n")
+    _systemctl("start", "fennec-mirage-deauth")
+    return redirect(url_for("mode", name="mirage"))
+
+@app.route("/mirage/deauth/stop")
+def mirage_deauth_stop():
+    _systemctl("stop", "fennec-mirage-deauth")
     return redirect(url_for("mode", name="mirage"))
 
 @app.route("/mirage/clients")
