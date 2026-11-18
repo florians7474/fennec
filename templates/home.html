@@ -186,16 +186,16 @@
         <div class="state"><span class="pastille"></span>{{ 'active' if active=='cracking' else 'stopped' }}</div>
       </a>
 
-      <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
-        <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
-        <div class="name">Bjorn</div>
-        <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
-      </a>
-
       <a class="app {{ 'on' if active=='mirage' }}" href="/mode/mirage">
         <div class="icone mirage"><img src="/static/mirage.png" alt="Mirage"></div>
         <div class="name">Mirage</div>
         <div class="state"><span class="pastille"></span>{{ 'active' if active=='mirage' else 'stopped' }}</div>
+      </a>
+
+      <a class="app {{ 'on' if active=='bjorn' }}" href="/mode/bjorn">
+        <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
+        <div class="name">Bjorn</div>
+        <div class="state"><span class="pastille"></span>{{ 'active' if active=='bjorn' else 'stopped' }}</div>
       </a>
 
       <a class="app" id="hugin-tile" href="/hugin">
