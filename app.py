@@ -183,8 +183,8 @@ def scan_security_channel(bssid, ssid):
             by_ssid = (fields[3].strip() or None), (fields[2].strip() or None)
     return by_ssid if by_ssid else (None, None)
 
-def all_securities():
-    """Two maps (by BSSID, by SSID) -> security string, from one nmcli scan."""
+def _scan_securities():
+    """One nmcli scan -> (by BSSID, by SSID) security maps."""
     by_bssid, by_ssid = {}, {}
     try:
         r = subprocess.run(
@@ -200,11 +200,26 @@ def all_securities():
         b = fields[0].replace("\\:", ":").upper().strip()
         nm = fields[1].replace("\\:", ":").strip()
         sec = fields[2].strip()
-        if b:
+        if b and sec:
             by_bssid[b] = sec
-        if nm and nm not in by_ssid:
+        if nm and sec and nm not in by_ssid:
             by_ssid[nm] = sec
     return by_bssid, by_ssid
+
+# A scan is a momentary snapshot: a given AP is not in every scan, so badges
+# would flicker. We keep a cache that accumulates what we've seen, refreshed at
+# most every 20 s, so a security stays displayed once known.
+_sec_cache = {"bssid": {}, "ssid": {}, "ts": 0.0}
+
+def all_securities():
+    """Accumulated (by BSSID, by SSID) security maps, refreshed in the background."""
+    now = time.time()
+    if now - _sec_cache["ts"] > 20:
+        by_bssid, by_ssid = _scan_securities()
+        _sec_cache["bssid"].update(by_bssid)
+        _sec_cache["ssid"].update(by_ssid)
+        _sec_cache["ts"] = now
+    return _sec_cache["bssid"], _sec_cache["ssid"]
 
 def deauth_possible(security):
     """Deauth works on WPA2/WEP/open. Pure WPA3 (SAE) enforces PMF, which blocks it.
