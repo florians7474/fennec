@@ -119,6 +119,31 @@ def detect_monitor_iface():
             continue
     return None
 
+def _phy_supports_monitor(phy):
+    """True only if 'monitor' is in the phy's *Supported interface modes* block
+    (not the 'software interface modes' section, which many chips list but can't
+    really use as a second card)."""
+    try:
+        info = subprocess.run(
+            ["iw", "phy", phy, "info"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout
+    except Exception:
+        return False
+    in_block = False
+    for line in info.splitlines():
+        s = line.strip()
+        if s.startswith("Supported interface modes:"):
+            in_block = True
+            continue
+        if in_block:
+            if s.startswith("* "):
+                if s[2:].strip() == "monitor":
+                    return True
+            else:
+                break
+    return False
+
 def monitor_iface_except(exclude):
     """First monitor-capable wlan interface that is NOT `exclude` (the AP iface)."""
     for path in sorted(glob.glob("/sys/class/net/wlan*")):
@@ -128,21 +153,17 @@ def monitor_iface_except(exclude):
         try:
             with open(os.path.join(path, "phy80211/name")) as f:
                 phy = f.read().strip()
-            info = subprocess.run(
-                ["iw", "phy", phy, "info"],
-                capture_output=True, text=True, timeout=10,
-            ).stdout
-            if "* monitor" in info:
-                return iface
-        except Exception:
+        except OSError:
             continue
+        if _phy_supports_monitor(phy):
+            return iface
     return None
 
-def scan_security_channel(bssid):
-    """Security and channel of a BSSID, read from an nmcli scan. (sec, chan) or (None, None)."""
+def scan_security_channel(ssid):
+    """Security and channel of an SSID, read from an nmcli scan. (sec, chan) or (None, None)."""
     try:
         r = subprocess.run(
-            ["nmcli", "-t", "-f", "BSSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "yes"],
+            ["nmcli", "-t", "-f", "SSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "yes"],
             capture_output=True, text=True, timeout=20,
         )
     except Exception:
@@ -151,8 +172,8 @@ def scan_security_channel(bssid):
         fields = re.split(r"(?<!\\):", line)
         if len(fields) < 3:
             continue
-        b = fields[0].replace("\\:", ":").upper().strip()
-        if b == bssid.upper():
+        name = fields[0].replace("\\:", ":").strip()
+        if name == ssid:
             return (fields[2].strip() or None), (fields[1].strip() or None)
     return None, None
 
@@ -723,7 +744,7 @@ def mirage_start(bssid):
     with open("/tmp/fennec-mirage-target", "w", encoding="utf-8") as f:
         f.write((net.get("name") or "") + "\n")
     # Metadonnees de la cible (securite + canal), pour decider du deauth.
-    sec, chan = scan_security_channel(net["bssid"])
+    sec, chan = scan_security_channel(net.get("name") or "")
     with open("/tmp/fennec-mirage-meta.json", "w", encoding="utf-8") as f:
         json.dump({"bssid": net["bssid"], "security": sec, "chan": chan}, f)
     if vigie_monitor.monitor_state["active"]:
