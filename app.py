@@ -159,42 +159,52 @@ def monitor_iface_except(exclude):
             return iface
     return None
 
-def scan_security_channel(ssid):
-    """Security and channel of an SSID, read from an nmcli scan. (sec, chan) or (None, None)."""
+def scan_security_channel(bssid, ssid):
+    """Security and channel of a target, from an nmcli scan. Match by BSSID first
+    (reliable), then by SSID. (sec, chan) or (None, None)."""
     try:
         r = subprocess.run(
-            ["nmcli", "-t", "-f", "SSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "yes"],
+            ["nmcli", "-t", "-f", "BSSID,SSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "yes"],
             capture_output=True, text=True, timeout=20,
         )
     except Exception:
         return None, None
+    by_ssid = None
+    want_b = (bssid or "").upper()
+    for line in r.stdout.splitlines():
+        fields = re.split(r"(?<!\\):", line)
+        if len(fields) < 4:
+            continue
+        b = fields[0].replace("\\:", ":").upper().strip()
+        nm = fields[1].replace("\\:", ":").strip()
+        if want_b and b == want_b:
+            return (fields[3].strip() or None), (fields[2].strip() or None)
+        if ssid and nm == ssid and by_ssid is None:
+            by_ssid = (fields[3].strip() or None), (fields[2].strip() or None)
+    return by_ssid if by_ssid else (None, None)
+
+def all_securities():
+    """Two maps (by BSSID, by SSID) -> security string, from one nmcli scan."""
+    by_bssid, by_ssid = {}, {}
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "BSSID,SSID,SECURITY", "dev", "wifi", "list", "--rescan", "auto"],
+            capture_output=True, text=True, timeout=20,
+        )
+    except Exception:
+        return by_bssid, by_ssid
     for line in r.stdout.splitlines():
         fields = re.split(r"(?<!\\):", line)
         if len(fields) < 3:
             continue
-        name = fields[0].replace("\\:", ":").strip()
-        if name == ssid:
-            return (fields[2].strip() or None), (fields[1].strip() or None)
-    return None, None
-
-def all_securities():
-    """Map SSID -> security string, from one nmcli scan (for the whitelist badges)."""
-    out = {}
-    try:
-        r = subprocess.run(
-            ["nmcli", "-t", "-f", "SSID,SECURITY", "dev", "wifi", "list", "--rescan", "auto"],
-            capture_output=True, text=True, timeout=20,
-        )
-    except Exception:
-        return out
-    for line in r.stdout.splitlines():
-        fields = re.split(r"(?<!\\):", line)
-        if len(fields) < 2:
-            continue
-        name = fields[0].replace("\\:", ":").strip()
-        if name and name not in out:
-            out[name] = fields[1].strip()
-    return out
+        b = fields[0].replace("\\:", ":").upper().strip()
+        nm = fields[1].replace("\\:", ":").strip()
+        sec = fields[2].strip()
+        if b:
+            by_bssid[b] = sec
+        if nm and nm not in by_ssid:
+            by_ssid[nm] = sec
+    return by_bssid, by_ssid
 
 def deauth_possible(security):
     """Deauth works on WPA2/WEP/open. Pure WPA3 (SAE) enforces PMF, which blocks it.
@@ -721,9 +731,9 @@ def mode(name):
         deauth_wpa3 = not deauth_possible(meta.get("security"))
         deauth_avail = active and bool(second) and not deauth_wpa3
         nets = load_whitelist()
-        secmap = all_securities()
+        by_bssid, by_ssid = all_securities()
         for r in nets:
-            s = secmap.get(r.get("name"))
+            s = by_bssid.get((r.get("bssid") or "").upper()) or by_ssid.get(r.get("name"))
             r["security"] = s or None
             r["deauthable"] = deauth_possible(s) if s else None
         return render_template("mirage.html", key=name, info=MODES[name],
@@ -769,7 +779,7 @@ def mirage_start(bssid):
     with open("/tmp/fennec-mirage-target", "w", encoding="utf-8") as f:
         f.write((net.get("name") or "") + "\n")
     # Metadonnees de la cible (securite + canal), pour decider du deauth.
-    sec, chan = scan_security_channel(net.get("name") or "")
+    sec, chan = scan_security_channel(net.get("bssid") or "", net.get("name") or "")
     with open("/tmp/fennec-mirage-meta.json", "w", encoding="utf-8") as f:
         json.dump({"bssid": net["bssid"], "security": sec, "chan": chan}, f)
     if vigie_monitor.monitor_state["active"]:
