@@ -142,7 +142,7 @@ def scan_security_channel(bssid):
     """Security and channel of a BSSID, read from an nmcli scan. (sec, chan) or (None, None)."""
     try:
         r = subprocess.run(
-            ["nmcli", "-t", "-f", "BSSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "no"],
+            ["nmcli", "-t", "-f", "BSSID,CHAN,SECURITY", "dev", "wifi", "list", "--rescan", "yes"],
             capture_output=True, text=True, timeout=20,
         )
     except Exception:
@@ -676,19 +676,15 @@ def mode(name):
             pass
         deauth_active = is_active("fennec-mirage-deauth")
         second = monitor_iface_except("wlan1")
-        deauth_ok = deauth_possible(meta.get("security"))
-        deauth_avail = active and bool(second) and deauth_ok
-        if not second:
-            deauth_reason = "Needs a second monitor adapter"
-        elif not deauth_ok:
-            deauth_reason = "WPA3 target: deauth blocked (PMF)"
-        else:
-            deauth_reason = None
+        # WPA3 (PMF) bloque le deauth : c'est propre a la cible et non reparable,
+        # donc on ne propose meme pas le bouton dans ce cas.
+        deauth_wpa3 = not deauth_possible(meta.get("security"))
+        deauth_avail = active and bool(second) and not deauth_wpa3
         return render_template("mirage.html", key=name, info=MODES[name],
                                active=active, networks=load_whitelist(), cible=cible,
                                security=meta.get("security"),
                                deauth_active=deauth_active, deauth_avail=deauth_avail,
-                               deauth_reason=deauth_reason)
+                               deauth_wpa3=deauth_wpa3)
     active = (app_state["active_mode"] == name)
     return render_template("mode.html", key=name, info=MODES[name], active=active,
                            url_ui=None, url_iframe=None)

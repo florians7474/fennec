@@ -80,12 +80,14 @@
         {% if deauth_active %}
           <a class="btn stop" href="/mirage/deauth/stop">Stop deauth</a>
           <span class="dstate on">Deauth running on target</span>
+        {% elif deauth_wpa3 %}
+          <span class="dstate">Deauth not possible on this target (WPA3/PMF)</span>
         {% elif deauth_avail %}
           <a class="btn deauthbtn" href="/mirage/deauth/start">Deauth target</a>
           <span class="dstate">Push the target's clients onto the twin</span>
         {% else %}
           <span class="btn disabled">Deauth</span>
-          <span class="dstate">{{ deauth_reason }}</span>
+          <span class="dstate">Needs a second monitor adapter</span>
         {% endif %}
       </div>
 
