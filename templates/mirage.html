@@ -35,6 +35,17 @@
     .rbssid { font-size:11px; color:#8b949e; }
     .clone { background:#f0689b; color:#2a0a18; }
     .tag { font-size:11px; color:#f0689b; font-weight:700; }
+    .clients { margin-bottom:14px; padding:10px 12px; background:#10161f;
+               border:1px solid #30363d; border-radius:10px; }
+    .clients-head { font-size:12px; font-weight:700; color:#2ea043; margin-bottom:6px; }
+    .cli { display:flex; justify-content:space-between; gap:10px; font-size:12px;
+           padding:4px 0; border-top:1px solid #21262d; }
+    .cli:first-child { border-top:0; }
+    .cli .cn { color:#e6edf3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .cli .cip { color:#8b949e; flex:0 0 auto; }
+    .cempty { font-size:12px; color:#8b949e; }
+    .listtitle { font-size:11px; color:#8b949e; text-transform:uppercase;
+                 letter-spacing:.5px; margin:4px 2px 8px; }
   </style>
 </head>
 <body>
@@ -51,6 +62,15 @@
   <div class="vue">
     {% if active and cible %}
       <div class="cloned">Cloning <b>{{ cible }}</b></div>
+    {% endif %}
+
+    {% if active %}
+      <div class="clients">
+        <div class="clients-head">Connected <span id="ccount">0</span></div>
+        <div id="clist"></div>
+        <div class="cempty" id="cempty">No client connected yet.</div>
+      </div>
+      <div class="listtitle">Allowed networks</div>
     {% endif %}
 
     {% if not networks %}
@@ -74,5 +94,37 @@
       {% endfor %}
     {% endif %}
   </div>
+  {% if active %}
+  <script>
+    // Etat live : clients connectes au faux AP, rafraichis en continu.
+    (function () {
+      var list = document.getElementById('clist');
+      var count = document.getElementById('ccount');
+      var empty = document.getElementById('cempty');
+      if (!list) return;
+      function esc(s) {
+        return String(s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function refresh() {
+        fetch('/mirage/clients', { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (cs) {
+            count.textContent = cs.length;
+            empty.style.display = cs.length ? 'none' : 'block';
+            list.innerHTML = cs.map(function (c) {
+              return '<div class="cli"><span class="cn">' +
+                     esc(c.name || c.mac) + '</span><span class="cip">' +
+                     esc(c.ip) + '</span></div>';
+            }).join('');
+          })
+          .catch(function () {});
+      }
+      refresh();
+      setInterval(refresh, 3000);
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>

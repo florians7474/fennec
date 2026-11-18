@@ -42,7 +42,11 @@ dhcp-range=10.0.0.10,10.0.0.100,12h
 dhcp-option=3,$AP_IP
 dhcp-option=6,$AP_IP
 address=/#/$AP_IP
+dhcp-leasefile=$RUN/leases
 EOF
+
+# Baux a vide au demarrage (pour que l'etat live reparte propre).
+: > "$RUN/leases"
 
 pkill -f "$RUN/dnsmasq.conf" 2>/dev/null || true
 pkill -f fennec-mirage-portal 2>/dev/null || true

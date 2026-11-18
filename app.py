@@ -679,6 +679,21 @@ def mirage_stop():
         app_state["active_mode"] = None
     return redirect(url_for("mode", name="mirage"))
 
+@app.route("/mirage/clients")
+def mirage_clients():
+    # Clients connectes au faux AP, lus depuis les baux dnsmasq.
+    clients = []
+    try:
+        with open("/tmp/fennec-mirage/leases", encoding="utf-8") as f:
+            for line in f:
+                p = line.split()
+                if len(p) >= 4:
+                    clients.append({"mac": p[1], "ip": p[2],
+                                    "name": "" if p[3] == "*" else p[3]})
+    except OSError:
+        pass
+    return jsonify(clients)
+
 @app.route("/cracking/test/<bssid>")
 def crack_test(bssid):
     autorises = {r["bssid"] for r in load_whitelist()}
