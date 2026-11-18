@@ -27,6 +27,11 @@
     .status.run { color:#1f6feb; }
     .status.ok { color:#2ea043; }
     .status.ko { color:#da3633; }
+    .spin { display:inline-block; width:12px; height:12px; margin-right:8px; vertical-align:middle;
+            border:2px solid rgba(31,111,235,.3); border-top-color:#1f6feb; border-radius:50%;
+            animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .status.ok .spin, .status.ko .spin { display:none; }
     .key { font-size:16px; font-weight:800; color:#2ea043; word-break:break-all;
            background:#0f2418; border:1px solid #1d5c38; border-radius:8px; padding:10px 12px; margin-bottom:12px; }
     .log { font-family:ui-monospace,Consolas,monospace; font-size:10px; line-height:1.4;
@@ -43,7 +48,7 @@
 
   <div class="body">
     <div class="cible">Target: <b>{{ name }}</b> &middot; {{ bssid }}</div>
-    <div class="status run" id="status">Attack running…</div>
+    <div class="status run" id="status"><span class="spin"></span><span id="sttxt">Attack running…</span></div>
     <div class="key" id="key" style="display:none"></div>
     <pre class="log" id="log"></pre>
   </div>
@@ -51,33 +56,36 @@
   <script>
     (function () {
       var st = document.getElementById('status');
+      var sttxt = document.getElementById('sttxt');
       var keyBox = document.getElementById('key');
       var log = document.getElementById('log');
+      var tick = 0;
       function refresh() {
         fetch('/cracking/wps/state', { cache: 'no-store' })
           .then(function (r) { return r.json(); })
           .then(function (d) {
             if (d.log) { log.textContent = d.log; log.scrollTop = log.scrollHeight; }
             if (d.status === 'found') {
-              st.textContent = 'Key recovered — saved to your allowed networks';
+              sttxt.textContent = 'Key recovered — saved to your allowed networks';
               st.className = 'status ok';
               keyBox.textContent = d.psk || '';
               keyBox.style.display = 'block';
               return;
             }
             if (!d.active && d.status === 'failed') {
-              st.textContent = 'No key — WPS locked or chip not vulnerable';
+              sttxt.textContent = 'No key — WPS locked or chip not vulnerable';
               st.className = 'status ko';
               return;
             }
             if (!d.active && !d.status) {
-              st.textContent = 'Stopped';
+              sttxt.textContent = 'Stopped';
               st.className = 'status ko';
               return;
             }
-            st.textContent = 'Attack running…';
+            tick = (tick + 1) % 4;
+            sttxt.textContent = 'Attack in progress' + Array(tick + 1).join('.');
             st.className = 'status run';
-            setTimeout(refresh, 2500);
+            setTimeout(refresh, 2000);
           })
           .catch(function () { setTimeout(refresh, 3000); });
       }

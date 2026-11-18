@@ -1152,7 +1152,11 @@ def wps_state():
     log = ""
     try:
         with open("/tmp/fennec-wps.log", encoding="utf-8") as f:
-            log = f.read()[-1600:]
+            raw = f.read()
+        skip = ("Reaver v", "Copyright", "Tactical Network", "cheffner",
+                "WiFi Protected Setup Attack Tool")
+        kept = [ln for ln in raw.splitlines() if not any(s in ln for s in skip)]
+        log = "\n".join(kept).strip()[-1600:]
     except OSError:
         pass
     # On success, write the recovered key into the whitelist once.
