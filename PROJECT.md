@@ -40,12 +40,11 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Sly | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
+| Mirage | Evil-twin AP + captive portal, takes over when Sly's offline crack fails | Done (SSID clone of a whitelisted target, DHCP + DNS catch-all, captive-portal web layer, live client view, deauth via bettercap gated to WPA2 + a second monitor adapter); captive portal page is user-supplied |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
-| Mirage | Evil-twin AP + captive portal to recover a key when Sly fails | Done (SSID clone of a whitelisted target, DHCP + DNS catch-all, captive-portal web layer, live client view, deauth via bettercap gated to WPA2 + a second monitor adapter); captive portal page is user-supplied |
-
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
