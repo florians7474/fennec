@@ -6,6 +6,7 @@ The installer selects a display profile before installing packages. Set
 | Profile | Local interface | Use |
 |---|---|---|
 | `waveshare35c` | SPI framebuffer and calibrated resistive touch | Waveshare 3.5-inch RPi LCD (C) |
+| `cuqi35` | SPI framebuffer and calibrated resistive touch | CUQI 3.5-inch RPM-01 (Waveshare (C)-compatible) |
 | `hdmi` | X11 Chromium kiosk | HDMI-connected display |
 | `headless` | None | Access Fennec only from another device on the network |
 
