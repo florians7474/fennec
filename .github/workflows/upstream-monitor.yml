@@ -1,0 +1,44 @@
+name: Upstream monitor
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tracked upstream sources
+        id: upstream
+        shell: bash
+        run: |
+          set +e
+          scripts/check-upstream-updates.sh > upstream-report.txt 2>&1
+          status=$?
+          cat upstream-report.txt
+          if [ "$status" -eq 0 ]; then
+            echo "updates=false" >> "$GITHUB_OUTPUT"
+          elif [ "$status" -eq 10 ]; then
+            echo "updates=true" >> "$GITHUB_OUTPUT"
+          else
+            exit "$status"
+          fi
+
+      - name: Open review issue
+        if: steps.upstream.outputs.updates == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="[Upstream] Updates available for review"
+          if gh issue list --state open --search "$title in:title" --json title --jq 'length > 0' | grep -q true; then
+            echo "An upstream review issue is already open."
+          else
+            gh issue create --title "$title" --body-file upstream-report.txt
+          fi
