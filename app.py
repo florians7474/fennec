@@ -1239,8 +1239,7 @@ def mirage_credentials():
         conn = sqlite3.connect("/opt/fennec-mirage/credentials.db")
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, timestamp, username, "
-            "CASE WHEN password IS NOT NULL AND password != '' THEN 1 ELSE 0 END "
+            "SELECT id, timestamp, username, password "
             "FROM credentials ORDER BY id DESC LIMIT 10"
         )
         rows = cursor.fetchall()
@@ -1249,7 +1248,7 @@ def mirage_credentials():
                 "id": row[0],
                 "timestamp": row[1],
                 "username": row[2] or "",
-                "password_masked": "••••••••" if row[3] else ""
+                "password": row[3] or ""
             })
         conn.close()
     except Exception:
