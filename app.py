@@ -585,7 +585,15 @@ def vigie_devices():
             return tuple(int(x) for x in d["ip"].split("."))
         except Exception:
             return (999,)
-    out.sort(key=lambda d: (not d["inconnu"], ip_key(d)))
+    def rank(d):
+        if d["routeur"]:
+            return 0
+        if d["pi"]:
+            return 1
+        if d["mien"]:
+            return 2
+        return 3  # unknown, last
+    out.sort(key=lambda d: (rank(d), ip_key(d)))
     last_scan.clear()
     last_scan.update({d["ip"]: d for d in out})
     return out

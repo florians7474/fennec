@@ -133,9 +133,16 @@
 
     function ipKey(ip){ return ip.split('.').map(function(n){ return ('00'+n).slice(-3); }).join('.'); }
 
+    function rankDev(d){
+      if(d.routeur) return 0;
+      if(d.pi) return 1;
+      if(d.mien) return 2;
+      return 3;   // unknown, last
+    }
     function sortDevices(){
       devices.sort(function(a,b){
-        if(a.inconnu !== b.inconnu) return a.inconnu ? -1 : 1;
+        var ra = rankDev(a), rb = rankDev(b);
+        if(ra !== rb) return ra - rb;
         return ipKey(a.ip) < ipKey(b.ip) ? -1 : 1;
       });
     }

@@ -99,6 +99,22 @@ def test_vendor_from_mac(tmp_path, monkeypatch):
     assert app.vendor_from_mac(None) is None
 
 
+def test_device_sort_order(monkeypatch):
+    # Expected order: router, then Pi, then mine, then unknown.
+    monkeypatch.setattr(app, "scan_network", lambda: [
+        {"ip": "192.168.1.50", "mac": "CC:CC:CC:CC:CC:CC", "vendor": "Acme"},   # unknown
+        {"ip": "192.168.1.254", "mac": "DD:DD:DD:DD:DD:DD", "vendor": "Box"},   # router
+        {"ip": "192.168.1.122", "mac": "EE:EE:EE:EE:EE:EE", "vendor": "Pi"},    # this Pi
+        {"ip": "192.168.1.40", "mac": "BB:BB:BB:BB:BB:BB", "vendor": "Dell"},   # mine
+    ])
+    monkeypatch.setattr(app, "local_ip", lambda: "192.168.1.122")
+    monkeypatch.setattr(app, "passerelle_ip", lambda: "192.168.1.254")
+    monkeypatch.setattr(app, "load_mine", lambda: ["BB:BB:BB:BB:BB:BB"])
+    monkeypatch.setattr(app, "custom_name", lambda mac: None)
+    order = [d["ip"] for d in app.vigie_devices()]
+    assert order == ["192.168.1.254", "192.168.1.122", "192.168.1.40", "192.168.1.50"]
+
+
 def test_wardrive_path_matches_logger():
     # Regression: Fennec once read wardrive.json from the wrong path, so the
     # weekend's data stayed invisible. The read path must equal the write path.
