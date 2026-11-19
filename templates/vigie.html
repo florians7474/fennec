@@ -180,7 +180,7 @@
       d.inconnu = !mien && !d.pi && !d.routeur;
       render();
       save();
-      fetch('/vigie/' + (mien ? 'mien' : 'pasmien') + '/' + encodeURIComponent(d.mac)).catch(function(){});
+      fetch('/vigie/' + (mien ? 'mine' : 'notmine') + '/' + encodeURIComponent(d.mac)).catch(function(){});
     }
 
     function runScan(){

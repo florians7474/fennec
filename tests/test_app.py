@@ -69,6 +69,25 @@ def test_echo_health_dedup(tmp_path, monkeypatch):
     assert len(app.read_events()) == 2  # three calls, one duplicate dropped
 
 
+def test_mine_persistence_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setattr(app, "MINE_FILE", str(tmp_path / "my_devices.json"))
+    c = app.app.test_client()
+    local = {"REMOTE_ADDR": "127.0.0.1"}
+    c.get("/vigie/mine/aa:bb:cc:dd:ee:ff", environ_base=local)  # approve a device
+    assert "AA:BB:CC:DD:EE:FF" in app.load_mine()               # persisted, upper
+    c.get("/vigie/notmine/AA:BB:CC:DD:EE:FF", environ_base=local)
+    assert "AA:BB:CC:DD:EE:FF" not in app.load_mine()
+
+
+def test_vigie_template_calls_real_routes():
+    # Regression: the FR->EN rename left the client calling /vigie/mien, which
+    # 404'd, so approvals never persisted. The template must hit the real routes.
+    with open(os.path.join(ROOT, "templates", "vigie.html")) as f:
+        html = f.read()
+    assert "'mine'" in html and "'notmine'" in html
+    assert "'mien'" not in html and "'pasmien'" not in html
+
+
 def test_wardrive_path_matches_logger():
     # Regression: Fennec once read wardrive.json from the wrong path, so the
     # weekend's data stayed invisible. The read path must equal the write path.

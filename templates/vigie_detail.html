@@ -102,6 +102,7 @@
              value="{{ d.name if d.name not in ['Unknown device', 'This Pi', 'Router'] else '' }}">
       <div class="lines">
         <button type="button" class="annuler" onclick="closeName()">Cancel</button>
+        <button type="button" class="annuler" onclick="resetName()">Reset</button>
         <button type="button" class="valider" onclick="saveName()">Save</button>
       </div>
     </div>
@@ -183,6 +184,10 @@
     function openName(){ document.getElementById('modalNom').classList.add('on');
                          var c = document.getElementById('champNom'); c.focus(); c.select(); }
     function closeName(){ document.getElementById('modalNom').classList.remove('on'); }
+    function resetName(){
+      document.getElementById('champNom').value = '';
+      saveName();
+    }
     function saveName(){
       var name = document.getElementById('champNom').value;
       var body = new URLSearchParams(); body.set('name', name);
