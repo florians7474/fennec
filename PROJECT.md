@@ -305,8 +305,8 @@ Notes:
   installation when using a local display.
 - Fennec service: system/fennec.service runs app.py as the install user with
   FENNEC_DEBUG=0, enabled at boot (WorkingDirectory = the repo folder).
-- On Raspberry Pi OS Trixie, routerkeygen's qmake may default to Qt6; if the
-  CLI build fails on a fresh Pi, force Qt5 (qmake -qt5).
+- routerkeygen-cli requires Qt5. The installer detects a Qt6 default qmake on
+  Raspberry Pi OS Trixie and automatically falls back to Qt5.
 - Bjorn's upstream requirements.txt pins old versions (e.g. Pillow 9.4.0) that
   do not build on Python 3.13; install.sh installs from a pinned
   system/bjorn-requirements.txt instead (Pillow 11.1.0).
