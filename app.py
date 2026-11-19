@@ -954,9 +954,9 @@ def mode(name):
         except (OSError, ValueError):
             pass
         deauth_active = is_active("fennec-mirage-deauth")
-        ap_iface = current_mirage_ap_iface()\n        second = monitor_iface_except(ap_iface)
-        # WPA3 (PMF) bloque le deauth : c'est propre a la cible et non reparable,
-        # donc on ne propose meme pas le bouton dans ce cas.
+        ap_iface = current_mirage_ap_iface()
+        second = monitor_iface_except(ap_iface)
+        # WPA3 with PMF blocks deauthentication, so the action is not offered.
         deauth_wpa3 = not deauth_possible(meta.get("security"))
         deauth_avail = active and bool(second) and not deauth_wpa3
         nets = load_whitelist()
@@ -1190,8 +1190,8 @@ def mirage_stop():
 
 @app.route("/mirage/deauth/start")
 def mirage_deauth_start():
-    # Double gate : 2eme interface monitor libre, et cible non-WPA3.
-    iface = monitor_iface_except("wlan1")
+    # Require a second free monitor interface and a target that allows deauthentication.
+    iface = monitor_iface_except(current_mirage_ap_iface())
     if not iface:
         return redirect(url_for("mode", name="mirage"))
     try:
