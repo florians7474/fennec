@@ -209,7 +209,9 @@ short candidate is ever shown or tested.
 - Auto key write: a cracked key is written back into the whitelist by BSSID
   (route /cracking/state in app.py).
 - GPU export: /cracking/export/<bssid> converts the .pcap to .hc22000
-  (hcxpcapngtool) and returns the hashcat command; "GPU" button -> crack_gpu.html.
+  (hcxpcapngtool); the "GPU" button opens crack_gpu.html, a guided handoff with
+  a Download .hc22000 button and a ready-to-run hashcat command (file + wordlist
+  + rules) with a Copy button. Nothing to retype.
 - Robust stdout reading (errors="replace") so a non-UTF8 byte from aircrack no
   longer freezes a stage.
 - install.sh now folds all Sly deps (routerkeygen build, hcxtools, John,
@@ -218,14 +220,6 @@ short candidate is ever shown or tested.
   4-way handshake (aircrack-ng). If not, the Test button is greyed out in the
   capture list ("· no handshake") and the result reads "No usable handshake"
   instead of a misleading "Robust". Presence is cached per file (mtime + size).
-
-### Work left on Sly
-- Clearer GPU export — one-click handoff, so the user has nothing to copy:
-  - a download button for the already-generated .hc22000 file
-  - a ready command pointing at that file + a known wordlist, e.g.
-    hashcat -m 22000 fennec_<box>.hc22000 rockyou.txt -r best64.rule
-  - optionally a one-click script (crack.sh / crack.bat) that fetches the
-    wordlist if needed and launches hashcat, so there is zero manual step
 
 ## Hugin — Bjorn companion
 Hugin is to Bjorn what Sly is to Pwnagotchi: it turns Bjorn's raw output into
