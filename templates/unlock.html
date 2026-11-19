@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fennec — Locked</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:#0d1117; color:#e6edf3;
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { height:100%; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; }
+  .logo { width:64px; height:64px; object-fit:contain; opacity:.9; }
+  .title { font-size:15px; color:#8b949e; }
+  .dots { display:flex; gap:12px; height:16px; }
+  .dot { width:14px; height:14px; border-radius:50%; border:2px solid #30363d; }
+  .dot.on { background:#01F994; border-color:#01F994; }
+  .err { color:#f85149; font-size:13px; height:16px; }
+  .pad { display:grid; grid-template-columns:repeat(3,64px); gap:10px; }
+  .key { height:50px; border-radius:12px; background:#161b22; border:1px solid #30363d;
+    color:#e6edf3; font-size:22px; font-weight:600; }
+  .key:active { background:#21262d; }
+  .key.blank { background:none; border:none; }
+  .shake { animation:sh .3s; }
+  @keyframes sh { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+</style>
+</head>
+<body>
+  <div class="wrap" id="wrap">
+    <img src="/static/fennec_lock.png" class="logo" alt="">
+    <div class="title">Enter PIN</div>
+    <div class="dots" id="dots"></div>
+    <div class="err" id="err"></div>
+    <div class="pad" id="pad"></div>
+  </div>
+<script>
+  var pin = "", busy = false;
+  var dots = document.getElementById('dots');
+  var err = document.getElementById('err');
+  for (var i = 0; i < 6; i++) { var d = document.createElement('div'); d.className = 'dot'; dots.appendChild(d); }
+  function draw() { var ds = dots.children; for (var i = 0; i < 6; i++) ds[i].className = 'dot' + (i < pin.length ? ' on' : ''); }
+  var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
+  var pad = document.getElementById('pad');
+  keys.forEach(function (k) {
+    var b = document.createElement('button');
+    if (k === '') { b.className = 'key blank'; b.disabled = true; }
+    else { b.className = 'key'; b.textContent = k; b.onclick = function () { press(k); }; }
+    pad.appendChild(b);
+  });
+  function press(k) {
+    if (busy) return;
+    err.textContent = '';
+    if (k === '⌫') { pin = pin.slice(0, -1); draw(); return; }
+    if (pin.length >= 6) return;
+    pin += k; draw();
+    if (pin.length === 6) submit();
+  }
+  function submit() {
+    busy = true;
+    fetch('/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }) })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (o) {
+        if (o.j.ok) { location.href = '/'; return; }
+        busy = false; pin = ''; draw();
+        err.textContent = o.s === 429 ? ('Too many tries, wait ' + (o.j.wait || 30) + 's') : 'Wrong PIN';
+        var w = document.getElementById('wrap');
+        w.classList.add('shake'); setTimeout(function () { w.classList.remove('shake'); }, 300);
+      })
+      .catch(function () { busy = false; pin = ''; draw(); err.textContent = 'Error'; });
+  }
+  draw();
+</script>
+</body>
+</html>

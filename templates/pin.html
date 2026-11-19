@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fennec — PIN</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:#0d1117; color:#e6edf3;
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { height:100%; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:10px; }
+  .title { font-size:16px; font-weight:700; }
+  .sub { font-size:12px; color:#8b949e; margin-bottom:4px; }
+  .dots { display:flex; gap:12px; height:16px; }
+  .dot { width:14px; height:14px; border-radius:50%; border:2px solid #30363d; }
+  .dot.on { background:#01F994; border-color:#01F994; }
+  .msg { font-size:13px; height:16px; color:#8b949e; }
+  .msg.ok { color:#01F994; }
+  .pad { display:grid; grid-template-columns:repeat(3,64px); gap:8px; }
+  .key { height:46px; border-radius:12px; background:#161b22; border:1px solid #30363d;
+    color:#e6edf3; font-size:22px; font-weight:600; }
+  .key:active { background:#21262d; }
+  .key.blank { background:none; border:none; }
+  .link { margin-top:4px; background:none; border:none; color:#8b949e; font-size:13px; }
+  .link.danger { color:#f85149; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title" id="title">{% if pin_set %}Change PIN{% else %}Set a PIN{% endif %}</div>
+    <div class="sub">Protects remote access only</div>
+    <div class="dots" id="dots"></div>
+    <div class="msg" id="msg"></div>
+    <div class="pad" id="pad"></div>
+    {% if pin_set %}<button class="link danger" onclick="removePin()">Remove PIN</button>{% endif %}
+    <button class="link" onclick="location.href='/'">Cancel</button>
+  </div>
+<script>
+  var pin = "", busy = false;
+  var dots = document.getElementById('dots');
+  var msg = document.getElementById('msg');
+  for (var i = 0; i < 6; i++) { var d = document.createElement('div'); d.className = 'dot'; dots.appendChild(d); }
+  function draw() { var ds = dots.children; for (var i = 0; i < 6; i++) ds[i].className = 'dot' + (i < pin.length ? ' on' : ''); }
+  var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
+  var pad = document.getElementById('pad');
+  keys.forEach(function (k) {
+    var b = document.createElement('button');
+    if (k === '') { b.className = 'key blank'; b.disabled = true; }
+    else { b.className = 'key'; b.textContent = k; b.onclick = function () { press(k); }; }
+    pad.appendChild(b);
+  });
+  function press(k) {
+    if (busy) return;
+    msg.textContent = ''; msg.className = 'msg';
+    if (k === '⌫') { pin = pin.slice(0, -1); draw(); return; }
+    if (pin.length >= 6) return;
+    pin += k; draw();
+    if (pin.length === 6) submit();
+  }
+  function submit() {
+    busy = true;
+    fetch('/pin/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.ok) { msg.textContent = 'PIN saved'; msg.className = 'msg ok'; setTimeout(function () { location.href = '/'; }, 800); return; }
+        busy = false; pin = ''; draw(); msg.textContent = j.error || 'Error';
+      })
+      .catch(function () { busy = false; pin = ''; draw(); msg.textContent = 'Error'; });
+  }
+  function removePin() {
+    fetch('/pin/clear', { method: 'POST' }).then(function () { location.href = '/'; });
+  }
+  draw();
+</script>
+</body>
+</html>

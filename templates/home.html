@@ -113,6 +113,7 @@
     .pwr-cancel { padding:11px 0; border:1px solid #30363d; border-radius:10px; background:transparent; color:#8b949e; font-size:13px; }
     .pwr-lock { background:#238636; }
     .pwr-rotate { background:#6e40c9; }
+    .pwr-pin { background:#374151; }
 
     /* Lock screen (nomadic use: ignore accidental touches while in a bag) */
     .lock-overlay { display:none; position:absolute; inset:0; z-index:100;
@@ -241,6 +242,7 @@
       <div class="pwr-title">Power</div>
       <button class="pwr-act pwr-lock" onclick="lockScreen()">Lock screen</button>
       <button class="pwr-act pwr-rotate" onclick="rotateScreen(this)">Rotate screen</button>
+      <button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>
       <div class="pwr-btns">
         <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
         <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>

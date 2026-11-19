@@ -9,7 +9,7 @@ import raton_engine
 import vigie_monitor
 import hugin
 import hugin_msf
-from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, send_from_directory, Response
+from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, send_from_directory, Response, session
 
 app = Flask(__name__)
 # The kiosk browser caches static assets; restarting Fennec doesn't clear that
@@ -89,6 +89,69 @@ def load_settings():
 
 def save_settings(data):
     _save(SETTINGS_FILE, data)
+
+# ---------- Remote-access PIN (the touchscreen on localhost is always exempt) ----------
+import hashlib, hmac, secrets
+
+def _secret_key():
+    s = load_settings()
+    k = s.get("secret_key")
+    if not k:
+        k = secrets.token_hex(32)
+        s["secret_key"] = k
+        save_settings(s)
+    return k
+
+app.secret_key = _secret_key()
+
+def pin_is_set():
+    return bool(load_settings().get("pin_hash"))
+
+def set_pin(pin):
+    salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt.encode(), 200_000).hex()
+    s = load_settings()
+    s["pin_salt"] = salt
+    s["pin_hash"] = h
+    save_settings(s)
+
+def check_pin(pin):
+    s = load_settings()
+    salt, h = s.get("pin_salt"), s.get("pin_hash")
+    if not salt or not h:
+        return False
+    test = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt.encode(), 200_000).hex()
+    return hmac.compare_digest(test, h)
+
+def clear_pin():
+    s = load_settings()
+    s.pop("pin_salt", None)
+    s.pop("pin_hash", None)
+    save_settings(s)
+
+_pin_fails = {"n": 0, "until": 0.0}
+
+def _is_local():
+    return request.remote_addr in ("127.0.0.1", "::1")
+
+@app.before_request
+def _require_pin():
+    # The kiosk talks to itself on localhost: never ask the touchscreen for a PIN.
+    if request.remote_addr in ("127.0.0.1", "::1"):
+        return
+    # No PIN configured yet -> no remote protection (so you can't lock yourself out).
+    if not pin_is_set():
+        return
+    # Always let the unlock page, its check and the static assets load.
+    if request.endpoint in ("unlock", "static"):
+        return
+    # Already unlocked for this browser session.
+    if session.get("ok"):
+        return
+    # Remote and locked: a page -> PIN screen, anything else -> refused.
+    if request.method == "GET":
+        return redirect(url_for("unlock"))
+    abort(403)
 
 # ---------- Modes ----------
 
@@ -1854,6 +1917,59 @@ def apply_screen_rotation(response):
     return response
 
 
+@app.route("/unlock", methods=["GET", "POST"])
+def unlock():
+    if request.method == "GET":
+        return render_template("unlock.html")
+    now = time.time()
+    if now < _pin_fails["until"]:
+        return jsonify(ok=False, wait=int(_pin_fails["until"] - now)), 429
+    data = request.get_json(silent=True) or request.form
+    if check_pin((data.get("pin") or "").strip()):
+        _pin_fails["n"] = 0
+        session["ok"] = True
+        session.permanent = True
+        return jsonify(ok=True)
+    _pin_fails["n"] += 1
+    if _pin_fails["n"] >= 5:
+        _pin_fails["until"] = now + 30
+        _pin_fails["n"] = 0
+    return jsonify(ok=False), 401
+
+
+@app.route("/pin/state")
+def pin_state():
+    return jsonify(set=pin_is_set())
+
+
+@app.route("/pin/set", methods=["POST"])
+def pin_set():
+    # The PIN can only be set/changed from the touchscreen, never remotely.
+    if not _is_local():
+        abort(403)
+    data = request.get_json(silent=True) or request.form
+    pin = (data.get("pin") or "").strip()
+    if not (pin.isdigit() and len(pin) == 6):
+        return jsonify(ok=False, error="Il faut 6 chiffres."), 400
+    set_pin(pin)
+    return jsonify(ok=True)
+
+
+@app.route("/pin/clear", methods=["POST"])
+def pin_clear():
+    if not _is_local():
+        abort(403)
+    clear_pin()
+    return jsonify(ok=True)
+
+
+@app.route("/pin")
+def pin_page():
+    if not _is_local():
+        abort(403)
+    return render_template("pin.html", pin_set=pin_is_set())
+
+
 @app.route("/power/<action>", methods=["POST"])
 def power(action):
     # Power off / reboot the Pi from the screen (keyboard-less kiosk).
@@ -1874,4 +1990,4 @@ atexit.register(vigie_monitor.stop)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, threaded=True,
-            debug=os.environ.get("FENNEC_DEBUG", "1") == "1")
+            debug=os.environ.get("FENNEC_DEBUG", "0") == "1")
