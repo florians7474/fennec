@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          scripts/check-upstream-updates.sh > upstream-report.txt 2>&1
+          bash scripts/check-upstream-updates.sh > upstream-report.txt 2>&1
           status=$?
           cat upstream-report.txt
           if [ "$status" -eq 0 ]; then
