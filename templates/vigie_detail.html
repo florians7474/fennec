@@ -117,7 +117,10 @@
 
     // --- Ports + type + hostname ---
     fetch('/vigie/ports/' + IP).then(function(r){ return r.json(); }).then(function(j){
-      document.getElementById('type').textContent = j.type || 'Unknown';
+      var t = (j.type && j.type !== 'Unknown') ? j.type : '';
+      var tEl = document.getElementById('type');
+      tEl.textContent = t;
+      tEl.style.display = t ? '' : 'none';   // no misleading "Unknown" pill
       if(j.hote){
         document.getElementById('hote').textContent = j.hote;
         document.getElementById('field-hote').style.display = '';
@@ -137,7 +140,8 @@
         d.appendChild(n); d.appendChild(s); box.appendChild(d);
       });
     }).catch(function(){
-      document.getElementById('type').textContent = '';
+      var tEl = document.getElementById('type');
+      tEl.textContent = ''; tEl.style.display = 'none';
       document.getElementById('ports').innerHTML = '<div class="vide">Port scan failed.</div>';
     });
 
