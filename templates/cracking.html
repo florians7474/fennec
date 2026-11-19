@@ -37,6 +37,7 @@
       border:none; border-radius:8px; background:#1f6feb; color:#fff; text-decoration:none;
       font-size:13px; font-weight:600; padding:8px 14px; white-space:nowrap;
     }
+    .wps.off { background:#30363d; color:#6e7681; cursor:default; }
     .rbssid .nohs { color:#6e7681; }
     .exporter {
       border:1px solid #f0883e; border-radius:8px; background:none; color:#f0883e;
@@ -54,6 +55,9 @@
   </div>
 
   <div class="aide">Pwnagotchi captures. Only your allowed networks can be tested.</div>
+  {% if captures|selectattr('wps')|list and not wps_ok %}
+  <div class="aide">Plug the Wi-Fi adapter to run WPS attacks.</div>
+  {% endif %}
 
   <div class="list">
     {% for r in captures %}
@@ -63,8 +67,12 @@
         <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
       </div>
       {% if r.bssid in seen %}
-        {% if r.wps and wps_ok %}
-          <a class="wps" href="/cracking/wps/{{ r.bssid }}">WPS</a>
+        {% if r.wps %}
+          {% if wps_ok %}
+            <a class="wps" href="/cracking/wps/{{ r.bssid }}">WPS</a>
+          {% else %}
+            <span class="wps off" title="Plug the Wi-Fi adapter">WPS</span>
+          {% endif %}
         {% endif %}
         {% if r.handshake %}
           <a class="tester" href="/cracking/test/{{ r.bssid }}">Test</a>
