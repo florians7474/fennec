@@ -16,10 +16,13 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install flask
+        run: pip install flask pytest
 
       - name: Compile all Python
         run: python -m compileall -q .
 
       - name: Smoke test routes and logic
         run: python tests/smoke.py
+
+      - name: Unit tests
+        run: pytest -q tests/
