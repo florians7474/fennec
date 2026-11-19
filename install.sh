@@ -16,6 +16,32 @@ USER_HOME="$HOME"
 VENV="$USER_HOME/pwnagotchi-venv"
 DISPLAY_PROFILE="${FENNEC_DISPLAY:-}"
 
+# The lock keeps fresh installations reproducible. Generated source folders are
+# checked out at their recorded commit on every installer run.
+# shellcheck source=system/sources.lock
+source "$SYS/sources.lock"
+
+clone_pinned() {
+    local name="$1" repository="$2" ref="$3" destination="$4" actual
+
+    if [ ! -d "$destination/.git" ]; then
+        if [ -e "$destination" ]; then
+            echo "Cannot prepare $name: $destination exists but is not a Git checkout."
+            exit 1
+        fi
+        echo "==> Cloning $name at $ref..."
+        git clone --no-checkout "$repository" "$destination"
+    fi
+
+    git -C "$destination" fetch --quiet --depth=1 origin "$ref"
+    git -C "$destination" checkout --quiet --detach --force FETCH_HEAD
+    actual="$(git -C "$destination" rev-parse HEAD)"
+    if [ "$actual" != "$ref" ]; then
+        echo "$name resolved to $actual instead of the locked commit $ref."
+        exit 1
+    fi
+}
+
 select_display_profile() {
     if [ -z "$DISPLAY_PROFILE" ]; then
         if [ -t 0 ]; then
@@ -74,7 +100,8 @@ configure_waveshare35c() {
     driver_dir="$(mktemp -d)"
 
     wget -q --show-progress -O "$driver_dir/Waveshare35c.zip" \
-        https://files.waveshare.com/wiki/common/Waveshare35c.zip
+        "$WAVESHARE35C_ARCHIVE_URL"
+    echo "$WAVESHARE35C_ARCHIVE_SHA256  $driver_dir/Waveshare35c.zip" | sha256sum -c -
     unzip -q -j "$driver_dir/Waveshare35c.zip" waveshare35c.dtbo -d "$driver_dir"
     sudo install -m 644 "$driver_dir/waveshare35c.dtbo" \
         "$overlay_dir/waveshare35c.dtbo"
@@ -148,10 +175,7 @@ if [ ! -d "$VENV" ]; then
     python3 -m venv "$VENV"
 fi
 
-if [ ! -d "$USER_HOME/pwnagotchi-src" ]; then
-    echo "==> Cloning Pwnagotchi (jayofelony fork)..."
-    git clone https://github.com/jayofelony/pwnagotchi.git "$USER_HOME/pwnagotchi-src"
-fi
+clone_pinned "Pwnagotchi" "$PWNAGOTCHI_REPOSITORY" "$PWNAGOTCHI_REF" "$USER_HOME/pwnagotchi-src"
 
 # GPS plugin fix: it tries to replace ".pcapng" while bettercap saves captures
 # as ".pcap". Without this fix the plugin overwrites the handshake with the
@@ -166,9 +190,7 @@ echo "==> Installing Pwnagotchi into the venv (long)..."
 # --- 3. Build pwngrid ---
 if [ ! -f /usr/local/bin/pwngrid ]; then
     echo "==> Building pwngrid..."
-    if [ ! -d "$USER_HOME/pwngrid-src" ]; then
-        git clone https://github.com/jayofelony/pwngrid.git "$USER_HOME/pwngrid-src"
-    fi
+    clone_pinned "pwngrid" "$PWNGRID_REPOSITORY" "$PWNGRID_REF" "$USER_HOME/pwngrid-src"
     ( cd "$USER_HOME/pwngrid-src" && make )
     sudo cp "$USER_HOME/pwngrid-src/build/pwngrid" /usr/local/bin/
 fi
@@ -242,9 +264,7 @@ sudo chmod 440 /etc/sudoers.d/fennec
 echo "==> Installing Bjorn..."
 
 # Source code (infinition/Bjorn)
-if [ ! -d "$USER_HOME/Bjorn" ]; then
-    git clone https://github.com/infinition/Bjorn.git "$USER_HOME/Bjorn"
-fi
+clone_pinned "Bjorn" "$BJORN_REPOSITORY" "$BJORN_REF" "$USER_HOME/Bjorn"
 
 # Bjorn web server patch: keep port 8000 and allow address reuse. Without this,
 # a Stop/Start leaves the port in TIME_WAIT, Bjorn jumps to 8001 and the page
@@ -283,9 +303,7 @@ echo "==> Setting up Raton (WPA cracking)..."
 # routerkeygen-cli (factory keys): not in apt, build from source
 if [ ! -f /usr/local/bin/routerkeygen-cli ]; then
     echo "==> Building routerkeygen-cli..."
-    if [ ! -d "$USER_HOME/routerkeygen-src" ]; then
-        git clone https://github.com/routerkeygen/routerkeygenPC.git "$USER_HOME/routerkeygen-src"
-    fi
+    clone_pinned "routerkeygen" "$ROUTERKEYGEN_REPOSITORY" "$ROUTERKEYGEN_REF" "$USER_HOME/routerkeygen-src"
     # Trixie can select Qt6 for plain qmake, while routerkeygen-cli needs Qt5.
     # Prefer the default when it is Qt5, then fall back to qtchooser's Qt5 selector
     # and finally to Qt5's direct binary.
@@ -310,7 +328,7 @@ sudo mkdir -p /usr/share/wordlists
 # rockyou (downloaded from SecLists, extracted into /usr/share/wordlists)
 if [ ! -f /usr/share/wordlists/rockyou.txt ]; then
     sudo wget -O /tmp/rockyou.txt.tar.gz \
-        https://github.com/danielmiessler/SecLists/raw/master/Passwords/Leaked-Databases/rockyou.txt.tar.gz
+        https://raw.githubusercontent.com/danielmiessler/SecLists/$SECLISTS_REF/Passwords/Leaked-Databases/rockyou.txt.tar.gz
     sudo tar -xzf /tmp/rockyou.txt.tar.gz -C /usr/share/wordlists/
     sudo rm -f /tmp/rockyou.txt.tar.gz
     sudo chown root:root /usr/share/wordlists/rockyou.txt
