@@ -21,6 +21,14 @@ jobs:
       - name: Compile all Python
         run: python -m compileall -q .
 
+      - name: Validate installer and source lock syntax
+        run: |
+          bash -n install.sh scripts/verify-sources.sh scripts/check-upstream-updates.sh
+          bash scripts/verify-sources.sh --offline
+
+      - name: Verify locked external sources
+        run: bash scripts/verify-sources.sh
+
       - name: Smoke test routes and logic
         run: python tests/smoke.py
 
