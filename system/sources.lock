@@ -1,0 +1,25 @@
+# Fennec external source lock
+# Update only through a reviewed Fennec release.
+
+PWNAGOTCHI_REPOSITORY="https://github.com/jayofelony/pwnagotchi.git"
+PWNAGOTCHI_REF="6cdc89226478fd42d7bcca6a9faa05d9f3280701"
+PWNAGOTCHI_TRACKING_REF="master"
+
+PWNGRID_REPOSITORY="https://github.com/jayofelony/pwngrid.git"
+PWNGRID_REF="913a03fe53d9ae69e70ff070c9d35c6ada071e9c"
+PWNGRID_TRACKING_REF="master"
+
+BJORN_REPOSITORY="https://github.com/infinition/Bjorn.git"
+BJORN_REF="61a4758e5ee3d37d43c10eb690340626139912c0"
+BJORN_TRACKING_REF="main"
+
+ROUTERKEYGEN_REPOSITORY="https://github.com/routerkeygen/routerkeygenPC.git"
+ROUTERKEYGEN_REF="c1f166555f6620d21b9767682dc79346806e2f5e"
+ROUTERKEYGEN_TRACKING_REF="master"
+
+SECLISTS_REPOSITORY="https://github.com/danielmiessler/SecLists.git"
+SECLISTS_REF="f90961c9c5be42d80e2f1b6e27b968530918862d"
+SECLISTS_TRACKING_REF="master"
+
+WAVESHARE35C_ARCHIVE_URL="https://files.waveshare.com/wiki/common/Waveshare35c.zip"
+WAVESHARE35C_ARCHIVE_SHA256="36d1743c4badc9f0bcd0cd7e2aee7cd9ce9df20e0f81f3077a3184539a672777"
