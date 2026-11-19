@@ -1207,6 +1207,28 @@ def mirage_clients():
         pass
     return jsonify(clients)
 
+@app.route("/mirage/credentials")
+def mirage_credentials():
+    """Return recently captured passwords from SQLite database."""
+    import sqlite3
+    credentials = []
+    try:
+        conn = sqlite3.connect("/opt/fennec-mirage/credentials.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, timestamp, username, password FROM credentials ORDER BY id DESC LIMIT 10")
+        rows = cursor.fetchall()
+        for row in rows:
+            credentials.append({
+                "id": row[0],
+                "timestamp": row[1],
+                "username": row[2] or "",
+                "password": row[3] or ""
+            })
+        conn.close()
+    except Exception as e:
+        pass
+    return jsonify(credentials)
+
 @app.route("/cracking/test/<bssid>")
 def crack_test(bssid):
     autorises = {r["bssid"] for r in load_whitelist()}
