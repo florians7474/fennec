@@ -332,6 +332,63 @@ def is_active(service):
     except Exception:
         return False
 
+# ---------- Module journal (events) + crash detection ----------
+import threading as _threading
+
+EVENTS_FILE = os.path.join(BASE, "events.json")
+EVENTS_MAX = 200
+
+# Module -> primary systemd unit (crash detection) and display label (journal).
+MODULE_SERVICE = {"pwnagotchi": "pwnagotchi", "bjorn": "bjorn", "mirage": "fennec-mirage"}
+MODULE_LABEL = {"pwnagotchi": "Pwnagotchi", "bjorn": "Bjorn", "mirage": "Mirage",
+                "cracking": "Sly", "vigie": "Sentry", "hugin": "Hugin",
+                "echo": "Echo", "fennec": "Fennec"}
+
+_events_lock = _threading.Lock()
+
+def log_event(module, level, message):
+    """Append one event to the journal. level is info, warn or error."""
+    entry = {"t": time.time(), "mod": module, "level": level, "msg": str(message)[:200]}
+    with _events_lock:
+        data = _load(EVENTS_FILE)
+        events = data if isinstance(data, list) else []
+        events.append(entry)
+        if len(events) > EVENTS_MAX:
+            events = events[-EVENTS_MAX:]
+        _save(EVENTS_FILE, events)
+
+def read_events():
+    data = _load(EVENTS_FILE)
+    events = data if isinstance(data, list) else []
+    return sorted(events, key=lambda e: e.get("t", 0), reverse=True)
+
+def clear_events():
+    with _events_lock:
+        _save(EVENTS_FILE, [])
+
+def _is_failed(service):
+    try:
+        r = subprocess.run(["systemctl", "is-failed", service],
+                           capture_output=True, text=True, timeout=10)
+        return r.stdout.strip() == "failed"
+    except Exception:
+        return False
+
+_failed_seen = set()
+
+def refresh_crashed():
+    """Return the set of modules whose service crashed, logging each new crash once."""
+    crashed = set()
+    for mod, svc in MODULE_SERVICE.items():
+        if _is_failed(svc):
+            crashed.add(mod)
+            if mod not in _failed_seen:
+                _failed_seen.add(mod)
+                log_event(mod, "error", MODULE_LABEL.get(mod, mod) + " service crashed")
+        else:
+            _failed_seen.discard(mod)
+    return crashed
+
 @app.route("/pwna-ui")
 def pwna_ui():
     from flask import Response
@@ -688,7 +745,8 @@ def home():
     n = len(bssids)
     echo_count = f"{n / 1000:.1f}k" if n >= 1000 else str(n)
     return render_template("home.html", active=active_mode,
-                           connection=connection_state(), echo_count=echo_count)
+                           connection=connection_state(), echo_count=echo_count,
+                           crashed=refresh_crashed())
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
@@ -854,6 +912,7 @@ def toggle(name):
     if current == name:
         stop(name)
         app_state["active_mode"] = None
+        log_event(name, "info", MODULE_LABEL.get(name, name) + " stopped")
     else:
         if name == "bjorn":
             ok, msg = bjorn_wifi_gate()
@@ -861,8 +920,11 @@ def toggle(name):
                 return redirect(url_for("mode", name="bjorn", err=msg))
         if current:
             stop(current)
+            log_event(current, "info", MODULE_LABEL.get(current, current) + " stopped")
         start(name)
         app_state["active_mode"] = name
+        _failed_seen.discard(name)
+        log_event(name, "info", MODULE_LABEL.get(name, name) + " started")
     return redirect(url_for("mode", name=name))
 
 
@@ -1568,6 +1630,7 @@ def hugin_msf_connect():
     if not res.get("connected"):
         return redirect(url_for("hugin_msf_page",
                                 err=res.get("error") or "Connection failed.", host=host))
+    log_event("hugin", "info", "Metasploit RPC connected (" + host + ")")
     return redirect(url_for("hugin_msf_page"))
 
 @app.route("/hugin/msf/disconnect")
@@ -1709,6 +1772,7 @@ def vigie_monitor_start():
     ok = vigie_monitor.start(prefix)
     if ok:
         app_state["active_mode"] = "vigie"
+        log_event("vigie", "info", "Watch started (MITM)")
     return jsonify({"active": vigie_monitor.monitor_state["active"]})
 
 @app.route("/vigie/monitor/stop")
@@ -1717,6 +1781,7 @@ def vigie_monitor_stop():
     _history_flush(force=True)
     if app_state["active_mode"] == "vigie":
         app_state["active_mode"] = None
+        log_event("vigie", "info", "Watch stopped")
     return jsonify({"active": False})
 
 @app.route("/vigie/monitor/data")
@@ -1968,6 +2033,42 @@ def pin_page():
     if not _is_local():
         abort(403)
     return render_template("pin.html", pin_set=pin_is_set())
+
+
+MODULE_COLOR = {"pwnagotchi": "#19e38c", "bjorn": "#6f9bc8", "mirage": "#f0689b",
+                "cracking": "#ffb020", "vigie": "#28c0d4", "hugin": "#a78bfa",
+                "echo": "#2a3566", "fennec": "#01F994"}
+
+@app.route("/journal")
+def journal():
+    refresh_crashed()
+    rows = []
+    for e in read_events():
+        mod = e.get("mod", "fennec")
+        rows.append({
+            "time": time.strftime("%H:%M", time.localtime(e.get("t", 0))),
+            "label": MODULE_LABEL.get(mod, mod),
+            "color": MODULE_COLOR.get(mod, "#8b949e"),
+            "level": e.get("level", "info"),
+            "msg": e.get("msg", ""),
+        })
+    return render_template("journal.html", rows=rows)
+
+
+@app.route("/journal/clear", methods=["POST"])
+def journal_clear():
+    clear_events()
+    return jsonify(ok=True)
+
+
+@app.errorhandler(500)
+def _log_app_error(e):
+    try:
+        log_event("fennec", "error",
+                  "App error: " + str(getattr(e, "original_exception", e)))
+    except Exception:
+        pass
+    return "Internal error", 500
 
 
 @app.route("/power/<action>", methods=["POST"])

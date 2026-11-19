@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fennec — Journal</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:480px; height:320px; overflow:hidden; position:relative;
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:radial-gradient(130% 130% at 50% 0%, #1b2330 0%, #0d1117 60%);
+    color:#e6edf3; display:flex; flex-direction:column; }
+  .top { height:46px; flex:0 0 auto; display:flex; align-items:center; gap:10px;
+    padding:0 14px; border-bottom:1px solid #21262d; }
+  .top a.back { color:#8b949e; font-size:20px; text-decoration:none; }
+  .top .ttl { font-size:16px; font-weight:700; }
+  .top .sp { flex:1; }
+  .top .clear { background:none; border:1px solid #30363d; color:#8b949e;
+    border-radius:16px; padding:5px 12px; font-size:11px; }
+  .top .clear:active { background:#21262d; }
+  .list { flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .list::-webkit-scrollbar { width:0; }
+  .row { padding:9px 14px; border-bottom:1px solid #161b22; border-left:3px solid #30363d; }
+  .row .head { display:flex; align-items:center; gap:6px; }
+  .row .dot { width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
+  .row .mod { font-size:12px; font-weight:600; }
+  .row .sp { flex:1; }
+  .row .time { font-size:10px; color:#6e7681; }
+  .row .msg { font-size:11px; margin-top:3px; color:#8b949e; word-break:break-word; }
+  .row.error { border-left-color:#f85149; }
+  .row.error .msg { color:#f85149; }
+  .row.warn { border-left-color:#f0a35a; }
+  .row.warn .msg { color:#f0a35a; }
+  .empty { flex:1; display:flex; align-items:center; justify-content:center;
+    color:#5a6673; font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="/">&lsaquo;</a>
+    <span class="ttl">Journal</span>
+    <span class="sp"></span>
+    {% if rows %}<button class="clear" onclick="clearLog()">Clear</button>{% endif %}
+  </div>
+
+  {% if rows %}
+  <div class="list">
+    {% for r in rows %}
+    <div class="row {{ r.level }}">
+      <div class="head">
+        <span class="dot" style="background:{{ r.color }};"></span>
+        <span class="mod">{{ r.label }}</span>
+        <span class="sp"></span>
+        <span class="time">{{ r.time }}</span>
+      </div>
+      <div class="msg">{{ r.msg }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">No events yet</div>
+  {% endif %}
+
+<script>
+  function clearLog() {
+    fetch('/journal/clear', { method: 'POST' }).then(function () { location.reload(); });
+  }
+</script>
+</body>
+</html>
