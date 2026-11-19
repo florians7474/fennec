@@ -1163,11 +1163,13 @@ def mirage_start(bssid):
                 if r["bssid"].upper() == bssid.upper()), None)
     if not net:
         return redirect(url_for("mode", name="mirage"))
-    # La cible (SSID a cloner) est passee au service via ce fichier.
+    # Resolve the target's security and channel before starting the AP.
+    sec, chan = scan_security_channel(net.get("bssid") or "", net.get("name") or "")
+    # The AP launcher reads the SSID then its channel from this file.
     with open("/tmp/fennec-mirage-target", "w", encoding="utf-8") as f:
         f.write((net.get("name") or "") + "\n")
-    # Metadonnees de la cible (securite + canal), pour decider du deauth.
-    sec, chan = scan_security_channel(net.get("bssid") or "", net.get("name") or "")
+        f.write((chan or "") + "\n")
+    # Keep the same target metadata for deauthentication gating.
     with open("/tmp/fennec-mirage-meta.json", "w", encoding="utf-8") as f:
         json.dump({"bssid": net["bssid"], "security": sec, "chan": chan}, f)
     if vigie_monitor.monitor_state["active"]:
