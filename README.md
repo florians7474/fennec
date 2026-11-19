@@ -42,7 +42,7 @@ https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
 | **Hugin** | Bjorn companion: results, Metasploit correlation (CVE + service), deported execution & live sessions | ✅ Working |
 | **Sentry** | Network radar + per-device traffic watch | ✅ Working |
 
-The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and tapping it opens the connection manager: you scan for networks, pick the ones you are allowed to test, and connect the Pi to a whitelisted Wi-Fi or disconnect it (real nmcli on the built-in interface; the key comes from the whitelist or an existing profile, and a network answering on several bands is handled by SSID). An on-screen keyboard pops up on any text field, so keys and device names can be typed on the touchscreen without a physical keyboard. A power button in the top-right opens an on-screen menu to lock the screen, rotate the screen, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate press-and-hold brings the interface back.
+The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and tapping it opens the connection manager: you scan for networks, pick the ones you are allowed to test, and connect the Pi to a whitelisted Wi-Fi or disconnect it (real nmcli on the built-in interface; the key comes from the whitelist or an existing profile, and a network answering on several bands is handled by SSID). An on-screen keyboard pops up on any text field, so keys and device names can be typed on the touchscreen without a physical keyboard. A power button in the top-right opens an on-screen menu to lock the screen, rotate the screen, set the remote-access PIN code, open the Logs, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate press-and-hold brings the interface back.
 
 All six modules are operational: automatic installation, control from the tile, and a live view inside the interface.
 
@@ -115,8 +115,8 @@ After the reboot the interface runs full-screen on the touchscreen and is ready 
     http://fennec.local:5000/
 
 Click or tap a tile to activate the matching module. The power menu offers lock
-screen (hold to unlock), screen rotation (tap to turn the UI by 90°), reboot and
-shut down.
+screen (hold to unlock), screen rotation (tap to turn the UI by 90°), the PIN
+code, the Logs, reboot and shut down.
 
 ## Architecture
 
@@ -138,8 +138,10 @@ shut down.
 - [x] Pwnagotchi module (install, control, display)
 - [x] One-command installer (SPI enabled, works on a fresh card in one pass)
 - [x] Touchscreen display and Chromium kiosk auto-starting at boot
-- [x] On-screen power menu: lock screen (hold to unlock), screen rotation, reboot, shut down
+- [x] On-screen power menu: lock screen (hold to unlock), screen rotation, PIN code, Logs, reboot, shut down
 - [x] On-screen screen rotation (portrait/landscape, instant, no reboot)
+- [x] Remote-access PIN for the web UI (6-digit; the local touchscreen is exempt)
+- [x] Module journal (Logs): recent events, crash dots on tiles, attention signals, alerts filter
 - [x] Bjorn module (install, control, live console)
 - [x] Sly module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)

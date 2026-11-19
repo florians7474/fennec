@@ -86,9 +86,22 @@ coded in-house.
   that network); otherwise Start is refused with a message. Enforced in the toggle
   route before the service is started.
 - Power button (top-right of the header): an in-page dialog offers Lock screen,
-  Reboot and Shut down. Reboot/Shut down post to /power/<action>, which runs
-  sudo systemctl reboot|poweroff (exact-path rules in fennec.sudoers). Lets the
-  kiosk be powered off from the touchscreen, no keyboard or SSH needed.
+  Rotate screen, PIN code, Logs, Reboot and Shut down. Reboot/Shut down post to
+  /power/<action>, which runs sudo systemctl reboot|poweroff (exact-path rules in
+  fennec.sudoers). Lets the kiosk be handled from the touchscreen, no keyboard or
+  SSH needed.
+- Remote-access PIN: the web UI is open on the local touchscreen (requests from
+  localhost are exempt) but asks for a 6-digit PIN from any other device on the
+  network. Set/changed/removed from the power menu (localhost only); stored
+  hashed (pbkdf2) in settings.json; 5 wrong tries trigger a short lockout. While
+  no PIN is set, nothing changes. FENNEC_DEBUG defaults to off so the Werkzeug
+  debugger is never exposed.
+- Journal (power menu -> Logs): one page listing recent events newest-first
+  (time, module, level). Tiles show a red dot when a systemd-backed module
+  (Pwnagotchi, Bjorn, Mirage) crashes. Besides lifecycle events, "attention"
+  (amber) signals flag anomalies that are not errors (empty wardrive, captures
+  without a GPS fix, no usable handshake, Metasploit unreachable). An Alerts
+  filter shows warnings and errors only. Capped at the last 200 (events.json).
 - Lock screen (nomadic use): a full-screen overlay (Fennec logo + a looping
   Wi-Fi fill animation) that swallows every touch, so accidental presses while
   the Pi is in a bag do nothing and no running module is stopped. Purely
@@ -339,9 +352,12 @@ Notes:
 Changes are committed to this repository; the Pi pulls them with
 `cd ~/console && git pull && sudo systemctl restart fennec`.
 Continuous integration (.github/workflows/ci.yml) runs on every push: it
-compiles all Python and runs tests/smoke.py, which imports the app and checks
-the main routes (home, map, connection, tiles status, gps) return 200 plus the
-risk-level logic. The app degrades gracefully without hardware, nmcli or
+compiles all Python, runs tests/smoke.py (imports the app and checks the main
+routes return 200 plus the risk-level logic), and runs the pytest unit suite
+(tests/test_*.py) covering the engine logic — Sly scoring/ESSID, Hugin
+correlation and path confinement, Sentry parsing, the PIN and journal, the
+Bjorn/Mirage security gates — plus regression guards (wardrive path, vigie
+routes). The app degrades gracefully without hardware, nmcli or
 handshake files, so the suite runs anywhere. It covers the web app only — not
 live NetworkManager or Wi-Fi adapter behaviour, which has to be verified on the
 Pi.
