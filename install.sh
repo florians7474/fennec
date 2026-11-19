@@ -286,7 +286,21 @@ if [ ! -f /usr/local/bin/routerkeygen-cli ]; then
     if [ ! -d "$USER_HOME/routerkeygen-src" ]; then
         git clone https://github.com/routerkeygen/routerkeygenPC.git "$USER_HOME/routerkeygen-src"
     fi
-    ( cd "$USER_HOME/routerkeygen-src/cli" && qmake && make )
+    # Trixie can select Qt6 for plain qmake, while routerkeygen-cli needs Qt5.
+    # Prefer the default when it is Qt5, then fall back to qtchooser's Qt5 selector
+    # and finally to Qt5's direct binary.
+    QMAKE_CMD=(qmake)
+    if ! qmake -v 2>/dev/null | grep -q "Qt version 5"; then
+        if qmake -qt5 -v 2>/dev/null | grep -q "Qt version 5"; then
+            QMAKE_CMD=(qmake -qt5)
+        elif [ -x /usr/lib/qt5/bin/qmake ]; then
+            QMAKE_CMD=(/usr/lib/qt5/bin/qmake)
+        else
+            echo "Qt5 qmake was not found; cannot build routerkeygen-cli."
+            exit 1
+        fi
+    fi
+    ( cd "$USER_HOME/routerkeygen-src/cli" && "${QMAKE_CMD[@]}" && make )
     sudo cp "$USER_HOME/routerkeygen-src/cli/routerkeygen-cli" /usr/local/bin/
 fi
 
