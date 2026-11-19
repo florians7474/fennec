@@ -197,8 +197,9 @@ sudo cp "$SYS/fennec-pwna-iface" /usr/local/bin/fennec-pwna-iface
 sudo cp "$SYS/fennec-wifi-connect" /usr/local/bin/fennec-wifi-connect
 sudo cp "$SYS/fennec-wifi-disconnect" /usr/local/bin/fennec-wifi-disconnect
 sudo cp "$SYS/fennec-wardrive" /usr/local/bin/fennec-wardrive
+sudo cp "$SYS/fennec-mirage-ap" /usr/local/bin/fennec-mirage-ap
 sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-portal-manage
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal-manage
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
@@ -225,6 +226,7 @@ for svc in bettercap pwngrid-peer pwnagotchi fennec-wardrive; do
     sudo sed "s#__VENV__#$VENV#g" "$SYS/$svc.service" \
         | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
 done
+sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo systemctl daemon-reload
 
 # --- 8. sudoers rule (with user substitution) ---
