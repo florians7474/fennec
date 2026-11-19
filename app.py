@@ -602,14 +602,38 @@ def arp_mac(ip):
     except Exception:
         return None
 
+NMAP_OUI = "/usr/share/nmap/nmap-mac-prefixes"
+_oui_map = None
+
+def vendor_from_mac(mac):
+    """Vendor name for a MAC from nmap's OUI table, or None.
+
+    Lets the device detail name a device even when the scan cache is cold
+    (e.g. right after a Fennec restart), instead of falling back to Unknown."""
+    global _oui_map
+    if not mac:
+        return None
+    if _oui_map is None:
+        _oui_map = {}
+        try:
+            with open(NMAP_OUI, encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if len(line) > 7 and not line.startswith("#"):
+                        _oui_map[line[:6].upper()] = line[7:].strip()
+        except OSError:
+            pass
+    return _oui_map.get(mac.upper().replace(":", "")[:6]) or None
+
 def device_pour(ip):
     """Build a device detail for an IP, even outside the last scan."""
     mac = arp_mac(ip)
     pi = (ip == local_ip())
     routeur = (ip == passerelle_ip())
     mien = bool(mac) and mac in set(load_mine())
-    name = custom_name(mac) or ("This Pi" if pi else ("Router" if routeur else "Unknown device"))
-    return {"ip": ip, "mac": mac, "vendor": None, "name": name,
+    vendor = vendor_from_mac(mac)
+    name = custom_name(mac) or ("This Pi" if pi else
+                                ("Router" if routeur else (vendor or "Unknown device")))
+    return {"ip": ip, "mac": mac, "vendor": vendor, "name": name,
             "type": "pi" if pi else ("router" if routeur else "device"),
             "pi": pi, "routeur": routeur, "mien": mien,
             "inconnu": not (pi or routeur or mien)}

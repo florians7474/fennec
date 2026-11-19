@@ -88,6 +88,17 @@ def test_vigie_template_calls_real_routes():
     assert "'mien'" not in html and "'pasmien'" not in html
 
 
+def test_vendor_from_mac(tmp_path, monkeypatch):
+    oui = tmp_path / "oui"
+    oui.write_text("582059 Xiaomi Communications Co Ltd\nA86DAA Alienware\n")
+    monkeypatch.setattr(app, "NMAP_OUI", str(oui))
+    monkeypatch.setattr(app, "_oui_map", None)  # force reload from the fixture
+    assert app.vendor_from_mac("58:20:59:90:0B:10") == "Xiaomi Communications Co Ltd"
+    assert app.vendor_from_mac("a8:6d:aa:52:c3:c6") == "Alienware"  # case-insensitive
+    assert app.vendor_from_mac("00:00:00:00:00:00") is None
+    assert app.vendor_from_mac(None) is None
+
+
 def test_wardrive_path_matches_logger():
     # Regression: Fennec once read wardrive.json from the wrong path, so the
     # weekend's data stayed invisible. The read path must equal the write path.
