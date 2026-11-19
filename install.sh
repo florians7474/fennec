@@ -327,7 +327,7 @@ echo "==> Installing the Fennec service..."
 sudo sed -e "s/__USER__/$USER_NAME/g" -e "s#__REPO__#$REPO#g" "$SYS/fennec.service" \
     | sudo tee /etc/systemd/system/fennec.service > /dev/null
 sudo systemctl daemon-reload
-sudo systemctl enable fennec
+sudo systemctl enable --now fennec
 
 # --- 12. Display profile ---
 case "$DISPLAY_PROFILE" in
