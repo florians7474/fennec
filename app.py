@@ -871,14 +871,19 @@ def mode(name):
     if name == "bjorn":
         active = is_active("bjorn")
         app_state["active_mode"] = "bjorn" if active else app_state["active_mode"]
+        # Just after Start the service is "activating" and its web UI isn't up
+        # yet, so show a "starting" view that waits for readiness instead of the
+        # pre-start screen (which forced a manual home-and-back).
+        starting = (app_state["active_mode"] == "bjorn" and not active
+                    and not _is_failed("bjorn"))
         hote = request.host.split(":")[0]
         url_iframe = f"http://{hote}:8000/"
         conn = connection_state()
         reseau_scan = {"type": conn["type"], "name": conn["name"],
                        "sous_reseau": local_subnet()}
         return render_template("mode.html", key=name, info=MODES[name], active=active,
-                               url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan,
-                               err=request.args.get("err"))
+                               starting=starting, url_ui=None, url_iframe=url_iframe,
+                               reseau_scan=reseau_scan, err=request.args.get("err"))
     if name == "mirage":
         active = is_active("fennec-mirage")
         if active:
@@ -943,6 +948,22 @@ def toggle(name):
         _failed_seen.discard(name)
         log_event(name, "info", MODULE_LABEL.get(name, name) + " started")
     return redirect(url_for("mode", name=name))
+
+
+@app.route("/bjorn/ready")
+def bjorn_ready():
+    # Bjorn is ready once its service is active AND its web UI answers on :8000.
+    ready = is_active("bjorn")
+    if ready:
+        s = socket.socket()
+        s.settimeout(0.5)
+        try:
+            s.connect(("127.0.0.1", 8000))
+        except OSError:
+            ready = False
+        finally:
+            s.close()
+    return jsonify(ready=ready)
 
 
 def _human_bytes(size):

@@ -69,6 +69,11 @@
   <div class="vue {{ 'plein' if active and url_iframe }}">
     {% if active and url_iframe %}
       <div class="cadre"><iframe id="bjorn-frame" src="{{ url_iframe }}"></iframe></div>
+    {% elif starting %}
+      <div class="loading" id="bjorn-starting">
+        <div class="anneau"></div>
+        <div class="txt">Bjorn is starting…</div>
+      </div>
     {% elif active and url_ui %}
       <div class="loading" id="pwna-loading">
         <div class="anneau"></div>
@@ -97,6 +102,19 @@
   </div>
   <script>
     (function () {
+      // While Bjorn is starting, wait until its service and web UI are up, then
+      // reload once to show the embed — no manual home-and-back needed.
+      if (document.getElementById("bjorn-starting")) {
+        var poll = function () {
+          fetch("/bjorn/ready", { cache: "no-store" })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+              if (j.ready) { location.reload(); } else { setTimeout(poll, 1500); }
+            })
+            .catch(function () { setTimeout(poll, 1500); });
+        };
+        setTimeout(poll, 1500);
+      }
       // Bjorn's web UI is embedded in an iframe. Right after start its first
       // screen image doesn't exist yet, so the iframe shows a broken image.
       // Reload it ONCE, a few seconds after the first load, so the image
