@@ -117,6 +117,18 @@ fi
 SSID="${SSID:-Fennec-test}"
 CHANNEL="${CHANNEL:-1}"
 
+# Choose the radio band from the target channel. hostapd cannot use a 5 GHz
+# channel with the 2.4 GHz "g" mode, which causes it to reject the AP setup.
+if [[ "$CHANNEL" =~ ^[0-9]+$ ]] && [ "$CHANNEL" -ge 1 ] && [ "$CHANNEL" -le 14 ]; then
+  HW_MODE=g
+elif [[ "$CHANNEL" =~ ^[0-9]+$ ]] && [ "$CHANNEL" -ge 32 ] && [ "$CHANNEL" -le 196 ]; then
+  HW_MODE=a
+else
+  echo "[MIRAGE] Invalid or unsupported channel '$CHANNEL'; falling back to 2.4 GHz channel 1." >&2
+  CHANNEL=1
+  HW_MODE=g
+fi
+
 nmcli dev set "$IFACE" managed no 2>/dev/null || true
 ip addr flush dev "$IFACE" 2>/dev/null || true
 ip addr add "$AP_IP/24" dev "$IFACE"
@@ -126,8 +138,10 @@ cat > "$RUN/hostapd.conf" <<EOF
 interface=$IFACE
 driver=nl80211
 ssid=$SSID
-hw_mode=g
+hw_mode=$HW_MODE
 channel=$CHANNEL
+country_code=FR
+ieee80211d=1
 EOF
 
 cat > "$RUN/dnsmasq.conf" <<EOF
