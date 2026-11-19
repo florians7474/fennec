@@ -106,10 +106,10 @@
     .pwr-overlay { display:none; position:absolute; inset:0; z-index:60;
       background:rgba(0,0,0,.72); align-items:center; justify-content:center; }
     .pwr-box { width:300px; background:#161b22; border:1px solid #30363d; border-radius:16px;
-      padding:20px; display:flex; flex-direction:column; gap:14px; text-align:center; }
-    .pwr-title { font-size:16px; font-weight:700; color:#e6edf3; }
-    .pwr-btns { display:flex; gap:10px; }
-    .pwr-act { flex:1; padding:13px 0; border:none; border-radius:10px; font-size:14px; font-weight:700; color:#fff; }
+      padding:16px; display:flex; flex-direction:column; gap:9px; text-align:center; }
+    .pwr-title { font-size:15px; font-weight:700; color:#e6edf3; margin-bottom:1px; }
+    .pwr-btns { display:flex; gap:9px; }
+    .pwr-act { flex:1; padding:11px 0; border:none; border-radius:10px; font-size:13px; font-weight:700; color:#fff; }
     .pwr-reboot { background:#1f6feb; }
     .pwr-off { background:#da3633; }
     .pwr-cancel { padding:11px 0; border:1px solid #30363d; border-radius:10px; background:transparent; color:#8b949e; font-size:13px; }
@@ -243,10 +243,14 @@
   <div id="pwrdlg" class="pwr-overlay">
     <div class="pwr-box">
       <div class="pwr-title">Power</div>
-      <button class="pwr-act pwr-lock" onclick="lockScreen()">Lock screen</button>
-      <button class="pwr-act pwr-rotate" onclick="rotateScreen(this)">Rotate screen</button>
-      <button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>
-      <button class="pwr-act pwr-logs" onclick="location.href='/journal'">Logs</button>
+      <div class="pwr-btns">
+        <button class="pwr-act pwr-lock" onclick="lockScreen()">Lock screen</button>
+        <button class="pwr-act pwr-rotate" onclick="rotateScreen(this)">Rotate screen</button>
+      </div>
+      <div class="pwr-btns">
+        <button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>
+        <button class="pwr-act pwr-logs" onclick="location.href='/journal'">Logs</button>
+      </div>
       <div class="pwr-btns">
         <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
         <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>
