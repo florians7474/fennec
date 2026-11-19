@@ -1,26 +1,121 @@
 #!/usr/bin/env bash
-# Lève le faux AP Mirage (hostapd + dnsmasq) sur wlan1.
-# AP ouvert + DHCP + DNS catch-all : toute requête du client est renvoyée vers le Pi.
-# Usage: fennec-mirage-ap "SSID" CANAL
+# Start the Mirage access point using an automatically selected Wi-Fi interface.
+# The built-in station interface (wlan0) is kept free whenever possible.
+# Usage: fennec-mirage-ap ["SSID" CHANNEL] | fennec-mirage-ap cleanup
 set -euo pipefail
 
-IFACE=wlan1
 AP_IP=10.0.0.1
 RUN=/tmp/fennec-mirage
-TARGET=/tmp/fennec-mirage-target   # ecrit par Fennec : ligne 1 = SSID, ligne 2 = canal
+TARGET=/tmp/fennec-mirage-target
+IFACE_FILE="$RUN/ap_iface"
 
 mkdir -p "$RUN"
 
-# SSID et canal : argument explicite, sinon cible choisie dans l'interface,
-# sinon valeur de test par defaut.
+iface_supports_ap() {
+  local iface="$1"
+  local phy info
+  [ -d "/sys/class/net/$iface/phy80211" ] || return 1
+  phy="$(cat "/sys/class/net/$iface/phy80211/name" 2>/dev/null || true)"
+  [ -n "$phy" ] || return 1
+  info="$(iw phy "$phy" info 2>/dev/null)" || return 1
+  awk '
+    /Supported interface modes:/ { in_modes=1; next }
+    in_modes && /^[[:space:]]*\*/ {
+      mode=$0
+      sub(/^[[:space:]]*\*[[:space:]]*/, "", mode)
+      if (mode == "AP") found=1
+      next
+    }
+    in_modes { exit }
+    END { exit(found ? 0 : 1) }
+  ' <<< "$info"
+}
+
+iface_is_connected() {
+  local iface="$1"
+  iw dev "$iface" link 2>/dev/null | grep -q "^Connected to "
+}
+
+iface_is_usb() {
+  local iface="$1"
+  local device_path
+  device_path="$(readlink -f "/sys/class/net/$iface/device" 2>/dev/null || true)"
+  [[ "$device_path" == *"/usb"* ]]
+}
+
+detect_ap_iface() {
+  local iface path
+  local -a usb_candidates=()
+  local -a other_candidates=()
+
+  if [ -n "${FENNEC_MIRAGE_IFACE:-}" ]; then
+    if iface_supports_ap "$FENNEC_MIRAGE_IFACE" && ! iface_is_connected "$FENNEC_MIRAGE_IFACE"; then
+      printf '%s\n' "$FENNEC_MIRAGE_IFACE"
+      return 0
+    fi
+    echo "[MIRAGE] FENNEC_MIRAGE_IFACE=$FENNEC_MIRAGE_IFACE is unavailable, connected, or not AP-capable." >&2
+    return 1
+  fi
+
+  # Never take over a Wi-Fi interface that is already associated as a station.
+  for path in /sys/class/net/*; do
+    iface="$(basename "$path")"
+    iface_supports_ap "$iface" || continue
+    iface_is_connected "$iface" && continue
+    if iface_is_usb "$iface"; then
+      usb_candidates+=("$iface")
+    else
+      other_candidates+=("$iface")
+    fi
+  done
+
+  # Prefer an external USB adapter, then any other free AP-capable Wi-Fi interface.
+  if [ "${#usb_candidates[@]}" -gt 0 ]; then
+    printf '%s\n' "${usb_candidates[0]}"
+    return 0
+  fi
+  if [ "${#other_candidates[@]}" -gt 0 ]; then
+    printf '%s\n' "${other_candidates[0]}"
+    return 0
+  fi
+
+  return 1
+}
+
+cleanup_iface() {
+  local iface=""
+  if [ -f "$IFACE_FILE" ]; then
+    iface="$(cat "$IFACE_FILE" 2>/dev/null || true)"
+  fi
+  if [ -n "$iface" ] && [ -e "/sys/class/net/$iface" ]; then
+    ip addr flush dev "$iface" 2>/dev/null || true
+  fi
+  rm -f "$IFACE_FILE"
+}
+
+if [ "${1:-}" = "cleanup" ]; then
+  cleanup_iface
+  exit 0
+fi
+
+IFACE="$(detect_ap_iface || true)"
+if [ -z "$IFACE" ]; then
+  echo "[MIRAGE] No secondary Wi-Fi interface with AP mode support was found." >&2
+  echo "[MIRAGE] Attach a free AP-capable Wi-Fi adapter and try again." >&2
+  exit 1
+fi
+
+printf '%s\n' "$IFACE" > "$IFACE_FILE"
+echo "[MIRAGE] Using AP interface: $IFACE"
+
 SSID="${1:-}"
-CANAL="${2:-}"
+CHANNEL="${2:-}"
 if [ -z "$SSID" ] && [ -f "$TARGET" ]; then
   SSID="$(sed -n '1p' "$TARGET")"
-  [ -z "$CANAL" ] && CANAL="$(sed -n '2p' "$TARGET")"
+  [ -z "$CHANNEL" ] && CHANNEL="$(sed -n '2p' "$TARGET")"
 fi
 SSID="${SSID:-Fennec-test}"
-CANAL="${CANAL:-1}"
+CHANNEL="${CHANNEL:-1}"
 
 nmcli dev set "$IFACE" managed no 2>/dev/null || true
 ip addr flush dev "$IFACE" 2>/dev/null || true
@@ -32,7 +127,7 @@ interface=$IFACE
 driver=nl80211
 ssid=$SSID
 hw_mode=g
-channel=$CANAL
+channel=$CHANNEL
 EOF
 
 cat > "$RUN/dnsmasq.conf" <<EOF
@@ -45,17 +140,15 @@ address=/#/$AP_IP
 dhcp-leasefile=$RUN/leases
 EOF
 
-# Baux a vide au demarrage (pour que l'etat live reparte propre).
+# Reset the live client list when Mirage starts.
 : > "$RUN/leases"
 
 pkill -f "$RUN/dnsmasq.conf" 2>/dev/null || true
 pkill -f fennec-mirage-portal 2>/dev/null || true
 sleep 1
 
-# DHCP + DNS catch-all
 dnsmasq -C "$RUN/dnsmasq.conf"
 
-# Portail captif (sert /opt/fennec-mirage/portal et declenche la detection)
 mkdir -p /opt/fennec-mirage/portal
 python3 /usr/local/bin/fennec-mirage-portal &
 

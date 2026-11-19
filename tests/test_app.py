@@ -123,3 +123,26 @@ def test_wardrive_path_matches_logger():
     m = re.search(r'STORE\s*=\s*"([^"]+)"', script)
     assert m, "STORE path not found in fennec-wardrive"
     assert app.WARDRIVE_FILE == m.group(1)
+
+
+def test_mirage_ap_interface_is_detected_dynamically():
+    with open(os.path.join(ROOT, "system", "fennec-mirage-ap")) as f:
+        script = f.read()
+    assert "detect_ap_iface" in script
+    assert "iface_supports_ap" in script
+    assert "iface_is_connected" in script
+    assert "IFACE=wlan1" not in script
+
+
+def test_mirage_service_uses_dynamic_cleanup():
+    with open(os.path.join(ROOT, "system", "fennec-mirage.service")) as f:
+        service = f.read()
+    assert "/usr/local/bin/fennec-mirage-ap cleanup" in service
+    assert "ip addr flush dev wlan1" not in service
+
+
+def test_installer_deploys_mirage_ap_runtime():
+    with open(os.path.join(ROOT, "install.sh")) as f:
+        installer = f.read()
+    assert 'sudo cp "$SYS/fennec-mirage-ap" /usr/local/bin/fennec-mirage-ap' in installer
+    assert 'sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service' in installer

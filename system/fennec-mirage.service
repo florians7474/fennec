@@ -1,5 +1,5 @@
 [Unit]
-Description=Mirage AP (module Fennec)
+Description=Mirage AP (Fennec module)
 After=network.target
 
 [Service]
@@ -7,7 +7,7 @@ Type=simple
 ExecStart=/usr/local/bin/fennec-mirage-ap
 ExecStopPost=-/usr/bin/pkill -f /tmp/fennec-mirage/dnsmasq.conf
 ExecStopPost=-/usr/bin/pkill -f fennec-mirage-portal
-ExecStopPost=-/usr/sbin/ip addr flush dev wlan1
+ExecStopPost=-/usr/local/bin/fennec-mirage-ap cleanup
 Restart=no
 
 [Install]
