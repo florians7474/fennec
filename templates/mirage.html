@@ -10,9 +10,10 @@
       width:480px; height:320px; overflow:hidden;
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3;
+      display:flex; flex-direction:column;
     }
     .topbar {
-      height:48px; display:flex; align-items:center; gap:10px; padding:0 12px;
+      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
@@ -26,7 +27,7 @@
     .btn.portal { background:#21262d; color:#e6edf3; padding:8px 12px; }
     .portal-line { text-align:center; color:#8b949e; font-size:10px; margin:-7px 0 10px; }
     .portal-line b { color:#e6edf3; font-weight:600; }
-    .vue { height:272px; overflow-y:auto; padding:12px; }
+    .vue { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; text-align:center; padding:30px 20px; }
     .cloned { text-align:center; color:#f0689b; font-size:13px; margin-bottom:12px; }
     .cloned b { color:#e6edf3; }

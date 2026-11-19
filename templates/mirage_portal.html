@@ -6,11 +6,11 @@
   <title>Mirage · Portal</title>
   <style>
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{margin:0;width:480px;height:320px;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3}
-    .top{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#161b22;border-bottom:1px solid #30363d}
+    html,body{margin:0;width:480px;height:320px;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3;display:flex;flex-direction:column}
+    .top{height:48px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;background:#161b22;border-bottom:1px solid #30363d}
     .back{color:#e6edf3;text-decoration:none;font-size:24px;padding:2px 8px}
     .icon{width:28px;height:28px}.title{font-size:16px;font-weight:700;flex:1}
-    .view{height:272px;overflow-y:auto;padding:12px}
+    .view{flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px}
     .label{font-size:10px;color:#8b949e;letter-spacing:.6px;text-transform:uppercase;margin:0 2px 7px}
     .card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:12px}
     .row{display:flex;align-items:center;gap:10px}.grow{flex:1;min-width:0}
