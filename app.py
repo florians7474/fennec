@@ -219,11 +219,32 @@ def _wireless_ifaces():
             names.append(os.path.basename(path))
     return names
 
+def _wifi_iface_connected(iface):
+    """Return True when a wireless interface is currently associated as a station."""
+    try:
+        r = subprocess.run(
+            ["iw", "dev", iface, "link"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return r.returncode == 0 and "Connected to " in r.stdout
+    except Exception:
+        return False
+
+def current_mirage_ap_iface():
+    """Return the Wi-Fi interface selected by the running Mirage AP, if known."""
+    try:
+        with open("/tmp/fennec-mirage/ap_iface", encoding="utf-8") as f:
+            iface = f.readline().strip()
+        if iface and os.path.exists(f"/sys/class/net/{iface}"):
+            return iface
+    except OSError:
+        pass
+    return None
+
 def monitor_iface_except(exclude):
-    """First monitor-capable wireless interface that is NOT `exclude` (the AP iface).
-    Matches any name (wlan*, wlx<mac>, ...), not just wlan*."""
+    """Return the first free monitor-capable wireless interface other than `exclude`."""
     for iface in _wireless_ifaces():
-        if iface == exclude:
+        if iface == exclude or _wifi_iface_connected(iface):
             continue
         try:
             with open(f"/sys/class/net/{iface}/phy80211/name") as f:
@@ -933,7 +954,7 @@ def mode(name):
         except (OSError, ValueError):
             pass
         deauth_active = is_active("fennec-mirage-deauth")
-        second = monitor_iface_except("wlan1")
+        ap_iface = current_mirage_ap_iface()\n        second = monitor_iface_except(ap_iface)
         # WPA3 (PMF) bloque le deauth : c'est propre a la cible et non reparable,
         # donc on ne propose meme pas le bouton dans ce cas.
         deauth_wpa3 = not deauth_possible(meta.get("security"))
