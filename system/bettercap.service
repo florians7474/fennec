@@ -1,4 +1,4 @@
-Unit]
+[Unit]
 Description=bettercap API for pwnagotchi
 Wants=network.target
 After=network.target
