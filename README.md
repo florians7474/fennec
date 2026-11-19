@@ -73,7 +73,7 @@ The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapt
 
 Install on a freshly flashed Pi:
 
-    git clone https://github.com/florians7474/fennec.git
+    git clone --branch v1.2 --depth 1 https://github.com/florians7474/fennec.git
     cd fennec
     ./install.sh
 
@@ -94,6 +94,7 @@ that is driver-compatible with the Waveshare (C), so it reuses the same config
 | Profile | Result |
 |---|---|
 | `waveshare35c` | Downloads the Waveshare overlay, enables SPI, configures the framebuffer, X11 kiosk, and calibrated ADS7846 touch input. |
+| `cuqi35` | Uses the Waveshare (C)-compatible SPI touchscreen configuration for the CUQI 3.5-inch RPM-01. |
 | `hdmi` | Starts Fennec in a Chromium kiosk on an HDMI display. |
 | `headless` | Does not configure a local display; use Fennec from a browser on the local network. |
 
@@ -107,6 +108,12 @@ all systemd services. No sensitive data is stored in the repository.
 
 Reboot once after the install when using a local display. Fennec then starts as
 a service and opens automatically in the selected kiosk profile.
+
+## Reproducible releases
+
+Each stable release locks Fennec's external source revisions in `system/sources.lock`: Pwnagotchi, pwngrid, Bjorn, routerkeygen and SecLists are checked out at their recorded commits, while the Waveshare overlay archive is verified with SHA-256. A fresh installation of the same Fennec release therefore uses the same tracked sources.
+
+The weekly upstream monitor only opens a GitHub issue when newer upstream revisions exist. It never changes an installed Pi or updates the lock file automatically. New versions are reviewed, tested and released explicitly.
 
 ## Usage
 
