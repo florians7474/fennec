@@ -389,6 +389,23 @@ def refresh_crashed():
             _failed_seen.discard(mod)
     return crashed
 
+# Deduplication state so polled routes log a change once, not on every poll.
+_sly_logged = {"bssid": None}
+_echo_last = {"count": None, "nogps": None}
+
+def log_echo_health(count, nogps):
+    """Log Echo data health once per change: empty wardrive or captures without GPS."""
+    if count != _echo_last["count"]:
+        _echo_last["count"] = count
+        if count == 0:
+            log_event("echo", "warn", "Echo: wardrive empty (0 networks loaded)")
+        else:
+            log_event("echo", "info", "Echo: " + str(count) + " networks loaded")
+    if nogps != _echo_last["nogps"]:
+        _echo_last["nogps"] = nogps
+        if nogps:
+            log_event("echo", "warn", "Echo: " + str(nogps) + " capture(s) without GPS position")
+
 @app.route("/pwna-ui")
 def pwna_ui():
     from flask import Response
@@ -1243,6 +1260,18 @@ def crack_status():
                 break
         save_whitelist(networks)
         e["saved"] = True
+    # Journal: a run in progress re-arms the logger; the final verdict is logged once.
+    if e.get("active"):
+        _sly_logged["bssid"] = None
+    elif e.get("finished") and _sly_logged["bssid"] != e.get("bssid"):
+        _sly_logged["bssid"] = e.get("bssid")
+        net = e.get("network") or e.get("bssid") or "?"
+        if e.get("no_handshake"):
+            log_event("cracking", "warn", "Sly: no usable handshake (" + str(net) + ")")
+        elif e.get("found"):
+            log_event("cracking", "info", "Sly: key found (" + str(net) + ")")
+        else:
+            log_event("cracking", "info", "Sly: no weak key, likely robust (" + str(net) + ")")
     return jsonify(e)
 
 @app.route("/cracking/wps/<bssid>")
@@ -1428,6 +1457,7 @@ def map_view():
                 "handshake": False,
                 "risk": risk_for(key, w.get("enc"), w.get("wps"), w.get("name"), False),
             }
+    log_echo_health(len(wd), sans_position)
     return render_template("map.html", points=list(pts.values()),
                            sans_position=sans_position)
 
@@ -1628,6 +1658,7 @@ def hugin_msf_connect():
         return redirect(url_for("hugin_msf_page", err="Host and password are required."))
     res = hugin_msf.connect(host, port, password)
     if not res.get("connected"):
+        log_event("hugin", "warn", "Metasploit RPC unreachable (" + host + ")")
         return redirect(url_for("hugin_msf_page",
                                 err=res.get("error") or "Connection failed.", host=host))
     log_event("hugin", "info", "Metasploit RPC connected (" + host + ")")
