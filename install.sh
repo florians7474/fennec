@@ -223,7 +223,8 @@ sudo cp "$SYS/fennec-mirage-ap" /usr/local/bin/fennec-mirage-ap
 sudo cp "$SYS/fennec-mirage-portal" /usr/local/bin/fennec-mirage-portal
 sudo cp "$SYS/fennec-mirage-deauth" /usr/local/bin/fennec-mirage-deauth
 sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage
+sudo cp "$SYS/fennec-mole" /usr/local/bin/fennec-mole
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
@@ -252,6 +253,7 @@ for svc in bettercap pwngrid-peer pwnagotchi fennec-wardrive; do
 done
 sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo cp "$SYS/fennec-mirage-deauth.service" /etc/systemd/system/fennec-mirage-deauth.service
+sudo cp "$SYS/fennec-mole.service" /etc/systemd/system/fennec-mole.service
 sudo systemctl daemon-reload
 
 # --- 8. sudoers rule (with user substitution) ---
@@ -346,6 +348,18 @@ if [ ! -f /usr/share/wordlists/probable-wpa-top4800.txt ]; then
     sudo wget -O /usr/share/wordlists/probable-wpa-top4800.txt \
         https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt
 fi
+
+# --- 9b. Mole: drop-box credential capture (Responder) ---
+# Responder isn't packaged on Raspberry Pi OS (it's a Kali package), so install
+# it from source. john, nmap and hcxtools (used by Mole) come from apt above.
+echo "==> Setting up Mole (Responder)..."
+if [ ! -d /opt/Responder/.git ]; then
+    sudo rm -rf /opt/Responder
+    sudo git clone --no-checkout "$RESPONDER_REPOSITORY" /opt/Responder
+fi
+sudo git -C /opt/Responder fetch --quiet --depth=1 origin "$RESPONDER_REF"
+sudo git -C /opt/Responder checkout --quiet --detach --force FETCH_HEAD
+sudo chmod -R a+rX /opt/Responder
 
 # --- 10. Automatic Wi-Fi reconnection (nomadic use) ---
 echo "==> Setting up automatic Wi-Fi reconnection..."

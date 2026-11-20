@@ -1,0 +1,12 @@
+[Unit]
+Description=Mole drop-box capture (Fennec module)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fennec-mole
+ExecStopPost=-/usr/bin/pkill -f /opt/Responder/Responder.py
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

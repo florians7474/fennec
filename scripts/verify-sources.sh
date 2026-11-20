@@ -31,6 +31,7 @@ require_sha PWNGRID_REF "$PWNGRID_REF"
 require_sha BJORN_REF "$BJORN_REF"
 require_sha ROUTERKEYGEN_REF "$ROUTERKEYGEN_REF"
 require_sha SECLISTS_REF "$SECLISTS_REF"
+require_sha RESPONDER_REF "$RESPONDER_REF"
 [[ "$WAVESHARE35C_ARCHIVE_SHA256" =~ ^[0-9a-f]{64}$ ]] ||
     fail "WAVESHARE35C_ARCHIVE_SHA256 is not a SHA-256 digest."
 
@@ -44,6 +45,7 @@ verify_git_ref "pwngrid" "$PWNGRID_REPOSITORY" "$PWNGRID_REF"
 verify_git_ref "Bjorn" "$BJORN_REPOSITORY" "$BJORN_REF"
 verify_git_ref "routerkeygen" "$ROUTERKEYGEN_REPOSITORY" "$ROUTERKEYGEN_REF"
 verify_git_ref "SecLists" "$SECLISTS_REPOSITORY" "$SECLISTS_REF"
+verify_git_ref "Responder" "$RESPONDER_REPOSITORY" "$RESPONDER_REF"
 
 archive_sha="$(curl --fail --location --silent --show-error "$WAVESHARE35C_ARCHIVE_URL" | sha256sum | awk '{print $1}')"
 [[ "$archive_sha" = "$WAVESHARE35C_ARCHIVE_SHA256" ]] ||

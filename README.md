@@ -41,6 +41,7 @@ https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
 | **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
 | **Hugin** | Bjorn companion: results, Metasploit correlation (CVE + service), deported execution & live sessions | ✅ Working |
 | **Sentry** | Network radar + per-device traffic watch | ✅ Working |
+| **Mole** | Wired drop box: capture and crack LAN credentials over Ethernet | 🚧 In progress |
 
 The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and tapping it opens the connection manager: you scan for networks, pick the ones you are allowed to test, and connect the Pi to a whitelisted Wi-Fi or disconnect it (real nmcli on the built-in interface; the key comes from the whitelist or an existing profile, and a network answering on several bands is handled by SSID). An on-screen keyboard pops up on any text field, so keys and device names can be typed on the touchscreen without a physical keyboard. A power button in the top-right opens an on-screen menu to lock the screen, rotate the screen, set the remote-access PIN code, open the Logs, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate press-and-hold brings the interface back.
 
@@ -53,6 +54,7 @@ All six modules are operational: automatic installation, control from the tile, 
 - **Bjorn — recon & targeted attacks.** Scans and probes the network the Pi is on, naming it and its subnet before you start, with a live console in the tile. On Wi-Fi it starts only for a whitelisted network; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
 - **Hugin — Bjorn companion** (what Sly is to Pwnagotchi). Reads Bjorn's results per device (ports, services, vulnerabilities, actions, files) and suggests Metasploit modules two ways — by CVE (local index) and by open service (service→module map) — flagged as candidates, with a ready-to-run `.rc` plan per module. Execution is **deported**: Metasploit runs on a separate lab machine driven over RPC (run a module, watch a session open, list sessions, run in-session commands). Lab use only, on authorized targets.
 - **Sentry — device radar & traffic watch.** Scans the subnet (nmap ARP) and lists every device (IP, MAC, vendor) with unknowns surfaced and a one-tap "mine" chip; tap for detail (ports, guessed type, hostname). **Watch** mode turns it into a passive monitor (bettercap MITM) revealing the domains each device contacts (TLS SNI/QUIC via tshark, plus cleartext DNS via an on-demand dnsmasq), with timestamped per-network history, a **Force DNS** toggle against DoT/DoH, and VPN detection.
+- **Mole — wired drop box.** Plug the Pi into a LAN over Ethernet, press Start, and it coerces Windows hosts into authenticating to it (Responder: LLMNR/NBT-NS/mDNS poisoning with a rogue WPAD proxy and DHCP), captures their NetNTLMv2 hashes, maps the subnet (nmap), and cracks the captured hashes offline with John. The screen reports recovered passwords, the accounts and domain seen, the hosts found, and a one-line verdict on the network. Ethernet is the authorization: plugging in a cable is a deliberate act. Capture only for now; active relay to Active Directory (mitm6 + ntlmrelayx) is the next phase. Lab use only, on authorized networks.
 ## Legal scope
 
 Fennec is built to audit networks you own or are authorized to test. Offensive actions (cracking, targeted reconnaissance, exploitation) are restricted to networks you declare on a whitelist, identified by their BSSID: on Wi-Fi, Fennec only connects to and attacks whitelisted networks, and Metasploit execution runs on a separate lab machine, never on the Pi. The observation features only watch, they do not attack: passive air capture listens to the surrounding airspace like any Wi-Fi analyzer, and the traffic monitor inspects a network you are already connected to.
@@ -135,6 +137,7 @@ code, the Logs, reboot and shut down.
 - **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
 - **Hugin**: in-house Bjorn companion (reads Bjorn's CSV/output, Metasploit correlation by CVE and by open service, `.rc` attack plans, msgpack-RPC link to a remote Metasploit — never on the Pi — with run, live sessions and in-session commands)
 - **Sentry**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM, tshark for SNI/QUIC and an on-demand dnsmasq for DNS, optional Force DNS against DoT/DoH, VPN detection, persistent per-network history)
+- **Mole**: in-house drop-box orchestrator (Responder for LAN credential capture, nmap subnet map, offline John cracking of captured NetNTLMv2 hashes), driven through systemd, Ethernet-gated
 - **Connection**: joins or leaves a whitelisted Wi-Fi via nmcli on the built-in interface; keeps the USB adapter free for monitor mode- On-screen keyboard for the touchscreen, so any field can be filled without a physical keyboard
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 - On-screen screen rotation: cycle the UI through 0/90/180/270 from the power menu (portrait and landscape), applied instantly with no reboot and no touch recalibration
@@ -165,6 +168,8 @@ code, the Logs, reboot and shut down.
 
 ## Planned
 
+- [ ] Mole module – phase 1 (Ethernet drop box: Responder credential capture, subnet map, offline cracking)
+- [ ] Mole module – phase 2 (active relay to Active Directory: mitm6 + ntlmrelayx)
 - [ ] Custom carrier board (Raspberry Pi CM5) to turn the prototype into a self-contained device
 - [ ] WPA3 (SAE) auditing support
 
@@ -174,8 +179,9 @@ Fennec drives several open-source projects, installed and run as separate progra
 
 - **Pwnagotchi** — created by [@evilsocket](https://github.com/evilsocket), maintained by [jayofelony/pwnagotchi](https://github.com/jayofelony/pwnagotchi). Licensed under **GPL-3.0**. The Pwnagotchi module icon (`static/pwnagotchi.png`) is taken from the Pwnagotchi project and remains under GPL-3.0.
 - **Bjorn** — created by [infinition](https://github.com/infinition/Bjorn). Copyright © 2024 infinition, licensed under the **MIT License**. The Bjorn module icon (`static/bjorn.png`) is taken from the Bjorn project and is used under the MIT License.
+- **Responder** — created by [lgandx/Responder](https://github.com/lgandx/Responder) (originally by Laurent Gaffié). Licensed under **GPL-3.0**. Installed from source and run as a separate program by the Mole module.
 - **Leaflet** (BSD-2-Clause) is vendored in `static/leaflet/`; map tiles © **OpenStreetMap** contributors (ODbL).
-- Runtime tools: **bettercap**, **aircrack-ng**, **nmap**, **tshark**, **dnsmasq**, **Metasploit**, **routerkeygen** — each under its own license.
+- Runtime tools: **bettercap**, **aircrack-ng**, **nmap**, **tshark**, **dnsmasq**, **Metasploit**, **routerkeygen**, **John the Ripper** — each under its own license.
 
 ## License
 

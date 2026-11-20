@@ -7,6 +7,7 @@ import threading
 import socket
 import raton_engine
 import vigie_monitor
+import mole_engine
 import hugin
 import hugin_msf
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, send_from_directory, Response, session
@@ -363,7 +364,7 @@ EVENTS_MAX = 200
 MODULE_SERVICE = {"pwnagotchi": "pwnagotchi", "bjorn": "bjorn", "mirage": "fennec-mirage"}
 MODULE_LABEL = {"pwnagotchi": "Pwnagotchi", "bjorn": "Bjorn", "mirage": "Mirage",
                 "cracking": "Sly", "vigie": "Sentry", "hugin": "Hugin",
-                "echo": "Echo", "fennec": "Fennec"}
+                "mole": "Mole", "echo": "Echo", "fennec": "Fennec"}
 
 _events_lock = _threading.Lock()
 
@@ -1948,6 +1949,40 @@ def vigie_traffic(ip):
 def vigie_rename(mac):
     set_name(mac, request.form.get("name", ""))
     return jsonify({"ok": True, "name": custom_name(mac)})
+
+# ---------- Mole (drop-box LAN credential capture) ----------
+
+@app.route("/mole")
+def mole():
+    return render_template("mole.html", snap=mole_engine.snapshot(),
+                           conn=connection_state(), err=request.args.get("err"))
+
+@app.route("/mole/toggle")
+def mole_toggle():
+    if mole_engine.is_active():
+        mole_engine.stop()
+        log_event("mole", "info", "Mole stopped")
+        return redirect(url_for("mole"))
+    # A drop box is a wired implant: Ethernet is the physical authorization.
+    conn = connection_state()
+    if conn["type"] != "ethernet":
+        return redirect(url_for("mole", err="eth"))
+    # Responder binds port 53; stop Sentry's DNS capture so they don't clash.
+    if vigie_monitor.monitor_state["active"]:
+        vigie_monitor.stop()
+    if mole_engine.start():
+        log_event("mole", "info", "Mole started on " + conn["name"])
+    else:
+        return redirect(url_for("mole", err="start"))
+    return redirect(url_for("mole"))
+
+@app.route("/mole/state")
+def mole_state():
+    return jsonify(mole_engine.snapshot())
+
+@app.route("/mole/crack")
+def mole_crack():
+    return jsonify({"started": mole_engine.crack()})
 
 # ---------- Whitelist (routes) ----------
 

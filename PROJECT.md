@@ -45,6 +45,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
+| Mole | Wired drop box: capture + crack LAN credentials over Ethernet | Phase 1 built (Responder capture + nmap map + offline John crack + report), not yet tested on the Pi; phase 2 (mitm6 + ntlmrelayx relay to AD) to follow |
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
@@ -282,6 +283,51 @@ msgpack-RPC client (python3-msgpack).
 Validated end to end against a lab target: Bjorn discovery -> service correlation ->
 Run (Samba usermap_script) over RPC -> root session, driven from Fennec.
 Lab use only, on explicitly authorized targets.
+
+## Mole — drop box
+Mole turns the "expert with three terminals" LAN credential attack into one tile.
+Plug the Pi into a LAN over Ethernet, press Start, and the module coerces Windows
+hosts into authenticating to it, captures their hashes, maps the subnet, and cracks
+the captured hashes offline — then shows a short audit-style report: recovered
+passwords, the accounts and domain seen, the hosts found, and a one-line verdict.
+Mole mascot = a mole (burrowing animal and planted insider), fitting a wired implant.
+
+### Authorization
+Ethernet only: the tile refuses to start on Wi-Fi. Plugging in a cable is the
+deliberate authorization, the same gate Bjorn uses on Ethernet. Lab use only, on
+networks you own or are explicitly authorized to test.
+
+### Architecture
+- Orchestrator /usr/local/bin/fennec-mole (root, via fennec-mole.service, kept
+  disabled at boot, started/stopped by the tile through sudoers). It detects the
+  default-route interface, maps the /24 with `nmap -sn`, runs Responder
+  (LLMNR/NBT-NS/mDNS poisoning + rogue WPAD + DHCP) to capture NetNTLMv2 hashes,
+  and consolidates the captures into a world-readable /tmp/fennec-mole/hashes.txt.
+- mole_engine.py reads the loot (hashes, nmap hosts, meta), de-duplicates accounts
+  by (domain, user), computes the verdict, and runs the offline crack: one capped
+  John pass (`--format=netntlmv2`, rockyou, --max-run-time) in a thread, parsed
+  back with `john --show`.
+- app.py routes: /mole (report page), /mole/toggle (Ethernet-gated start/stop,
+  stops Sentry first so Responder can bind port 53), /mole/state (live JSON),
+  /mole/crack (kick the offline crack). templates/mole.html renders the live report.
+
+### Verdict (mirrors Sly's robustness score, for the LAN)
+- Critical "Network: wide open" — a captured account was cracked (weak password).
+- Warning "Credentials captured" — hashes caught, not cracked yet.
+- Idle "Listening" / "Idle" — running with nothing captured yet / stopped.
+
+### Done
+- Phase 1 built: orchestrator, engine, routes, tile, report page, sudoers, install
+  repli (Responder cloned from source to /opt/Responder; john/nmap/hcxtools from apt).
+- Capture only: Mole does not relay or modify Active Directory.
+
+### To do
+- Test phase 1 live on the Pi against a lab AD, tune the exact Responder loot path
+  and the nmap -oG parse, add a mole.png mascot to match the other tiles.
+- Phase 2: active relay (mitm6 rogue DHCPv6/DNS + ntlmrelayx) to dump domain
+  users/computers/admins and attempt domain compromise — the aggressive mode, kept
+  behind its own explicit action. Then wire the report's recovered data to a report
+  export and the planned VPS handoff.
 
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
