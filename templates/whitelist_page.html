@@ -160,6 +160,20 @@
       document.getElementById('modalEdit').classList.remove('on');
     }
 
+    // On a small screen in portrait the on-screen keyboard can hide the Save
+    // button, so Enter/Go on the keyboard submits the edit form directly.
+    ['editNom', 'editCle'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var form = document.querySelector('#modalEdit form');
+          if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); }
+        }
+      });
+    });
+
     (function(){
       var list = document.querySelector('.list');
       if(!list) return;
