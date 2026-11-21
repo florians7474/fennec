@@ -153,7 +153,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask python3-msgpack aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark dnsmasq hostapd \
-    john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev \
+    john hcxtools nmap python3-netifaces qtbase5-dev qt5-qmake libssl-dev \
     chromium curl unzip xserver-xorg xinit xserver-xorg-legacy \
     xserver-xorg-video-fbdev xserver-xorg-input-evdev
 
@@ -351,7 +351,8 @@ fi
 
 # --- 9b. Mole: drop-box credential capture (Responder) ---
 # Responder isn't packaged on Raspberry Pi OS (it's a Kali package), so install
-# it from source. john, nmap and hcxtools (used by Mole) come from apt above.
+# it from source (python3-netifaces, its runtime dependency, comes from apt above,
+# along with john, nmap and hcxtools used by Mole).
 echo "==> Setting up Mole (Responder)..."
 if [ ! -d /opt/Responder/.git ]; then
     sudo rm -rf /opt/Responder
