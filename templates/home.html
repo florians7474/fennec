@@ -453,10 +453,13 @@
       }
       pager.addEventListener('scroll', sync, { passive: true });
       // Restore the page the user was on, so Back from a module returns here
-      // instead of jumping to the first page.
+      // instead of jumping to the first page. Disable smooth scrolling for this
+      // initial jump so it lands directly on the page with no visible swipe
+      // (the arrow buttons pass behavior:'smooth' explicitly, so they stay animated).
       var saved = 0;
       try { saved = parseInt(sessionStorage.getItem('fennec_home_page') || '0', 10) || 0; } catch (e) {}
       saved = Math.max(0, Math.min(pages.length - 1, saved));
+      pager.style.scrollBehavior = 'auto';
       if (saved > 0) pager.scrollLeft = saved * pager.clientWidth;
       sync();
     })();
