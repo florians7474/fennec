@@ -24,7 +24,9 @@
     .filepick input{display:none}
     .filebtn{background:#30363d;border:1px solid #586069;color:#e6edf3;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;flex:0 0 auto}
     .fname{font-size:12px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .hint{font-size:11px;line-height:1.45;color:#8b949e;margin-top:8px}
+    .hint{font-size:11px;line-height:1.5;color:#8b949e;margin-top:8px}
+    .hint b{color:#e6edf3}
+    .hint code{color:#e6edf3;background:#21262d;border-radius:4px;padding:0 4px;font-size:10px}
     .msg{font-size:11px;padding:8px 10px;border-radius:8px;margin-bottom:10px;background:#10231a;color:#3fb950}
     .err{background:#2b1114;color:#ff7b72}.locked{color:#d29922;font-size:11px;margin-top:8px}
     .lib{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;background:#161b22;border:1px solid #30363d;border-radius:10px}
@@ -99,9 +101,15 @@
           </label>
           <div class="actions">
             <button class="btn pink" type="submit">Replace portal</button>
+            <a class="btn dark" href="/mirage/portal/template.zip">Download template</a>
           </div>
         </form>
-        <div class="hint">Upload a ZIP containing index.html and its static assets. Best managed from a desktop browser.</div>
+        <div class="hint">
+          New to this? Tap <b>Download template</b> to get a working portal, then edit the
+          text and design and upload it back as a ZIP. Two rules: keep the password form
+          (it posts to <code>/</code> with a field named <code>password</code>), and name the
+          entry page <code>index.html</code>. Best edited from a desktop browser.
+        </div>
       {% endif %}
     </div>
   </div>

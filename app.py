@@ -1245,6 +1245,27 @@ def mirage_portal_library_content(slug, relpath="index.html"):
     return response
 
 
+@app.route("/mirage/portal/template.zip")
+def mirage_portal_template():
+    """Download a ready-to-edit portal (the working default) as a starter ZIP."""
+    import io
+    import zipfile
+    src = "/opt/fennec-mirage/default-portal"
+    if not os.path.isfile(os.path.join(src, "index.html")):
+        src = os.path.join(MIRAGE_PORTAL_LIBRARY, "default-en")
+    if not os.path.isfile(os.path.join(src, "index.html")):
+        abort(404)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _dirs, files in os.walk(src):
+            for name in files:
+                full = os.path.join(root, name)
+                zf.write(full, os.path.relpath(full, src))
+    buf.seek(0)
+    return send_file(buf, mimetype="application/zip",
+                     as_attachment=True, download_name="fennec-portal-template.zip")
+
+
 @app.route("/mirage/start/<bssid>")
 def mirage_start(bssid):
     # Gate : Mirage ne peut cloner qu'un reseau de la whitelist.
