@@ -153,7 +153,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask python3-msgpack aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark dnsmasq hostapd \
-    john hcxtools nmap python3-netifaces qtbase5-dev qt5-qmake libssl-dev \
+    john hcxtools nmap python3-netifaces python3-aioquic qtbase5-dev qt5-qmake libssl-dev \
     chromium curl unzip xserver-xorg xinit xserver-xorg-legacy \
     xserver-xorg-video-fbdev xserver-xorg-input-evdev
 
