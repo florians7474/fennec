@@ -22,6 +22,10 @@ HASHES_FILE = os.path.join(LOOT, "hashes.txt")
 CRACKED_FILE = os.path.join(LOOT, "cracked.json")
 HOSTS_FILE = os.path.join(LOOT, "hosts.json")
 META_FILE = os.path.join(LOOT, "meta.json")
+# John writes its pot/log/session next to its binary by default (/opt/john/run,
+# root-owned). Point it at the loot dir so it can run as the launcher's user.
+POT_FILE = os.path.join(LOOT, "john.pot")
+JOHN_SESSION = os.path.join(LOOT, "mole")
 
 SERVICE = "fennec-mole"
 
@@ -195,7 +199,8 @@ def _crack_worker(hash_lines):
             error = "wordlist missing"
         else:
             r = subprocess.run(
-                [JOHN_BIN, "--format=netntlmv2", "--wordlist=" + WORDLIST,
+                [JOHN_BIN, "--format=netntlmv2", "--pot=" + POT_FILE,
+                 "--session=" + JOHN_SESSION, "--wordlist=" + WORDLIST,
                  "--max-run-time=" + str(CRACK_MAX_SECONDS), HASHES_FILE],
                 capture_output=True, text=True, timeout=CRACK_MAX_SECONDS + 60,
             )
@@ -203,7 +208,8 @@ def _crack_worker(hash_lines):
                 error = "needs John jumbo"
         if error is None:
             show = subprocess.run(
-                [JOHN_BIN, "--show", "--format=netntlmv2", HASHES_FILE],
+                [JOHN_BIN, "--show", "--format=netntlmv2", "--pot=" + POT_FILE,
+                 HASHES_FILE],
                 capture_output=True, text=True, timeout=60,
             ).stdout
             for line in show.splitlines():
