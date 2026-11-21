@@ -11,62 +11,72 @@
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
       background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
     }
-    .topbar {
-      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
-      background:#161b22; border-bottom:1px solid #30363d;
-    }
-    .back { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
-    .tete { width:26px; height:26px; color:#c98a3a; }
-    .title { font-size:16px; font-weight:600; flex:1; }
-    .btn { border:1px solid #30363d; color:#e6edf3; background:none; border-radius:8px;
-           padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer;
-           text-decoration:none; font-family:inherit; }
-    .btn.run { border-color:#c98a3a; color:#c98a3a; }
-    .btn.run.on { background:#c98a3a; color:#2a1a06; }
-    .btn:disabled { opacity:.5; }
+    .topbar { flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:8px 12px;
+              background:#161b22; border-bottom:1px solid #30363d; }
+    .back { color:#e6edf3; text-decoration:none; font-size:22px; line-height:1; padding:0 4px; }
+    .tete { width:24px; height:24px; color:#c98a3a; }
+    .title { font-size:15px; font-weight:600; flex:1; }
+    .pill { font-size:11px; font-weight:500; border-radius:20px; padding:3px 10px; }
+    .pill.cap { background:#7BD88F; color:#13261a; }
+    .pill.rel { background:#e5534b; color:#2a0b0b; }
+    .pill.idle { background:#21262d; color:#8b949e; }
 
-    .warn { flex:0 0 auto; font-size:12px; color:#3a1d00; background:#f0883e; font-weight:600;
-            padding:8px 14px; }
+    .modes { flex:0 0 auto; display:flex; gap:8px; padding:8px 12px 0; }
+    .mode { flex:1; text-align:center; text-decoration:none; border:1px solid #30363d;
+            color:#8b949e; background:#151a21; border-radius:8px; padding:9px 0;
+            font-size:13px; font-weight:500; }
+    .mode.cap.on { background:#17311f; border-color:#2ea043; color:#7BD88F; }
+    .mode.rel.on { background:#2a1113; border-color:#a33; color:#f2a3a3; }
 
-    .verdict { flex:0 0 auto; margin:10px 12px 4px; border-radius:10px; padding:9px 12px;
-               border:1px solid #30363d; background:#161b22; }
+    .helper { flex:0 0 auto; font-size:11px; color:#79b8e8; background:#12202e;
+              border-radius:6px; padding:7px 10px; margin:8px 12px 0; }
+    .warn { flex:0 0 auto; font-size:12px; color:#3a1d00; background:#f0883e;
+            font-weight:600; padding:7px 12px; margin:8px 12px 0; border-radius:6px; }
+
+    .body { flex:1 1 auto; overflow-y:auto; padding:8px 12px 12px; }
+
+    .verdict { border-radius:10px; padding:9px 12px; border:1px solid #30363d;
+               background:#161b22; margin-bottom:8px; }
     .verdict .vlabel { font-size:15px; font-weight:600; }
     .verdict .vdetail { font-size:11px; color:#8b949e; margin-top:2px; }
     .verdict.critical { background:#2a0f0f; border-color:#a32d2d; }
-    .verdict.critical .vlabel { color:#f2a3a3; }
-    .verdict.critical .vdetail { color:#c98a8a; }
+    .verdict.critical .vlabel { color:#f2a3a3; } .verdict.critical .vdetail { color:#c98a8a; }
     .verdict.warning { background:#241a00; border-color:#8a6d16; }
     .verdict.warning .vlabel { color:#e3b341; }
     .verdict.idle .vlabel { color:#8b949e; }
 
-    .body { flex:1 1 auto; overflow-y:auto; padding:4px 12px 12px; }
     .section-label { font-size:11px; color:#6e757e; margin:10px 2px 5px; }
-    .acct { background:#10140f; border:1px solid #2b3a22; border-radius:8px;
-            padding:7px 10px; margin-bottom:6px; font-family:ui-monospace,Consolas,monospace;
-            font-size:11px; display:flex; justify-content:space-between; gap:8px; }
-    .acct.locked { background:#161b22; border-color:#30363d; }
-    .acct .who { color:#e6edf3; flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .acct .pw { color:#a9d683; flex:0 0 auto; white-space:nowrap; }
-    .acct.locked .pw { color:#7a818a; }
+    .acct { border-radius:8px; padding:7px 10px; margin-bottom:6px;
+            font-family:ui-monospace,Consolas,monospace; font-size:11px;
+            display:flex; justify-content:space-between; gap:8px; }
+    .acct .who { flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#e6edf3; }
+    .acct .tag { flex:0 0 auto; white-space:nowrap; }
+    .acct.cracked { background:#10140f; border:0.5px solid #2b3a22; }
+    .acct.cracked .tag { color:#a9d683; }
+    .acct.robust { background:#241a00; border:0.5px solid #5a4a10; }
+    .acct.robust .tag { color:#e3b341; }
+    .acct.pending { background:#161b22; border:0.5px solid #30363d; }
+    .acct.pending .tag { color:#7a818a; }
+
     .row { display:flex; align-items:center; justify-content:space-between;
            background:#161b22; border-radius:8px; padding:8px 10px; margin-bottom:6px; }
-    .row .k { font-size:12px; color:#8b949e; }
-    .row .v { font-size:13px; font-weight:600; }
+    .row .k { font-size:12px; color:#8b949e; } .row .v { font-size:13px; font-weight:600; }
     .row .v .dom { font-family:ui-monospace,Consolas,monospace; color:#c9cdd3; font-weight:400; }
     .host { font-family:ui-monospace,Consolas,monospace; font-size:11px; color:#8b949e;
             padding:3px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:46px; line-height:1.7; }
-    .actions { display:flex; gap:8px; margin-top:12px; }
-    .actions .btn { flex:1; text-align:center; padding:13px 12px; font-size:14px; }
-    .actions .btn.danger { border-color:#a33; color:#f2a3a3; }
-    .actions .btn.danger.on { background:#a33; color:#1a0b0b; border-color:#a33; }
-    .crackbar { flex:0 0 auto; margin:0 12px; font-size:12px; font-weight:500;
-                border-radius:8px; padding:0; max-height:0; overflow:hidden;
-                transition:max-height .2s, padding .2s; }
-    .crackbar.show { padding:8px 12px; max-height:60px; margin-bottom:4px; }
+    .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:30px; line-height:1.7; }
+
+    .crackbar { font-size:12px; font-weight:500; border-radius:8px; padding:8px 12px;
+                margin:8px 0 2px; }
     .crackbar.run { background:#1b2733; border:0.5px solid #2f5d86; color:#79b8e8; }
     .crackbar.ok  { background:#13261a; border:0.5px solid #2b6d3f; color:#7bd88f; }
     .crackbar.err { background:#2a0f0f; border:0.5px solid #a32d2d; color:#f2a3a3; }
+
+    .action { margin-top:12px; }
+    .action .btn { display:block; width:100%; text-align:center; border:0.5px solid #313945;
+                   background:#1B2129; color:#e6edf3; border-radius:8px; padding:13px 0;
+                   font-size:14px; font-weight:500; cursor:pointer; font-family:inherit; }
+    .action .btn:disabled { opacity:.5; }
   </style>
 </head>
 <body>
@@ -77,124 +87,106 @@
       <rect x="15" y="17" width="6" height="4" rx="1"/><path d="M12 7v3M6 17v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>
     </svg>
     <div class="title">Mole</div>
-    <a class="btn run {{ 'on' if snap.active }}" href="/mole/toggle">{{ 'Stop' if snap.active else 'Start' }}</a>
+    <span class="pill idle" id="status">Idle</span>
   </div>
+
+  <div class="modes">
+    <a class="mode cap" id="m-cap" href="/mole/toggle">Capture</a>
+    <a class="mode rel" id="m-rel" href="/mole/relay">Relay</a>
+  </div>
+
+  <div class="helper" id="helper">…</div>
 
   {% if err == 'eth' %}
   <div class="warn">Plug in an Ethernet cable first — Mole is a wired drop box.</div>
   {% elif err == 'start' %}
-  <div class="warn">Could not start the capture service. Check the install.</div>
+  <div class="warn">Could not start — check the install.</div>
   {% endif %}
-
-  <div class="verdict" id="verdict"><div class="vlabel">…</div><div class="vdetail"></div></div>
-
-  <div class="crackbar" id="crackbar"></div>
 
   <div class="body" id="body"></div>
 
   <script>
-    function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+    function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+
+    function header(s){
+      var r = s.relay || {}, st = document.getElementById('status');
+      if(s.active){ st.className='pill cap'; st.textContent='Capturing'; }
+      else if(r.active){ st.className='pill rel'; st.textContent='Relaying'; }
+      else { st.className='pill idle'; st.textContent='Idle'; }
+
+      document.getElementById('m-cap').className = 'mode cap' + (s.active?' on':'');
+      document.getElementById('m-rel').className = 'mode rel' + (r.active?' on':'');
+
+      var h = document.getElementById('helper'), t;
+      if(s.active) t = (s.accounts&&s.accounts.length) ? 'Captured — crack the weak ones, or switch to Relay.' : 'Listening — trigger a login on a target to capture it.';
+      else if(r.active) t = (r.relayed) ? 'Relaying — loot captured below.' : 'Relaying — waiting for a host to authenticate…';
+      else t = 'Plug into a network, then choose Capture or Relay.';
+      h.textContent = t;
+    }
 
     function render(s){
-      var v = document.getElementById('verdict');
-      v.className = 'verdict ' + (s.verdict && s.verdict.level || 'idle');
-      v.innerHTML = '<div class="vlabel">' + esc(s.verdict && s.verdict.label) + '</div>' +
-                    '<div class="vdetail">' + esc(s.verdict && s.verdict.detail) + '</div>';
+      header(s);
+      var r = s.relay || {}, c = s.crack || {}, html='';
 
-      var b = document.getElementById('body');
-      var html = '';
+      var v = s.verdict || {};
+      html += '<div class="verdict '+(v.level||'idle')+'"><div class="vlabel">'+esc(v.label)+
+              '</div><div class="vdetail">'+esc(v.detail)+'</div></div>';
 
-      if(s.accounts && s.accounts.length){
-        html += '<div class="section-label">Credentials captured (' + s.accounts.length + ')</div>';
+      if(r.active){
+        html += '<div class="section-label">Targets</div>';
+        html += '<div class="row"><span class="k">In range</span><span class="v">'+
+                (r.smb_targets||0)+' SMB · '+(r.dc_targets||0)+' DC</span></div>';
+        var loot = (r.loot||[]).concat(r.dumps||[]);
+        if(loot.length){ html += '<div class="section-label">Loot</div>';
+          loot.forEach(function(f){ html += '<div class="host">'+esc(f)+'</div>'; }); }
+        else { html += '<div class="empty">Waiting for a host to authenticate…</div>'; }
+        document.getElementById('body').innerHTML = html;
+        return;
+      }
+
+      // Capture view
+      var hasAccts = s.accounts && s.accounts.length;
+      if(!hasAccts && !s.active){
+        html += '<div class="empty">Choose Capture to listen on the network,<br>or Relay to attack it.</div>';
+        document.getElementById('body').innerHTML = html;
+        return;
+      }
+
+      if(hasAccts){
+        html += '<div class="section-label">Credentials captured ('+s.accounts.length+')</div>';
         s.accounts.forEach(function(a){
-          var who = esc((a.domain ? a.domain + '\\' : '') + a.user);
-          if(a.cracked){
-            html += '<div class="acct"><span class="who">' + who + '</span><span class="pw">' + esc(a.password) + '</span></div>';
-          } else {
-            html += '<div class="acct locked"><span class="who">' + who + '</span><span class="pw">hash only</span></div>';
-          }
+          var who = esc((a.domain?a.domain+'\\':'')+a.user);
+          if(a.cracked) html += '<div class="acct cracked"><span class="who">'+who+'</span><span class="tag">'+esc(a.password)+'</span></div>';
+          else if(c.done) html += '<div class="acct robust"><span class="who">'+who+'</span><span class="tag">robust</span></div>';
+          else html += '<div class="acct pending"><span class="who">'+who+'</span><span class="tag">not cracked yet</span></div>';
         });
       }
 
       html += '<div class="section-label">Network</div>';
-      html += '<div class="row"><span class="k">Domain</span><span class="v"><span class="dom">' +
-              esc(s.domain || '—') + '</span></span></div>';
-      html += '<div class="row"><span class="k">Passwords recovered</span><span class="v">' + (s.passwords || 0) + '</span></div>';
-      html += '<div class="row"><span class="k">Machines found</span><span class="v">' + (s.host_count || 0) + '</span></div>';
+      html += '<div class="row"><span class="k">Domain</span><span class="v"><span class="dom">'+esc(s.domain||'—')+'</span></span></div>';
+      html += '<div class="row"><span class="k">Passwords recovered</span><span class="v">'+(s.passwords||0)+'</span></div>';
+      html += '<div class="row"><span class="k">Machines found</span><span class="v">'+(s.host_count||0)+'</span></div>';
+      if(s.hosts && s.hosts.length){ html += '<div class="section-label">Hosts</div>';
+        s.hosts.slice(0,12).forEach(function(h){ html += '<div class="host">'+esc(h.ip)+(h.vendor?' · '+esc(h.vendor):'')+'</div>'; }); }
 
-      if(s.hosts && s.hosts.length){
-        html += '<div class="section-label">Hosts</div>';
-        s.hosts.slice(0, 12).forEach(function(h){
-          html += '<div class="host">' + esc(h.ip) + (h.vendor ? ' · ' + esc(h.vendor) : '') + '</div>';
-        });
-      }
+      // crack status
+      if(c.running){ var left=Math.max(0,(c.started+c.max)-Math.floor(Date.now()/1000));
+        html += '<div class="crackbar run">Cracking in progress… '+left+'s left</div>'; }
+      else if(c.error==='needs John jumbo'){ html += '<div class="crackbar err">Cracking unavailable — John jumbo not installed</div>'; }
+      else if(c.error){ html += '<div class="crackbar err">Crack error: '+esc(c.error)+'</div>'; }
+      else if(c.done && (s.passwords||0)===0){ html += '<div class="crackbar ok">Crack finished — no weak password found</div>'; }
 
-      if(!s.accounts || !s.accounts.length){
-        if(s.active){
-          html = '<div class="empty">Listening on the network…<br>Captured credentials will appear here.</div>' + html;
-        } else {
-          html = '<div class="empty">Plug into a network and press Start.<br>Mole captures credentials and maps the LAN.</div>' + html;
-        }
-      }
-
-      var c = s.crack || {};
-      var r = s.relay || {};
-
-      if(r.active || r.relayed){
-        html += '<div class="section-label">Active relay</div>';
-        html += '<div class="row"><span class="k">Targets</span><span class="v">' +
-                (r.smb_targets || 0) + ' SMB · ' + (r.dc_targets || 0) + ' DC</span></div>';
-        (r.loot || []).concat(r.dumps || []).forEach(function(f){
-          html += '<div class="host">' + esc(f) + '</div>';
-        });
-        if(r.active && !(r.loot || []).length && !(r.dumps || []).length){
-          html += '<div class="host">waiting for a host to authenticate…</div>';
-        }
-      }
-
-      html += '<div class="actions">';
       var canCrack = s.accounts && s.accounts.length && !c.running;
-      html += '<button class="btn" id="crackbtn" ' + (canCrack ? '' : 'disabled') + '>' +
-              (c.running ? 'Cracking…' : 'Crack captured hashes') + '</button>';
-      html += '<a class="btn danger ' + (r.active ? 'on' : '') + '" href="/mole/relay">' +
-              (r.active ? 'Stop relay' : 'Relay (aggressive)') + '</a>';
-      html += '</div>';
+      html += '<div class="action"><button class="btn" id="crackbtn" '+(canCrack?'':'disabled')+'>'+
+              (c.running?'Cracking…':'Crack captured hashes')+'</button></div>';
 
-      b.innerHTML = html;
-
-      var bar = document.getElementById('crackbar');
-      bar.className = 'crackbar';
-      if(c.running){
-        var left = Math.max(0, (c.started + c.max) - Math.floor(Date.now()/1000));
-        bar.className = 'crackbar show run';
-        bar.textContent = 'Cracking in progress… ' + left + 's left';
-      } else if(c.error === 'needs John jumbo'){
-        bar.className = 'crackbar show err';
-        bar.textContent = 'Cracking unavailable — John jumbo not installed';
-      } else if(c.error){
-        bar.className = 'crackbar show err';
-        bar.textContent = 'Crack error: ' + esc(c.error);
-      } else if(c.done && (s.passwords || 0) === 0){
-        bar.className = 'crackbar show ok';
-        bar.textContent = 'Crack finished — no password found (robust)';
-      }
+      var b = document.getElementById('body'); b.innerHTML = html;
       var cb = document.getElementById('crackbtn');
-      if(cb && canCrack){
-        cb.onclick = function(){
-          cb.disabled = true; cb.textContent = 'Cracking…';
-          fetch('/mole/crack').then(poll).catch(function(){});
-        };
-      }
+      if(cb && canCrack) cb.onclick = function(){ cb.disabled=true; cb.textContent='Cracking…'; fetch('/mole/crack').then(poll).catch(function(){}); };
     }
 
-    function poll(){
-      fetch('/mole/state', {cache:'no-store'})
-        .then(function(r){ return r.json(); })
-        .then(render)
-        .catch(function(){});
-    }
-    poll();
-    setInterval(poll, 4000);
+    function poll(){ fetch('/mole/state',{cache:'no-store'}).then(function(r){return r.json();}).then(render).catch(function(){}); }
+    poll(); setInterval(poll, 4000);
   </script>
 </body>
 </html>
