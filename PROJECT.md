@@ -40,7 +40,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Sly | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live; guided GPU export) |
-| Mirage | Evil-twin AP + captive portal, takes over when Sly's offline crack fails | Done (SSID clone of a whitelisted target, DHCP + DNS catch-all, captive-portal web layer, live client view, deauth via bettercap gated to WPA2 + a second monitor adapter); captive portal page is user-supplied |
+| Mirage | Evil-twin AP + captive portal, takes over when Sly's offline crack fails | Done (SSID clone of a whitelisted target, DHCP + DNS catch-all, captive-portal web layer with a built-in theme library + custom-ZIP upload, live client view, `iw`-based WPA2/WPA3/PMF detection, deauth via bettercap gated on PMF + a second monitor adapter, handshake capture handed to Sly) |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
@@ -103,12 +103,48 @@ coded in-house.
   (amber) signals flag anomalies that are not errors (empty wardrive, captures
   without a GPS fix, no usable handshake, Metasploit unreachable). An Alerts
   filter shows warnings and errors only. Capped at the last 200 (events.json).
-- Lock screen (nomadic use): a full-screen overlay (Fennec logo + a looping
-  Wi-Fi fill animation) that swallows every touch, so accidental presses while
-  the Pi is in a bag do nothing and no running module is stopped. Purely
-  client-side (home.html), no backlight change — the running capture/GPS keep
-  going underneath. Unlock is a deliberate slide-to-unlock (pointer drag past a
-  threshold), so random bag contact can't release it.
+- Lock screen (nomadic use): a full-screen overlay (Fennec mascot) that swallows
+  every touch, so accidental presses while the Pi is in a bag do nothing and no
+  running module is stopped. Purely client-side (home.html), no backlight change —
+  the running capture/GPS keep going underneath. Unlock is a deliberate
+  press-and-hold (fills a bar over ~1.2 s), so random bag contact can't release it.
+- Home tile grid: paginated like a phone home screen; the current page is
+  remembered (sessionStorage), so returning from a module lands back on the page
+  whose tile opened it instead of jumping to the first page.
+- Network list ordering: the whitelist shows saved-key networks first (then
+  alphabetical); the connection page shows the connected network first, then the
+  ones you can connect to, then the rest.
+
+## Mirage — evil twin
+Takes over when Sly's offline crack fails: clone a whitelisted SSID, lure the
+clients onto the twin, and collect the key (captive portal) or the handshake (for
+Sly). Whitelisted targets only.
+- AP + portal: hostapd rogue AP on the USB adapter cloning the target SSID,
+  dnsmasq for DHCP and a DNS catch-all, and a small web layer serving the captive
+  portal. DFS 5 GHz channels are remapped to channel 36 so hostapd can start.
+  Live client view from the dnsmasq leases; captured passwords listed as they
+  arrive. Backed by sudo helpers fennec-mirage-ap / fennec-mirage-portal.
+- Portal library: built-in captive pages under system/mirage-portals/<slug>
+  (Default, Hotel, Station — each in English and French), installed to
+  /opt/fennec-mirage/portals and applied in one tap (fennec-mirage-portal-manage
+  apply <slug>). Each page keeps the same form (POST / with a `password` field)
+  and success page, so only text and design change; the capture backend is
+  untouched. On-screen preview per theme, a custom portal can still be uploaded as
+  a ZIP, and a starter template (the working default) is downloadable so a custom
+  page can't accidentally drop the password form.
+- Security detection: resolved from a real `iw` scan (sudo helper
+  fennec-wifi-scan, JSON out), which sees every nearby AP — unlike nmcli, which
+  only reports a handful when the station interface is busy — and reads the RSN
+  info: WPA2 (PSK) vs WPA3 (SAE) vs WPA2/WPA3 transition, and whether PMF is
+  required or merely capable. The scan runs in a background thread so the page
+  never blocks. Networks in the Mirage list show their real security tag.
+- Deauth: optional bettercap deauth on a second monitor adapter, gated on PMF —
+  allowed unless PMF is required (so WPA2 and transition qualify, pure WPA3 does
+  not), rather than on the SSID label. The deauth forces reconnections, and the
+  same bettercap run records the resulting 4-way handshake to Sly's folder
+  (/etc/pwnagotchi/handshakes/<ssid>_<bssid>.pcap), so a captured handshake shows
+  up in Sly ready to crack. A live "Handshake for Sly" line reports whether a
+  crackable handshake exists for the current target.
 
 ## Sentry (device radar)
 - Real ARP scan of the current /24 via nmap -sn, run as root by a dedicated
@@ -473,3 +509,10 @@ console -> fennec, the folder was not).
 - While Sentry's Watch (MITM) is active, all LAN traffic routes through the Pi,
   so SSH and the UI can lag; it recovers once you Stop. Starting another mode or
   quitting Fennec stops it automatically.
+- Pure WPA3 targets (PMF required): Mirage leaves deauth disabled, and such a
+  network yields no offline-crackable material (non-recoverable PMKID, protected
+  4-way), so neither Sly nor any offline tool can test it. Use a WPA2 or
+  WPA2/WPA3 transition target to exercise deauth and handshake capture.
+- The UI is designed for a 480x320 landscape screen. In portrait it overflows
+  horizontally; the whitelist edit modal is anchored and sized to stay usable
+  with the on-screen keyboard, but full portrait layout support is not done.
