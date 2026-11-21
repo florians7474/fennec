@@ -123,6 +123,13 @@ if [[ "$CHANNEL" =~ ^[0-9]+$ ]] && [ "$CHANNEL" -ge 1 ] && [ "$CHANNEL" -le 14 ]
   HW_MODE=g
 elif [[ "$CHANNEL" =~ ^[0-9]+$ ]] && [ "$CHANNEL" -ge 32 ] && [ "$CHANNEL" -le 196 ]; then
   HW_MODE=a
+  # Channels 52-144 are DFS/radar channels: hostapd refuses to start an AP on
+  # them ("Frequency not allowed for AP mode, RADAR"). Fall back to channel 36,
+  # a non-DFS 5 GHz channel, so cloning a target on a DFS channel still works.
+  if [ "$CHANNEL" -ge 52 ] && [ "$CHANNEL" -le 144 ]; then
+    echo "[MIRAGE] Channel $CHANNEL is a DFS radar channel (no AP allowed); using 36." >&2
+    CHANNEL=36
+  fi
 else
   echo "[MIRAGE] Invalid or unsupported channel '$CHANNEL'; falling back to 2.4 GHz channel 1." >&2
   CHANNEL=1
