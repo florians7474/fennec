@@ -22,6 +22,10 @@
     .hint{font-size:11px;line-height:1.45;color:#8b949e;margin-top:8px}
     .msg{font-size:11px;padding:8px 10px;border-radius:8px;margin-bottom:10px;background:#10231a;color:#3fb950}
     .err{background:#2b1114;color:#ff7b72}.locked{color:#d29922;font-size:11px;margin-top:8px}
+    .filepick{display:flex;align-items:center;gap:10px;margin-top:4px;cursor:pointer}
+    .filepick input{display:none}
+    .filebtn{background:#30363d;border:1px solid #586069;color:#e6edf3;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;flex:0 0 auto}
+    .fname{font-size:12px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   </style>
 </head>
 <body>
@@ -47,7 +51,12 @@
         <div class="locked">Stop Mirage before replacing the portal.</div>
       {% else %}
         <form class="upload" action="/mirage/portal/upload" method="post" enctype="multipart/form-data">
-          <input type="file" name="portal" accept=".zip,application/zip" required>
+          <label class="filepick">
+            <input type="file" name="portal" accept=".zip,application/zip" required
+                   onchange="document.getElementById('fname').textContent=this.files.length?this.files[0].name:'No file selected'">
+            <span class="filebtn">Choose file</span>
+            <span class="fname" id="fname">No file selected</span>
+          </label>
           <div class="actions">
             <button class="btn pink" type="submit">Replace portal</button>
           </div>
