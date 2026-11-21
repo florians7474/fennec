@@ -1233,17 +1233,32 @@ def mirage_clients():
 
 @app.route("/mirage/credentials")
 def mirage_credentials():
-    """Return recent Mirage capture metadata without exposing stored secrets."""
+    """Captures for the network currently being cloned, not every network ever seen."""
     import sqlite3
+    # The ESSID being cloned right now; each capture is tagged with it.
+    essid = None
+    try:
+        with open("/tmp/fennec-mirage-target", encoding="utf-8") as f:
+            essid = f.readline().strip() or None
+    except OSError:
+        pass
     credentials = []
     try:
         conn = sqlite3.connect("/opt/fennec-mirage/credentials.db")
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, timestamp, username, password "
-            "FROM credentials ORDER BY id DESC LIMIT 10"
-        )
-        rows = cursor.fetchall()
+        try:
+            cursor.execute(
+                "SELECT id, timestamp, username, password FROM credentials "
+                "WHERE essid = ? ORDER BY id DESC LIMIT 10", (essid,)
+            )
+            rows = cursor.fetchall()
+        except sqlite3.OperationalError:
+            # Database predates the essid column (portal not redeployed yet).
+            cursor.execute(
+                "SELECT id, timestamp, username, password "
+                "FROM credentials ORDER BY id DESC LIMIT 10"
+            )
+            rows = cursor.fetchall()
         for row in rows:
             credentials.append({
                 "id": row[0],

