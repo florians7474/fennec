@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""Full Wi-Fi scan via `iw`, printed as JSON.
+
+NetworkManager/nmcli only reports a handful of APs when the scanning interface is
+busy acting as the station uplink. A low-level `iw` scan sees every nearby BSS and
+exposes the real RSN information: WPA2 (PSK) vs WPA3 (SAE) vs transition mode, and
+whether management-frame protection (PMF) is optional or required. Mirage uses this
+to label networks correctly and to decide whether deauthentication is possible.
+
+Runs as root through a narrow sudoers rule. Output: a JSON list of
+{bssid, ssid, security, pmf, chan}. `security` is a space-joined set such as
+"WPA2", "WPA3" or "WPA2 WPA3"; `pmf` is "required", "capable" or "none".
+"""
+import json
+import re
+import subprocess
+import sys
+
+
+def pick_iface(arg):
+    if arg:
+        return arg
+    try:
+        out = subprocess.run(["iw", "dev"], capture_output=True, text=True,
+                             timeout=10).stdout
+    except Exception:
+        return "wlan0"
+    ifaces = re.findall(r"Interface\s+(\S+)", out)
+    for name in ifaces:
+        if name.startswith("wlan"):
+            return name
+    return ifaces[0] if ifaces else "wlan0"
+
+
+def freq_to_chan(freq):
+    try:
+        f = int(freq)
+    except (TypeError, ValueError):
+        return None
+    if f == 2484:
+        return 14
+    if 2412 <= f <= 2472:
+        return (f - 2407) // 5
+    if 5000 < f < 5900:
+        return (f - 5000) // 5
+    if 5925 <= f <= 7125:
+        return (f - 5950) // 5
+    return None
+
+
+def classify(bss):
+    """Turn a parsed BSS block into (security, pmf)."""
+    suites = bss["rsn_suites"] | bss["wpa_suites"]
+    tokens = []
+    if bss["has_rsn"]:
+        if any("SAE" in s for s in bss["rsn_suites"]):
+            if any(s in ("PSK", "PSK-SHA256", "FT/PSK") for s in bss["rsn_suites"]):
+                tokens = ["WPA2", "WPA3"]
+            else:
+                tokens = ["WPA3"]
+        else:
+            tokens = ["WPA2"]
+    elif bss["has_wpa"]:
+        tokens = ["WPA"]
+    elif bss["privacy"]:
+        tokens = ["WEP"]
+    else:
+        tokens = ["Open"]
+
+    if bss["mfp_required"]:
+        pmf = "required"
+    elif bss["mfp_capable"]:
+        pmf = "capable"
+    else:
+        pmf = "none"
+    return " ".join(tokens), pmf, suites
+
+
+def parse(out):
+    nets = []
+    bss = None
+    section = None  # "rsn", "wpa" or None
+
+    def flush():
+        if bss and bss["bssid"]:
+            sec, pmf, _ = classify(bss)
+            nets.append({
+                "bssid": bss["bssid"].upper(),
+                "ssid": bss["ssid"],
+                "security": sec,
+                "pmf": pmf,
+                "chan": bss["chan"],
+            })
+
+    for raw in out.splitlines():
+        line = raw.strip()
+        if line.startswith("* "):
+            line = line[2:].strip()
+        m = re.match(r"^BSS ([0-9a-fA-F:]{17})", line)
+        if m:
+            flush()
+            bss = {"bssid": m.group(1), "ssid": "", "chan": None,
+                   "has_rsn": False, "has_wpa": False, "privacy": False,
+                   "mfp_required": False, "mfp_capable": False,
+                   "rsn_suites": set(), "wpa_suites": set()}
+            section = None
+            continue
+        if bss is None:
+            continue
+        if "MFP-required" in line:
+            bss["mfp_required"] = True
+        if "MFP-capable" in line:
+            bss["mfp_capable"] = True
+        if line.startswith("SSID:"):
+            bss["ssid"] = line[5:].strip()
+        elif line.startswith("freq:"):
+            bss["chan"] = freq_to_chan(line.split(":", 1)[1].strip().split()[0])
+        elif line.startswith("DS Parameter set: channel"):
+            try:
+                bss["chan"] = int(line.rsplit("channel", 1)[1].strip())
+            except ValueError:
+                pass
+        elif line.startswith("capability:") and "Privacy" in line:
+            bss["privacy"] = True
+        elif line.startswith("RSN:"):
+            bss["has_rsn"] = True
+            section = "rsn"
+        elif line.startswith("WPA:"):
+            bss["has_wpa"] = True
+            section = "wpa"
+        elif line.startswith("Authentication suites:"):
+            val = line.split(":", 1)[1].strip()
+            target = bss["rsn_suites"] if section == "rsn" else bss["wpa_suites"]
+            for tok in val.split():
+                target.add(tok)
+    flush()
+    return nets
+
+
+def main():
+    iface = pick_iface(sys.argv[1] if len(sys.argv) > 1 else None)
+    try:
+        res = subprocess.run(["iw", "dev", iface, "scan"],
+                             capture_output=True, text=True, timeout=25)
+    except Exception as exc:
+        print("[]")
+        sys.stderr.write(str(exc))
+        return
+    nets = parse(res.stdout)
+    print(json.dumps(nets))
+
+
+main()

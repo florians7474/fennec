@@ -319,24 +319,81 @@ def _scan_securities():
             by_ssid[nm] = sec
     return by_bssid, by_ssid
 
+def _iw_scan():
+    """Full scan via the root helper: list of {bssid, ssid, security, pmf, chan}.
+    Returns None when the helper is unavailable (then nmcli is used as fallback)."""
+    try:
+        r = subprocess.run(["sudo", "-n", "/usr/local/bin/fennec-wifi-scan"],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            return None
+        data = json.loads(r.stdout or "[]")
+        return data if isinstance(data, list) else None
+    except Exception:
+        return None
+
+
+def _scan_networks():
+    """(by BSSID, by SSID) maps of {security, pmf, chan}. Prefers iw (sees every AP
+    and reads PMF); falls back to nmcli (security only, limited visibility)."""
+    by_bssid, by_ssid = {}, {}
+    data = _iw_scan()
+    if data is not None:
+        for n in data:
+            b = (n.get("bssid") or "").upper()
+            nm = n.get("ssid") or ""
+            entry = {"security": n.get("security"), "pmf": n.get("pmf"),
+                     "chan": n.get("chan")}
+            if b:
+                by_bssid[b] = entry
+            if nm and nm not in by_ssid:
+                by_ssid[nm] = entry
+        return by_bssid, by_ssid
+    nb, ns = _scan_securities()
+    for b, sec in nb.items():
+        by_bssid[b] = {"security": sec, "pmf": None, "chan": None}
+    for nm, sec in ns.items():
+        by_ssid[nm] = {"security": sec, "pmf": None, "chan": None}
+    return by_bssid, by_ssid
+
+
 # A scan is a momentary snapshot: a given AP is not in every scan, so badges
 # would flicker. We keep a cache that accumulates what we've seen, refreshed at
 # most every 20 s, so a security stays displayed once known.
 _sec_cache = {"bssid": {}, "ssid": {}, "ts": 0.0}
 
 def all_securities():
-    """Accumulated (by BSSID, by SSID) security maps, refreshed in the background."""
+    """Accumulated (by BSSID, by SSID) maps of {security, pmf, chan}, refreshed
+    in the background."""
     now = time.time()
     if now - _sec_cache["ts"] > 20:
-        by_bssid, by_ssid = _scan_securities()
+        by_bssid, by_ssid = _scan_networks()
         _sec_cache["bssid"].update(by_bssid)
         _sec_cache["ssid"].update(by_ssid)
         _sec_cache["ts"] = now
     return _sec_cache["bssid"], _sec_cache["ssid"]
 
-def deauth_possible(security):
-    """Deauth works on WPA2/WEP/open. Pure WPA3 (SAE) enforces PMF, which blocks it.
-    Unknown security -> allowed (we can't prove it's WPA3)."""
+
+def resolve_target(bssid, ssid):
+    """(security, chan, pmf) for a target, from the iw/nmcli cache, with a direct
+    nmcli lookup as a last resort when the cache has nothing usable."""
+    by_bssid, by_ssid = all_securities()
+    e = by_bssid.get((bssid or "").upper()) or by_ssid.get(ssid)
+    if e and (e.get("security") or e.get("chan")):
+        return e.get("security"), e.get("chan"), e.get("pmf")
+    sec, chan = scan_security_channel(bssid or "", ssid or "")
+    return sec, chan, None
+
+def deauth_possible(security, pmf=None):
+    """Deauth works on WPA2/WEP/open. It is blocked only when management-frame
+    protection (PMF) is *required*, which pure WPA3 (SAE) enforces. A WPA2/WPA3
+    transition network advertises PMF as merely *capable*, so its WPA2 clients can
+    still be deauthenticated. When PMF is unknown, fall back to the security string
+    (unknown security -> allowed, we can't prove it's WPA3-only)."""
+    if pmf == "required":
+        return False
+    if pmf in ("capable", "none"):
+        return True
     if not security:
         return True
     s = security.upper()
@@ -974,14 +1031,18 @@ def mode(name):
         ap_iface = current_mirage_ap_iface()
         second = monitor_iface_except(ap_iface)
         # WPA3 with PMF blocks deauthentication, so the action is not offered.
-        deauth_wpa3 = not deauth_possible(meta.get("security"))
+        deauth_wpa3 = not deauth_possible(meta.get("security"), meta.get("pmf"))
         deauth_avail = active and bool(second) and not deauth_wpa3
         nets = load_whitelist()
         by_bssid, by_ssid = all_securities()
         for r in nets:
-            s = by_bssid.get((r.get("bssid") or "").upper()) or by_ssid.get(r.get("name"))
-            r["security"] = s or None
-            r["deauthable"] = deauth_possible(s) if s else None
+            e = by_bssid.get((r.get("bssid") or "").upper()) or by_ssid.get(r.get("name"))
+            if e:
+                r["security"] = e.get("security") or None
+                r["deauthable"] = deauth_possible(e.get("security"), e.get("pmf"))
+            else:
+                r["security"] = None
+                r["deauthable"] = None
         return render_template("mirage.html", key=name, info=MODES[name],
                                active=active, networks=nets, cible=cible,
                                security=meta.get("security"),
@@ -1273,15 +1334,17 @@ def mirage_start(bssid):
                 if r["bssid"].upper() == bssid.upper()), None)
     if not net:
         return redirect(url_for("mode", name="mirage"))
-    # Resolve the target's security and channel before starting the AP.
-    sec, chan = scan_security_channel(net.get("bssid") or "", net.get("name") or "")
+    # Resolve the target's security, channel and PMF before starting the AP.
+    sec, chan, pmf = resolve_target(net.get("bssid") or "", net.get("name") or "")
+    chan_str = str(chan) if chan else ""
     # The AP launcher reads the SSID then its channel from this file.
     with open("/tmp/fennec-mirage-target", "w", encoding="utf-8") as f:
         f.write((net.get("name") or "") + "\n")
-        f.write((chan or "") + "\n")
+        f.write(chan_str + "\n")
     # Keep the same target metadata for deauthentication gating.
     with open("/tmp/fennec-mirage-meta.json", "w", encoding="utf-8") as f:
-        json.dump({"bssid": net["bssid"], "security": sec, "chan": chan}, f)
+        json.dump({"bssid": net["bssid"], "security": sec, "chan": chan_str,
+                   "pmf": pmf}, f)
     if vigie_monitor.monitor_state["active"]:
         vigie_monitor.stop()
     current = app_state["active_mode"]
@@ -1311,7 +1374,7 @@ def mirage_deauth_start():
             meta = json.load(f)
     except (OSError, ValueError):
         meta = {}
-    if not deauth_possible(meta.get("security")):
+    if not deauth_possible(meta.get("security"), meta.get("pmf")):
         return redirect(url_for("mode", name="mirage"))
     with open("/tmp/fennec-mirage-deauth", "w", encoding="utf-8") as f:
         f.write((iface or "") + "\n")
