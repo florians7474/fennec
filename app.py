@@ -1927,6 +1927,11 @@ def connection():
             current = r
     if ssid_act and not current:
         current = {"name": ssid_act, "bssid": bssid_act, "connected": True}
+    # Order: the connected network first, then the ones you can connect to, then
+    # the rest; alphabetical within each group.
+    networks.sort(key=lambda r: (
+        0 if r.get("connected") else (1 if r.get("connectable") else 2),
+        (r.get("name") or "").lower()))
     return render_template("connection.html", networks=networks, current=current,
                            conn=connection_state(), err=request.args.get("err"))
 
@@ -2257,7 +2262,10 @@ def mole_relay():
 
 @app.route("/whitelist")
 def whitelist_page():
-    return render_template("whitelist_page.html", networks=load_whitelist())
+    # Networks that already have a saved key come first, then alphabetical.
+    nets = load_whitelist()
+    nets.sort(key=lambda r: (0 if r.get("key") else 1, (r.get("name") or "").lower()))
+    return render_template("whitelist_page.html", networks=nets)
 
 @app.route("/whitelist/add", methods=["POST"])
 def whitelist_add():
