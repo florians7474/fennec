@@ -54,14 +54,14 @@
     .pied a { color:#8b949e; font-size:11px; text-decoration:none; }
 
     .modal {
-      display:none; position:absolute; top:0; left:0; width:480px; height:320px; background:rgba(0,0,0,.6);
-      z-index:10; align-items:flex-start; justify-content:center; overflow-y:auto; padding:12px 0;
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+      z-index:10; align-items:center; justify-content:center; padding:12px; overflow:auto;
     }
     .modal.on { display:flex; }
     .map {
-      width:360px; background:#161b22; border:1px solid #30363d; border-radius:12px;
+      width:min(340px, calc(100% - 16px)); background:#161b22; border:1px solid #30363d; border-radius:12px;
       padding:16px; display:flex; flex-direction:column; gap:10px;
-      max-height:calc(100% - 24px); overflow-y:auto;
+      max-height:calc(100% - 16px); overflow-y:auto;
     }
     .map h3 { font-size:15px; font-weight:600; }
     .map .sous { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; margin-top:-4px; }
@@ -144,9 +144,34 @@
   </div>
 
   <script>
+    // Pin a modal to the area that is actually visible. On this fixed 480px layout
+    // the screen can be narrower (portrait) and the on-screen keyboard shrinks the
+    // visible area further; the visualViewport API gives the live visible rect so
+    // the card and its Save button always stay inside it.
+    var _openModal = null;
+    function fitModal(m){
+      var vv = window.visualViewport;
+      if (!vv) return;
+      m.style.left = vv.offsetLeft + 'px';
+      m.style.top = vv.offsetTop + 'px';
+      m.style.width = vv.width + 'px';
+      m.style.height = vv.height + 'px';
+    }
+    function trackViewport(){ if (_openModal) fitModal(_openModal); }
+    if (window.visualViewport){
+      window.visualViewport.addEventListener('resize', trackViewport);
+      window.visualViewport.addEventListener('scroll', trackViewport);
+    }
+    function showModal(m){ _openModal = m; m.classList.add('on'); fitModal(m); }
+    function hideModal(m){
+      m.classList.remove('on');
+      m.style.left = m.style.top = m.style.width = m.style.height = '';
+      if (_openModal === m) _openModal = null;
+    }
+
     var confirmUrl = null;
-    function openConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
-    function closeConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
+    function openConfirm(url){ confirmUrl = url; showModal(document.getElementById('modalConfirm')); }
+    function closeConfirm(){ hideModal(document.getElementById('modalConfirm')); }
     function confirmAction(){ if(confirmUrl){ window.location.href = confirmUrl; } }
 
     function openEdit(bssid, name, key){
@@ -154,10 +179,10 @@
       document.getElementById('editBssidLabel').textContent = bssid;
       document.getElementById('editNom').value = name || '';
       document.getElementById('editCle').value = key || '';
-      document.getElementById('modalEdit').classList.add('on');
+      showModal(document.getElementById('modalEdit'));
     }
     function closeEdit(){
-      document.getElementById('modalEdit').classList.remove('on');
+      hideModal(document.getElementById('modalEdit'));
     }
 
     // On a small screen in portrait the on-screen keyboard can hide the Save
