@@ -58,6 +58,8 @@
     .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:46px; line-height:1.7; }
     .actions { display:flex; gap:8px; margin-top:12px; }
     .actions .btn { flex:1; text-align:center; padding:13px 12px; font-size:14px; }
+    .actions .btn.danger { border-color:#a33; color:#f2a3a3; }
+    .actions .btn.danger.on { background:#a33; color:#1a0b0b; border-color:#a33; }
     .crackbar { flex:0 0 auto; margin:0 12px; font-size:12px; font-weight:500;
                 border-radius:8px; padding:0; max-height:0; overflow:hidden;
                 transition:max-height .2s, padding .2s; }
@@ -136,10 +138,26 @@
       }
 
       var c = s.crack || {};
+      var r = s.relay || {};
+
+      if(r.active || r.relayed){
+        html += '<div class="section-label">Active relay</div>';
+        html += '<div class="row"><span class="k">Targets</span><span class="v">' +
+                (r.smb_targets || 0) + ' SMB · ' + (r.dc_targets || 0) + ' DC</span></div>';
+        (r.loot || []).concat(r.dumps || []).forEach(function(f){
+          html += '<div class="host">' + esc(f) + '</div>';
+        });
+        if(r.active && !(r.loot || []).length && !(r.dumps || []).length){
+          html += '<div class="host">waiting for a host to authenticate…</div>';
+        }
+      }
+
       html += '<div class="actions">';
       var canCrack = s.accounts && s.accounts.length && !c.running;
       html += '<button class="btn" id="crackbtn" ' + (canCrack ? '' : 'disabled') + '>' +
               (c.running ? 'Cracking…' : 'Crack captured hashes') + '</button>';
+      html += '<a class="btn danger ' + (r.active ? 'on' : '') + '" href="/mole/relay">' +
+              (r.active ? 'Stop relay' : 'Relay (aggressive)') + '</a>';
       html += '</div>';
 
       b.innerHTML = html;

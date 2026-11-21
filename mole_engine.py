@@ -28,6 +28,8 @@ POT_FILE = os.path.join(LOOT, "john.pot")
 JOHN_SESSION = os.path.join(LOOT, "mole")
 
 SERVICE = "fennec-mole"
+RELAY_SERVICE = "fennec-mole-relay"
+RELAY_DIR = os.path.join(LOOT, "relay")
 
 # Responder writes its loot under its own install dir; the path varies by install
 # (git checkout vs package), so we read from every known location.
@@ -185,6 +187,7 @@ def snapshot():
             "max": CRACK_MAX_SECONDS,
             "error": crack_state["error"],
         },
+        "relay": relay_snapshot(),
     }
 
 
@@ -244,3 +247,61 @@ def crack():
         crack_state["started"] = int(time.time())
     threading.Thread(target=_crack_worker, args=(lines,), daemon=True).start()
     return True
+
+
+# ---------- Active relay (phase 2) ----------
+
+def is_relay_active():
+    try:
+        r = subprocess.run(["systemctl", "is-active", RELAY_SERVICE],
+                           capture_output=True, text=True, timeout=10)
+        return r.stdout.strip() == "active"
+    except Exception:
+        return False
+
+
+def start_relay():
+    return _systemctl("start", RELAY_SERVICE)
+
+
+def stop_relay():
+    return _systemctl("stop", RELAY_SERVICE)
+
+
+def _targets():
+    out = []
+    try:
+        with open(os.path.join(RELAY_DIR, "targets.txt"), "r", encoding="utf-8") as f:
+            out = [l.strip() for l in f if l.strip()]
+    except OSError:
+        pass
+    return out
+
+
+def relay_snapshot():
+    """State of the active relay: targets found and loot produced so far."""
+    targets = _targets()
+    # Loot artifacts ntlmrelayx writes (relayed hashes, SAM/domain dumps), ignoring
+    # our own working files.
+    skip = {"run.log", "scan.grep", "targets.txt"}
+    arts, dumps = [], []
+    try:
+        for p in sorted(glob.glob(os.path.join(RELAY_DIR, "*"))):
+            if os.path.isfile(p) and os.path.basename(p) not in skip:
+                arts.append(os.path.basename(p))
+    except OSError:
+        pass
+    try:
+        for p in sorted(glob.glob(os.path.join(RELAY_DIR, "dump", "*"))):
+            dumps.append(os.path.basename(p))
+    except OSError:
+        pass
+    return {
+        "active": is_relay_active(),
+        "targets": len(targets),
+        "smb_targets": sum(1 for t in targets if not t.startswith("ldaps://")),
+        "dc_targets": sum(1 for t in targets if t.startswith("ldaps://")),
+        "loot": arts[:20],
+        "dumps": dumps[:20],
+        "relayed": len(arts) + len(dumps),
+    }

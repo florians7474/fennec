@@ -45,7 +45,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
-| Mole | Wired drop box: capture + crack LAN credentials over Ethernet | Phase 1 built (Responder capture + nmap map + offline John crack + report), not yet tested on the Pi; phase 2 (mitm6 + ntlmrelayx relay to AD) to follow |
+| Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
@@ -316,18 +316,29 @@ networks you own or are explicitly authorized to test.
 - Warning "Credentials captured" — hashes caught, not cracked yet.
 - Idle "Listening" / "Idle" — running with nothing captured yet / stopped.
 
+### Active relay (phase 2)
+An aggressive mode beside the capture Start, its own red "Relay" button, also
+Ethernet-gated. Orchestrator /usr/local/bin/fennec-mole-relay (root, via
+fennec-mole-relay.service, tile-driven): scans the /24 for SMB (445) hosts and any
+domain controller (LDAP 389/636), runs mitm6 (rogue DHCPv6/DNS) to coerce WPAD, and
+ntlmrelayx (impacket, in a dedicated /opt/mole-venv) to relay the coerced auth to
+those targets, saving relayed hashes and SAM/domain dumps under /tmp/fennec-mole/relay.
+Relay and capture bind the same ports, so starting one stops the other (and Sentry).
+mole_engine.relay_snapshot() reports targets and loot; the screen lists them.
+
 ### Done
-- Phase 1 built: orchestrator, engine, routes, tile, report page, sudoers, install
-  repli (Responder cloned from source to /opt/Responder; john/nmap/hcxtools from apt).
-- Capture only: Mole does not relay or modify Active Directory.
+- Phase 1: orchestrator, engine, routes, tile, report page, sudoers, install repli,
+  tested end to end on the Pi (capture a real NetNTLMv2 hash, crack a weak one with
+  John jumbo, verdict). Responder (pinned, /opt/Responder) with python3-netifaces +
+  python3-aioquic; John jumbo built to /opt/john (Debian john lacks netntlmv2).
+- Phase 2 built: relay orchestrator, service, engine parsing, UI, install repli.
 
 ### To do
-- Test phase 1 live on the Pi against a lab AD, tune the exact Responder loot path
-  and the nmap -oG parse, add a mole.png mascot to match the other tiles.
-- Phase 2: active relay (mitm6 rogue DHCPv6/DNS + ntlmrelayx) to dump domain
-  users/computers/admins and attempt domain compromise — the aggressive mode, kept
-  behind its own explicit action. Then wire the report's recovered data to a report
-  export and the planned VPS handoff.
+- Test phase 2 against a lab Active Directory (the home net is a workgroup, local
+  accounts only, so the AD dump can't be exercised there yet).
+- Tune the relay loot parsing to the real ntlmrelayx output once tested.
+- Add a mole.png mascot to match the other tiles; wire the report to a file export
+  and the planned VPS handoff.
 
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,

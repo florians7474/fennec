@@ -1967,7 +1967,9 @@ def mole_toggle():
     conn = connection_state()
     if conn["type"] != "ethernet":
         return redirect(url_for("mole", err="eth"))
-    # Responder binds port 53; stop Sentry's DNS capture so they don't clash.
+    # Capture and relay bind the same ports; Sentry holds port 53. Stop them first.
+    if mole_engine.is_relay_active():
+        mole_engine.stop_relay()
     if vigie_monitor.monitor_state["active"]:
         vigie_monitor.stop()
     if mole_engine.start():
@@ -1983,6 +1985,27 @@ def mole_state():
 @app.route("/mole/crack")
 def mole_crack():
     return jsonify({"started": mole_engine.crack()})
+
+@app.route("/mole/relay")
+def mole_relay():
+    if mole_engine.is_relay_active():
+        mole_engine.stop_relay()
+        log_event("mole", "info", "Mole relay stopped")
+        return redirect(url_for("mole"))
+    # Active relay is aggressive and wired: Ethernet is the authorization.
+    conn = connection_state()
+    if conn["type"] != "ethernet":
+        return redirect(url_for("mole", err="eth"))
+    # Relay and capture bind the same ports; stop capture and Sentry's DNS first.
+    if mole_engine.is_active():
+        mole_engine.stop()
+    if vigie_monitor.monitor_state["active"]:
+        vigie_monitor.stop()
+    if mole_engine.start_relay():
+        log_event("mole", "info", "Mole relay started on " + conn["name"])
+    else:
+        return redirect(url_for("mole", err="start"))
+    return redirect(url_for("mole"))
 
 # ---------- Whitelist (routes) ----------
 

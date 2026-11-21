@@ -233,7 +233,8 @@ sudo cp "$SYS/fennec-mirage-portal" /usr/local/bin/fennec-mirage-portal
 sudo cp "$SYS/fennec-mirage-deauth" /usr/local/bin/fennec-mirage-deauth
 sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
 sudo cp "$SYS/fennec-mole" /usr/local/bin/fennec-mole
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole
+sudo cp "$SYS/fennec-mole-relay" /usr/local/bin/fennec-mole-relay
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
@@ -263,6 +264,7 @@ done
 sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo cp "$SYS/fennec-mirage-deauth.service" /etc/systemd/system/fennec-mirage-deauth.service
 sudo cp "$SYS/fennec-mole.service" /etc/systemd/system/fennec-mole.service
+sudo cp "$SYS/fennec-mole-relay.service" /etc/systemd/system/fennec-mole-relay.service
 sudo systemctl daemon-reload
 
 # --- 8. sudoers rule (with user substitution) ---
@@ -385,6 +387,16 @@ if [ ! -x /opt/john/run/john ]; then
     ( cd /opt/john/src && sudo ./configure && sudo make -s -j"$(nproc)" )
 fi
 sudo chmod -R a+rX /opt/john
+
+# Mole active relay (phase 2): impacket's ntlmrelayx + mitm6, in a dedicated venv
+# so they stay isolated from the system and the Pwnagotchi venv.
+echo "==> Installing Mole relay tools (impacket, mitm6)..."
+if [ ! -x /opt/mole-venv/bin/mitm6 ]; then
+    sudo python3 -m venv /opt/mole-venv
+    sudo /opt/mole-venv/bin/pip install --quiet --upgrade pip
+    sudo /opt/mole-venv/bin/pip install --quiet impacket mitm6
+fi
+sudo chmod -R a+rX /opt/mole-venv
 
 # --- 10. Automatic Wi-Fi reconnection (nomadic use) ---
 echo "==> Setting up automatic Wi-Fi reconnection..."

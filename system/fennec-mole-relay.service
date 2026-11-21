@@ -1,0 +1,13 @@
+[Unit]
+Description=Mole active relay (Fennec module, phase 2)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fennec-mole-relay
+ExecStopPost=-/usr/bin/pkill -f ntlmrelayx
+ExecStopPost=-/usr/bin/pkill -f mitm6
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
