@@ -358,27 +358,44 @@ def _scan_networks():
 
 
 # A scan is a momentary snapshot: a given AP is not in every scan, so badges
-# would flicker. We keep a cache that accumulates what we've seen, refreshed at
-# most every 20 s, so a security stays displayed once known.
+# would flicker. We keep a cache that accumulates what we've seen. The refresh
+# runs in a background thread so a page never blocks on the (slow) iw scan; the
+# page returns the current cache immediately and new badges show on a later load.
 _sec_cache = {"bssid": {}, "ssid": {}, "ts": 0.0}
+_sec_refreshing = {"on": False}
 
-def all_securities():
-    """Accumulated (by BSSID, by SSID) maps of {security, pmf, chan}, refreshed
-    in the background."""
-    now = time.time()
-    if now - _sec_cache["ts"] > 20:
+def _refresh_sec_cache():
+    try:
         by_bssid, by_ssid = _scan_networks()
         _sec_cache["bssid"].update(by_bssid)
         _sec_cache["ssid"].update(by_ssid)
-        _sec_cache["ts"] = now
+        _sec_cache["ts"] = time.time()
+    finally:
+        _sec_refreshing["on"] = False
+
+def all_securities():
+    """Accumulated (by BSSID, by SSID) maps of {security, pmf, chan}. Non-blocking:
+    kicks off a background refresh when the cache is stale and returns at once."""
+    now = time.time()
+    if now - _sec_cache["ts"] > 20 and not _sec_refreshing["on"]:
+        _sec_refreshing["on"] = True
+        threading.Thread(target=_refresh_sec_cache, daemon=True).start()
     return _sec_cache["bssid"], _sec_cache["ssid"]
 
 
 def resolve_target(bssid, ssid):
-    """(security, chan, pmf) for a target, from the iw/nmcli cache, with a direct
-    nmcli lookup as a last resort when the cache has nothing usable."""
+    """(security, chan, pmf) for a target. Starting the AP is a deliberate action,
+    so when the cache has nothing usable we do a direct iw scan (accurate channel),
+    then fall back to nmcli as a last resort."""
+    b = (bssid or "").upper()
     by_bssid, by_ssid = all_securities()
-    e = by_bssid.get((bssid or "").upper()) or by_ssid.get(ssid)
+    e = by_bssid.get(b) or by_ssid.get(ssid)
+    if not (e and (e.get("security") or e.get("chan"))):
+        for n in (_iw_scan() or []):
+            if (n.get("bssid") or "").upper() == b or (ssid and n.get("ssid") == ssid):
+                e = {"security": n.get("security"), "pmf": n.get("pmf"),
+                     "chan": n.get("chan")}
+                break
     if e and (e.get("security") or e.get("chan")):
         return e.get("security"), e.get("chan"), e.get("pmf")
     sec, chan = scan_security_channel(bssid or "", ssid or "")

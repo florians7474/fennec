@@ -67,9 +67,8 @@
     <div class="title">{{ info.name }}</div>
     {% if not active %}
       <a class="btn portal" href="/mirage/portal">Portal</a>
-    {% endif %}
-    <span class="pastille {{ 'on' if active }}"></span>
-    {% if active %}
+    {% else %}
+      <span class="pastille on"></span>
       <a class="btn stop" href="/mirage/stop">Stop</a>
     {% endif %}
   </div>
