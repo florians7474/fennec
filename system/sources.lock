@@ -25,5 +25,9 @@ RESPONDER_REPOSITORY="https://github.com/lgandx/Responder.git"
 RESPONDER_REF="424fbe53d6a61824e3c7685fe5f69668721b821e"
 RESPONDER_TRACKING_REF="master"
 
+JOHN_REPOSITORY="https://github.com/openwall/john.git"
+JOHN_REF="ea6b98c095559785903a10d51c47d90aafcc52c8"
+JOHN_TRACKING_REF="bleeding-jumbo"
+
 WAVESHARE35C_ARCHIVE_URL="https://files.waveshare.com/wiki/common/Waveshare35c.zip"
 WAVESHARE35C_ARCHIVE_SHA256="36d1743c4badc9f0bcd0cd7e2aee7cd9ce9df20e0f81f3077a3184539a672777"

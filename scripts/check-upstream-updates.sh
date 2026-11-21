@@ -28,6 +28,7 @@ check_upstream "Bjorn" "$BJORN_REPOSITORY" "$BJORN_TRACKING_REF" "$BJORN_REF"
 check_upstream "routerkeygen" "$ROUTERKEYGEN_REPOSITORY" "$ROUTERKEYGEN_TRACKING_REF" "$ROUTERKEYGEN_REF"
 check_upstream "SecLists" "$SECLISTS_REPOSITORY" "$SECLISTS_TRACKING_REF" "$SECLISTS_REF"
 check_upstream "Responder" "$RESPONDER_REPOSITORY" "$RESPONDER_TRACKING_REF" "$RESPONDER_REF"
+check_upstream "John" "$JOHN_REPOSITORY" "$JOHN_TRACKING_REF" "$JOHN_REF"
 
 if (( changed )); then
     exit 10

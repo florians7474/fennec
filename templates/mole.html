@@ -57,7 +57,14 @@
             padding:3px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:46px; line-height:1.7; }
     .actions { display:flex; gap:8px; margin-top:12px; }
-    .actions .btn { flex:1; text-align:center; }
+    .actions .btn { flex:1; text-align:center; padding:13px 12px; font-size:14px; }
+    .crackbar { flex:0 0 auto; margin:0 12px; font-size:12px; font-weight:500;
+                border-radius:8px; padding:0; max-height:0; overflow:hidden;
+                transition:max-height .2s, padding .2s; }
+    .crackbar.show { padding:8px 12px; max-height:60px; margin-bottom:4px; }
+    .crackbar.run { background:#1b2733; border:0.5px solid #2f5d86; color:#79b8e8; }
+    .crackbar.ok  { background:#13261a; border:0.5px solid #2b6d3f; color:#7bd88f; }
+    .crackbar.err { background:#2a0f0f; border:0.5px solid #a32d2d; color:#f2a3a3; }
   </style>
 </head>
 <body>
@@ -78,6 +85,8 @@
   {% endif %}
 
   <div class="verdict" id="verdict"><div class="vlabel">…</div><div class="vdetail"></div></div>
+
+  <div class="crackbar" id="crackbar"></div>
 
   <div class="body" id="body"></div>
 
@@ -126,13 +135,31 @@
         }
       }
 
+      var c = s.crack || {};
       html += '<div class="actions">';
-      var canCrack = s.accounts && s.accounts.length && !s.cracking;
+      var canCrack = s.accounts && s.accounts.length && !c.running;
       html += '<button class="btn" id="crackbtn" ' + (canCrack ? '' : 'disabled') + '>' +
-              (s.cracking ? 'Cracking…' : 'Crack captured hashes') + '</button>';
+              (c.running ? 'Cracking…' : 'Crack captured hashes') + '</button>';
       html += '</div>';
 
       b.innerHTML = html;
+
+      var bar = document.getElementById('crackbar');
+      bar.className = 'crackbar';
+      if(c.running){
+        var left = Math.max(0, (c.started + c.max) - Math.floor(Date.now()/1000));
+        bar.className = 'crackbar show run';
+        bar.textContent = 'Cracking in progress… ' + left + 's left';
+      } else if(c.error === 'needs John jumbo'){
+        bar.className = 'crackbar show err';
+        bar.textContent = 'Cracking unavailable — John jumbo not installed';
+      } else if(c.error){
+        bar.className = 'crackbar show err';
+        bar.textContent = 'Crack error: ' + esc(c.error);
+      } else if(c.done && (s.passwords || 0) === 0){
+        bar.className = 'crackbar show ok';
+        bar.textContent = 'Crack finished — no password found (robust)';
+      }
       var cb = document.getElementById('crackbtn');
       if(cb && canCrack){
         cb.onclick = function(){

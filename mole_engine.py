@@ -29,15 +29,18 @@ SERVICE = "fennec-mole"
 # (git checkout vs package), so we read from every known location.
 RESPONDER_LOG_DIRS = ["/opt/Responder/logs", "/usr/share/responder/logs"]
 
-# Small human-password list first: John on the Pi's CPU is slow, so a capped run
-# against a short, high-yield list reveals the weak passwords without a long wait.
+# NetNTLMv2 cracking needs John "jumbo" (built to /opt/john by install.sh); the
+# Debian "john" package lacks the netntlmv2 format. Fall back to it if jumbo is
+# absent, so the engine still imports.
+JOHN_BIN = "/opt/john/run/john" if os.path.exists("/opt/john/run/john") else "john"
 WORDLIST = "/usr/share/wordlists/rockyou.txt"
 CRACK_MAX_SECONDS = 300
 
 # A NetNTLMv2 line looks like:  user::DOMAIN:serverchallenge:ntproof:blob
 _RE_NETNTLMV2 = re.compile(r"^([^:]+)::([^:]*):[0-9a-fA-F]+:[0-9a-fA-F]+:[0-9a-fA-F]+")
 
-crack_state = {"running": False, "done": False}
+crack_state = {"running": False, "done": False, "found": 0, "started": 0,
+               "error": None}
 _lock = threading.Lock()
 
 
@@ -170,38 +173,54 @@ def snapshot():
         "host_count": len(hosts) if isinstance(hosts, list) else 0,
         "verdict": _verdict(accounts, cracked),
         "cracking": crack_state["running"],
+        "crack": {
+            "running": crack_state["running"],
+            "done": crack_state["done"],
+            "found": crack_state["found"],
+            "started": crack_state["started"],
+            "max": CRACK_MAX_SECONDS,
+            "error": crack_state["error"],
+        },
     }
 
 
 def _crack_worker(hash_lines):
+    found = {}
+    error = None
     try:
         os.makedirs(LOOT, exist_ok=True)
         with open(HASHES_FILE, "w", encoding="utf-8") as f:
             f.write("\n".join(hash_lines) + "\n")
-        if os.path.exists(WORDLIST):
-            subprocess.run(
-                ["john", "--format=netntlmv2", "--wordlist=" + WORDLIST,
+        if not os.path.exists(WORDLIST):
+            error = "wordlist missing"
+        else:
+            r = subprocess.run(
+                [JOHN_BIN, "--format=netntlmv2", "--wordlist=" + WORDLIST,
                  "--max-run-time=" + str(CRACK_MAX_SECONDS), HASHES_FILE],
                 capture_output=True, text=True, timeout=CRACK_MAX_SECONDS + 60,
             )
-        show = subprocess.run(
-            ["john", "--show", "--format=netntlmv2", HASHES_FILE],
-            capture_output=True, text=True, timeout=60,
-        ).stdout
-        found = {}
-        for line in show.splitlines():
-            # John --show prints:  user:password:...  (one per cracked hash)
-            parts = line.split(":")
-            if len(parts) >= 2 and parts[0] and parts[1]:
-                found[parts[0]] = parts[1]
-        with open(CRACKED_FILE, "w", encoding="utf-8") as f:
-            json.dump(found, f)
+            if "Unknown ciphertext format" in (r.stderr + r.stdout):
+                error = "needs John jumbo"
+        if error is None:
+            show = subprocess.run(
+                [JOHN_BIN, "--show", "--format=netntlmv2", HASHES_FILE],
+                capture_output=True, text=True, timeout=60,
+            ).stdout
+            for line in show.splitlines():
+                # John --show prints:  user:password:...  (one per cracked hash)
+                parts = line.split(":")
+                if len(parts) >= 2 and parts[0] and parts[1]:
+                    found[parts[0]] = parts[1]
+            with open(CRACKED_FILE, "w", encoding="utf-8") as f:
+                json.dump(found, f)
     except Exception:
-        pass
+        error = "crack failed"
     finally:
         with _lock:
             crack_state["running"] = False
             crack_state["done"] = True
+            crack_state["found"] = len(found)
+            crack_state["error"] = error
 
 
 def crack():
@@ -214,5 +233,8 @@ def crack():
             return False
         crack_state["running"] = True
         crack_state["done"] = False
+        crack_state["found"] = 0
+        crack_state["error"] = None
+        crack_state["started"] = int(time.time())
     threading.Thread(target=_crack_worker, args=(lines,), daemon=True).start()
     return True

@@ -154,6 +154,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark dnsmasq hostapd \
     john hcxtools nmap python3-netifaces python3-aioquic qtbase5-dev qt5-qmake libssl-dev \
+    zlib1g-dev libbz2-dev libgmp-dev \
     chromium curl unzip xserver-xorg xinit xserver-xorg-legacy \
     xserver-xorg-video-fbdev xserver-xorg-input-evdev
 
@@ -349,10 +350,10 @@ if [ ! -f /usr/share/wordlists/probable-wpa-top4800.txt ]; then
         https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt
 fi
 
-# --- 9b. Mole: drop-box credential capture (Responder) ---
-# Responder isn't packaged on Raspberry Pi OS (it's a Kali package), so install
-# it from source (python3-netifaces, its runtime dependency, comes from apt above,
-# along with john, nmap and hcxtools used by Mole).
+# --- 9b. Mole: drop-box credential capture (Responder + John jumbo) ---
+# Responder isn't packaged on Raspberry Pi OS (it's a Kali package), so install it
+# from source (its runtime deps python3-netifaces and python3-aioquic come from apt
+# above, along with nmap and hcxtools used by Mole).
 echo "==> Setting up Mole (Responder)..."
 if [ ! -d /opt/Responder/.git ]; then
     sudo rm -rf /opt/Responder
@@ -361,6 +362,21 @@ fi
 sudo git -C /opt/Responder fetch --quiet --depth=1 origin "$RESPONDER_REF"
 sudo git -C /opt/Responder checkout --quiet --detach --force FETCH_HEAD
 sudo chmod -R a+rX /opt/Responder
+
+# John the Ripper "jumbo": the Debian 'john' package lacks the netntlmv2 format
+# Mole needs to crack captured Windows hashes, so build the jumbo edition from
+# source to /opt/john (binary at /opt/john/run/john).
+echo "==> Building John the Ripper (jumbo) for Mole (long)..."
+if [ ! -x /opt/john/run/john ]; then
+    if [ ! -d /opt/john/.git ]; then
+        sudo rm -rf /opt/john
+        sudo git clone --no-checkout "$JOHN_REPOSITORY" /opt/john
+    fi
+    sudo git -C /opt/john fetch --quiet --depth=1 origin "$JOHN_REF"
+    sudo git -C /opt/john checkout --quiet --detach --force FETCH_HEAD
+    ( cd /opt/john/src && sudo ./configure && sudo make -s -j"$(nproc)" )
+fi
+sudo chmod -R a+rX /opt/john
 
 # --- 10. Automatic Wi-Fi reconnection (nomadic use) ---
 echo "==> Setting up automatic Wi-Fi reconnection..."
