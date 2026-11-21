@@ -449,8 +449,15 @@
         }
         if (navL) navL.classList.toggle('hidden', idx <= 0);
         if (navR) navR.classList.toggle('hidden', idx >= pages.length - 1);
+        try { sessionStorage.setItem('fennec_home_page', String(idx)); } catch (e) {}
       }
       pager.addEventListener('scroll', sync, { passive: true });
+      // Restore the page the user was on, so Back from a module returns here
+      // instead of jumping to the first page.
+      var saved = 0;
+      try { saved = parseInt(sessionStorage.getItem('fennec_home_page') || '0', 10) || 0; } catch (e) {}
+      saved = Math.max(0, Math.min(pages.length - 1, saved));
+      if (saved > 0) pager.scrollLeft = saved * pager.clientWidth;
       sync();
     })();
   </script>
