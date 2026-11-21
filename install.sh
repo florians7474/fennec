@@ -185,8 +185,16 @@ clone_pinned "Pwnagotchi" "$PWNAGOTCHI_REPOSITORY" "$PWNAGOTCHI_REF" "$USER_HOME
 sed -i 's/\.pcapng/.pcap/' "$USER_HOME/pwnagotchi-src/pwnagotchi/plugins/default/gps.py"
 
 echo "==> Installing Pwnagotchi into the venv (long)..."
-"$VENV/bin/pip" install --prefer-binary "$USER_HOME/pwnagotchi-src"
-"$VENV/bin/pip" install python-prctl
+# Install Pwnagotchi WITHOUT its reinforcement-learning stack (torch, torchvision,
+# stable_baselines3, shimmy) — ~2.5 GB of CUDA wheels that are useless on the Pi.
+# The AI is disabled in config.toml and ai.load() returns before importing them,
+# so they are never needed. Install the package with --no-deps, then its runtime
+# dependencies minus the AI ones (their own sub-dependencies are pulled normally).
+"$VENV/bin/pip" install --prefer-binary --no-deps "$USER_HOME/pwnagotchi-src"
+"$VENV/bin/pip" install --prefer-binary \
+    Pillow PyYAML rpi.lgpio dbus-python file-read-backwards flask flask-cors \
+    flask-wtf gast gpiozero inky pycryptodome pydrive2 python-dateutil requests \
+    rpi_hardware_pwm scapy smbus2 spidev toml tweepy websockets python-prctl
 
 # --- 3. Build pwngrid ---
 if [ ! -f /usr/local/bin/pwngrid ]; then

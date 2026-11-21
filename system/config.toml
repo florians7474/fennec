@@ -5,6 +5,13 @@ name = "fennec"
 lang = "en"
 iface = "wlan1"
 
+# AI brain off: it is unused here, it crashes with current
+# stable-baselines3/gymnasium, and keeping it off lets the install skip its
+# torch/CUDA stack. ai.load() returns before importing those, so capture is
+# unaffected.
+[ai]
+enabled = false
+
 [main.plugins.grid]
 enabled = false
 report = false
