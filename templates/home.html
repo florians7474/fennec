@@ -270,12 +270,6 @@
   <div id="lockscr" class="lock-overlay">
     <div class="lock-art">
       <img src="/static/fennec_lock.png" class="mascot" alt="">
-      <svg class="wifi" viewBox="0 0 126 104" xmlns="http://www.w3.org/2000/svg">
-        <path id="d3" class="seg" d="M8 30.3 A79 79 0 0 1 118 30.3"/>
-        <path id="d2" class="seg" d="M24 48.2 A55 55 0 0 1 102 48.2"/>
-        <path id="d1" class="seg" d="M40 66.2 A31 31 0 0 1 86 66.2"/>
-        <circle id="d0" class="dot" cx="63" cy="87" r="9"/>
-      </svg>
     </div>
     <div class="lock-slide">
       <button class="lock-hold" id="lockhold">
@@ -310,7 +304,8 @@
       var step = 0, timer = null;
       function paint() {
         for (var i = 0; i < segs.length; i++) {
-          document.getElementById(segs[i]).classList.toggle('on', i < step);
+          var el = document.getElementById(segs[i]);
+          if (el) el.classList.toggle('on', i < step);
         }
         step = (step + 1) % (segs.length + 1);
       }
@@ -321,9 +316,11 @@
         document.getElementById('pwrdlg').style.display = 'none';
         reset();
         overlay.style.display = 'flex';
-        step = 0; paint();
         if (timer) clearInterval(timer);
-        timer = setInterval(paint, 450);
+        if (document.getElementById('d0')) {
+          step = 0; paint();
+          timer = setInterval(paint, 450);
+        }
       };
       function unlock() {
         if (timer) { clearInterval(timer); timer = null; }
