@@ -5,12 +5,6 @@ name = "fennec"
 lang = "en"
 iface = "wlan1"
 
-# The RL "AI" brain is disabled: it pulls torch/CUDA (useless on the Pi) and the
-# current stable-baselines3/gymnasium break its Environment.reset() call. Capture
-# runs fine without it.
-[ai]
-enabled = false
-
 [main.plugins.grid]
 enabled = false
 report = false
