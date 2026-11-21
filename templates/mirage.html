@@ -109,8 +109,8 @@
 
       <div class="clients" style="margin-top:10px;">
         <div class="clients-head">Handshake for Sly</div>
-        <div class="cempty" id="hsstate">Not captured yet.</div>
-        <div class="cempty" id="hshint">Run deauth to force a reconnection, then crack it in Sly.</div>
+        <div class="cempty" id="hsstate">No handshake yet.</div>
+        <div class="cempty" id="hshint">Run deauth to force a reconnection and capture one.</div>
       </div>
 
       <div class="listtitle">Allowed networks</div>
@@ -203,11 +203,11 @@
           .then(function (r) { return r.json(); })
           .then(function (d) {
             if (d.captured) {
-              state.textContent = 'Captured — ready to crack in Sly.';
+              state.textContent = 'Handshake available — crack it in Sly.';
               state.style.color = '#2ea043';
               if (hint) hint.style.display = 'none';
             } else {
-              state.textContent = 'Not captured yet.';
+              state.textContent = 'No handshake yet.';
               state.style.color = '';
               if (hint) hint.style.display = 'block';
             }
