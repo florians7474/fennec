@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wi-Fi Gare</title>
+  <style>
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:24px; font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#eaf1f7; color:#16222e;
+    }
+    .card {
+      width:min(100%, 380px); background:#ffffff; border:1px solid #cddbe8;
+      border-radius:14px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    .card::before{content:'';display:block;height:4px;border-radius:4px;background:#0a5bd3;margin:-8px 0 16px}
+    .brand { text-align:center; margin-bottom:20px; }
+    .brand h1 { margin:0 0 6px; font-size:22px; }
+    .brand p { margin:0; color:#5a6b7a; font-size:14px; line-height:1.45; }
+    label { display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+    input {
+      width:100%; min-height:44px; padding:10px 12px; border:1px solid #cddbe8;
+      border-radius:9px; background:#ffffff; color:#16222e; font-size:16px; outline:none;
+    }
+    input:focus { border-color:#0a5bd3; box-shadow:0 0 0 3px rgba(10,91,211,.18); }
+    button {
+      width:100%; min-height:46px; margin-top:18px; border:0; border-radius:9px;
+      background:#0a5bd3; color:#ffffff; font-size:15px; font-weight:700; cursor:pointer;
+    }
+    .note { margin:14px 0 0; text-align:center; color:#5a6b7a; font-size:11px; line-height:1.4; }
+    .err { display:none; margin:0 0 14px; padding:10px 12px; border-radius:9px;
+           background:#fdecea; border:1px solid #f2b8b5; color:#9b1c17; font-size:13px; text-align:center; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <h1>Wi-Fi gratuit</h1>
+      <p>Connectez-vous au réseau de la gare. Saisissez le mot de passe d'accès pour continuer.</p>
+    </div>
+    <div class="err" id="err">Mot de passe incorrect. Veuillez réessayer.</div>
+    <!-- Submit the form to the portal server using POST. -->
+    <form id="login-form" action="/" method="POST" autocomplete="off">
+      <label for="password">Mot de passe d'accès</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required>
+      <button type="submit">Se connecter</button>
+    </form>
+  </main>
+  <script>
+    if (location.search.indexOf('error=1') !== -1) {
+      document.getElementById('err').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

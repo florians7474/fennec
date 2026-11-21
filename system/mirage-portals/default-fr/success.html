@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion établie</title>
+  <style>
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:24px; font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#f3f5f7; color:#1f2933;
+    }
+    .card {
+      width:min(100%,380px); background:#ffffff; border:1px solid #d8dee4;
+      border-radius:14px; padding:28px 24px; text-align:center;
+      box-shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    .check {
+      width:52px; height:52px; margin:0 auto 16px; display:grid; place-items:center;
+      border-radius:50%; background:#e5f4eb; color:#237a45; font-size:28px; font-weight:700;
+    }
+    h1 { margin:0 0 8px; font-size:22px; }
+    p { margin:0; color:#68737d; font-size:14px; line-height:1.5; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="check" aria-hidden="true">&#10003;</div>
+    <h1>Connexion établie</h1>
+    <p>Vous pouvez revenir à votre navigateur.</p>
+  </main>
+</body>
+</html>

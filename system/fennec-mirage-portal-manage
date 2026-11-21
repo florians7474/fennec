@@ -6,6 +6,7 @@ uploaded ZIP to a fixed /tmp path; this script validates and installs it.
 """
 import json
 import os
+import re
 import shutil
 import stat
 import sys
@@ -15,9 +16,11 @@ from pathlib import Path, PurePosixPath
 BASE = Path("/opt/fennec-mirage")
 PORTAL = BASE / "portal"
 DEFAULT = BASE / "default-portal"
+LIBRARY = BASE / "portals"
 UPLOAD = Path("/tmp/fennec-mirage-portal-upload.zip")
 STAGING = BASE / ".portal-staging"
 META = BASE / "portal.json"
+SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 
 MAX_FILES = 250
 MAX_TOTAL = 20 * 1024 * 1024
@@ -44,10 +47,44 @@ def safe_member(info):
     return p
 
 
-def write_meta(label, kind):
+def write_meta(label, kind, slug=None):
     BASE.mkdir(parents=True, exist_ok=True)
-    META.write_text(json.dumps({"label": label, "kind": kind}), encoding="utf-8")
+    data = {"label": label, "kind": kind}
+    if slug:
+        data["slug"] = slug
+    META.write_text(json.dumps(data), encoding="utf-8")
     os.chmod(META, 0o644)
+
+
+def swap_in(source):
+    """Atomically replace the active portal with a copy of `source`."""
+    incoming = BASE / ".portal-new"
+    backup = BASE / ".portal-backup"
+    shutil.rmtree(incoming, ignore_errors=True)
+    shutil.rmtree(backup, ignore_errors=True)
+    shutil.copytree(source, incoming)
+    try:
+        if PORTAL.exists():
+            PORTAL.rename(backup)
+        incoming.rename(PORTAL)
+        shutil.rmtree(backup, ignore_errors=True)
+    except Exception:
+        if not PORTAL.exists() and backup.exists():
+            backup.rename(PORTAL)
+        raise
+    finally:
+        shutil.rmtree(incoming, ignore_errors=True)
+
+
+def apply_builtin(slug):
+    if not SLUG_RE.match(slug):
+        fail("Invalid portal name.")
+    source = LIBRARY / slug
+    if not (source / "index.html").is_file():
+        fail("Unknown portal: " + slug)
+    BASE.mkdir(parents=True, exist_ok=True)
+    swap_in(source)
+    write_meta(slug, "builtin", slug)
 
 
 def install():
@@ -140,7 +177,12 @@ def reset():
     write_meta("Default portal", "default")
 
 
-if len(sys.argv) != 2 or sys.argv[1] not in {"install", "reset"}:
-    fail("Usage: fennec-mirage-portal-manage install|reset")
-
-install() if sys.argv[1] == "install" else reset()
+args = sys.argv[1:]
+if len(args) == 1 and args[0] == "install":
+    install()
+elif len(args) == 1 and args[0] == "reset":
+    reset()
+elif len(args) == 2 and args[0] == "apply":
+    apply_builtin(args[1])
+else:
+    fail("Usage: fennec-mirage-portal-manage install|reset|apply <slug>")

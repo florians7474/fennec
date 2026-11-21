@@ -240,6 +240,11 @@ sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
 sudo rm -rf /opt/fennec-mirage/default-portal/*
 sudo cp -a "$SYS/mirage-portal/." /opt/fennec-mirage/default-portal/
+
+# Mirage portal library: built-in themes the user can apply in one tap.
+sudo mkdir -p /opt/fennec-mirage/portals
+sudo rm -rf /opt/fennec-mirage/portals/*
+sudo cp -a "$SYS/mirage-portals/." /opt/fennec-mirage/portals/
 if [ ! -f /opt/fennec-mirage/portal/index.html ]; then
     sudo cp -a /opt/fennec-mirage/default-portal/. /opt/fennec-mirage/portal/
     echo '{"label":"Default portal","kind":"default"}' | sudo tee /opt/fennec-mirage/portal.json > /dev/null

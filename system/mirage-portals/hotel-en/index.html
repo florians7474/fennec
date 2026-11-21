@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guest Wi-Fi</title>
+  <style>
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:24px; font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#f3ede1; color:#2a2320;
+    }
+    .card {
+      width:min(100%, 380px); background:#fffdf9; border:1px solid #e3d7c2;
+      border-radius:14px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    .card::before{content:'';display:block;height:4px;border-radius:4px;background:#b8893b;margin:-8px 0 16px}
+    .brand { text-align:center; margin-bottom:20px; }
+    .brand h1 { margin:0 0 6px; font-size:22px; }
+    .brand p { margin:0; color:#7a6f61; font-size:14px; line-height:1.45; }
+    label { display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+    input {
+      width:100%; min-height:44px; padding:10px 12px; border:1px solid #e3d7c2;
+      border-radius:9px; background:#fffdf9; color:#2a2320; font-size:16px; outline:none;
+    }
+    input:focus { border-color:#b8893b; box-shadow:0 0 0 3px rgba(184,137,59,.22); }
+    button {
+      width:100%; min-height:46px; margin-top:18px; border:0; border-radius:9px;
+      background:#1b2a4a; color:#ffffff; font-size:15px; font-weight:700; cursor:pointer;
+    }
+    .note { margin:14px 0 0; text-align:center; color:#7a6f61; font-size:11px; line-height:1.4; }
+    .err { display:none; margin:0 0 14px; padding:10px 12px; border-radius:9px;
+           background:#fdecea; border:1px solid #f2b8b5; color:#9b1c17; font-size:13px; text-align:center; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <h1>Welcome</h1>
+      <p>Connect to the hotel Wi-Fi. Enter the password shown in your room.</p>
+    </div>
+    <div class="err" id="err">Incorrect password. Please try again.</div>
+    <!-- Submit the form to the portal server using POST. -->
+    <form id="login-form" action="/" method="POST" autocomplete="off">
+      <label for="password">Wi-Fi password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required>
+      <button type="submit">Connect</button>
+    </form>
+  </main>
+  <script>
+    if (location.search.indexOf('error=1') !== -1) {
+      document.getElementById('err').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

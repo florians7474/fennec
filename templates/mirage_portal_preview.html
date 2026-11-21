@@ -18,6 +18,6 @@
     <div class="title">{{ portal.label }}</div>
     <div class="safe">safe preview</div>
   </div>
-  <iframe sandbox src="/mirage/portal/content/index.html" title="Portal preview"></iframe>
+  <iframe sandbox src="{{ preview_src or '/mirage/portal/content/index.html' }}" title="Portal preview"></iframe>
 </body>
 </html>

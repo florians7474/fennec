@@ -16,16 +16,24 @@
     .row{display:flex;align-items:center;gap:10px}.grow{flex:1;min-width:0}
     .name{font-weight:700;font-size:14px}.meta{font-size:11px;color:#8b949e;margin-top:3px}
     .btn{border:0;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;cursor:pointer}
+    .btn.sm{padding:7px 10px;font-size:11px}
     .pink{background:#f0689b;color:#2a0a18}.dark{background:#30363d;color:#e6edf3;border:1px solid #586069}.danger{background:#da3633;color:white}
     .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-    .upload{display:block;margin-top:8px}.upload input{width:100%;font-size:12px;color:#8b949e}
-    .hint{font-size:11px;line-height:1.45;color:#8b949e;margin-top:8px}
-    .msg{font-size:11px;padding:8px 10px;border-radius:8px;margin-bottom:10px;background:#10231a;color:#3fb950}
-    .err{background:#2b1114;color:#ff7b72}.locked{color:#d29922;font-size:11px;margin-top:8px}
+    .upload{display:block;margin-top:4px}
     .filepick{display:flex;align-items:center;gap:10px;margin-top:4px;cursor:pointer}
     .filepick input{display:none}
     .filebtn{background:#30363d;border:1px solid #586069;color:#e6edf3;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;flex:0 0 auto}
     .fname{font-size:12px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .hint{font-size:11px;line-height:1.45;color:#8b949e;margin-top:8px}
+    .msg{font-size:11px;padding:8px 10px;border-radius:8px;margin-bottom:10px;background:#10231a;color:#3fb950}
+    .err{background:#2b1114;color:#ff7b72}.locked{color:#d29922;font-size:11px;margin-top:8px}
+    .lib{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;background:#161b22;border:1px solid #30363d;border-radius:10px}
+    .lib.on{border-color:#f0689b}
+    .lib .btns{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+    .badge{display:inline-block;font-size:10px;font-weight:700;color:#8b949e;border:1px solid #30363d;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+    .active-tag{font-size:11px;font-weight:700;color:#f0689b;padding:7px 2px}
+    .na{font-size:11px;color:#8b949e;padding:7px 2px}
+    form.inline{display:inline}
   </style>
 </head>
 <body>
@@ -48,7 +56,39 @@
         <a class="btn dark" href="/mirage/portal/preview">Preview</a>
       </div>
       {% if active %}
-        <div class="locked">Stop Mirage before replacing the portal.</div>
+        <div class="locked">Stop Mirage before changing the portal.</div>
+      {% endif %}
+    </div>
+
+    <div class="label">Portal library</div>
+    {% for item in library %}
+      <div class="lib {{ 'on' if item.active }}">
+        <div class="grow">
+          <span class="name">{{ item.name }}</span><span class="badge">{{ item.lang }}</span>
+        </div>
+        <div class="btns">
+          {% if item.available %}
+            <a class="btn dark sm" href="/mirage/portal/preview/{{ item.slug }}">Preview</a>
+            {% if item.active %}
+              <span class="active-tag">Active</span>
+            {% elif active %}
+              <span class="na">locked</span>
+            {% else %}
+              <form class="inline" action="/mirage/portal/apply/{{ item.slug }}" method="post">
+                <button class="btn pink sm" type="submit">Use</button>
+              </form>
+            {% endif %}
+          {% else %}
+            <span class="na">not installed</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="label">Custom portal</div>
+    <div class="card">
+      {% if active %}
+        <div class="locked">Stop Mirage before uploading a custom portal.</div>
       {% else %}
         <form class="upload" action="/mirage/portal/upload" method="post" enctype="multipart/form-data">
           <label class="filepick">
@@ -63,21 +103,6 @@
         </form>
         <div class="hint">Upload a ZIP containing index.html and its static assets. Best managed from a desktop browser.</div>
       {% endif %}
-    </div>
-
-    <div class="label">Default</div>
-    <div class="card">
-      <div class="row">
-        <div class="grow">
-          <div class="name">Fennec placeholder</div>
-          <div class="meta">Restore the portal shipped with Mirage.</div>
-        </div>
-        {% if not active and portal.kind != 'default' %}
-        <form action="/mirage/portal/reset" method="post">
-          <button class="btn danger" type="submit">Restore</button>
-        </form>
-        {% endif %}
-      </div>
     </div>
   </div>
 </body>

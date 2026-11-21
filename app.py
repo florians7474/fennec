@@ -34,6 +34,22 @@ MIRAGE_PORTAL_DIR = "/opt/fennec-mirage/portal"
 MIRAGE_PORTAL_META = "/opt/fennec-mirage/portal.json"
 MIRAGE_PORTAL_UPLOAD = "/tmp/fennec-mirage-portal-upload.zip"
 MIRAGE_PORTAL_MAX_UPLOAD = 20 * 1024 * 1024
+MIRAGE_PORTAL_LIBRARY = "/opt/fennec-mirage/portals"
+
+# Built-in portal themes shipped with Mirage. Each one changes only the copy and
+# the look of the captive page; the form (POST / with a `password` field) and the
+# capture backend are identical across all of them.
+MIRAGE_PORTAL_CATALOG = [
+    {"slug": "default-en", "name": "Default", "lang": "EN"},
+    {"slug": "default-fr", "name": "Default", "lang": "FR"},
+    {"slug": "hotel-en", "name": "Hotel", "lang": "EN"},
+    {"slug": "hotel-fr", "name": "Hotel", "lang": "FR"},
+    {"slug": "station-en", "name": "Station", "lang": "EN"},
+    {"slug": "station-fr", "name": "Station", "lang": "FR"},
+]
+MIRAGE_PORTAL_LABELS = {
+    p["slug"]: "%s (%s)" % (p["name"], p["lang"]) for p in MIRAGE_PORTAL_CATALOG
+}
 WHITELIST_FILE = os.path.join(BASE, "whitelist.json")
 MINE_FILE = os.path.join(BASE, "my_devices.json")
 SCAN_FILE  = os.path.join(BASE, "scan_cache.json")
@@ -1055,6 +1071,9 @@ def mirage_portal_info():
     installed = os.path.isfile(os.path.join(MIRAGE_PORTAL_DIR, "index.html"))
     kind = meta.get("kind") if isinstance(meta, dict) else None
     label = meta.get("label") if isinstance(meta, dict) else None
+    slug = meta.get("slug") if isinstance(meta, dict) else None
+    if kind == "builtin" and slug in MIRAGE_PORTAL_LABELS:
+        label = MIRAGE_PORTAL_LABELS[slug]
     if not label:
         label = "Default portal" if installed else "Portal not installed"
     if not kind:
@@ -1062,6 +1081,7 @@ def mirage_portal_info():
     return {
         "label": label,
         "kind": kind,
+        "slug": slug,
         "files": count,
         "bytes": total,
         "size": _human_bytes(total),
@@ -1069,15 +1089,52 @@ def mirage_portal_info():
     }
 
 
+def mirage_portal_catalog(active_slug=None):
+    """Built-in themes with on-disk availability and which one is active."""
+    items = []
+    for p in MIRAGE_PORTAL_CATALOG:
+        index = os.path.join(MIRAGE_PORTAL_LIBRARY, p["slug"], "index.html")
+        items.append({
+            "slug": p["slug"],
+            "name": p["name"],
+            "lang": p["lang"],
+            "available": os.path.isfile(index),
+            "active": p["slug"] == active_slug,
+        })
+    return items
+
+
 @app.route("/mirage/portal")
 def mirage_portal_page():
+    portal = mirage_portal_info()
     return render_template(
         "mirage_portal.html",
-        portal=mirage_portal_info(),
+        portal=portal,
+        library=mirage_portal_catalog(portal.get("slug")),
         active=is_active("fennec-mirage"),
         ok=request.args.get("ok"),
         err=request.args.get("err"),
     )
+
+
+@app.route("/mirage/portal/apply/<slug>", methods=["POST"])
+def mirage_portal_apply(slug):
+    if is_active("fennec-mirage"):
+        return redirect(url_for("mirage_portal_page",
+                                err="Stop Mirage before changing the portal."))
+    if slug not in MIRAGE_PORTAL_LABELS:
+        return redirect(url_for("mirage_portal_page", err="Unknown portal."))
+    try:
+        res = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-mirage-portal-manage", "apply", slug],
+            capture_output=True, text=True, timeout=30)
+        if res.returncode != 0:
+            msg = (res.stderr or res.stdout or "Could not apply portal.").strip()
+            return redirect(url_for("mirage_portal_page", err=msg[:180]))
+    except Exception as exc:
+        return redirect(url_for("mirage_portal_page", err=str(exc)[:180]))
+    return redirect(url_for("mirage_portal_page",
+                            ok="Portal set to " + MIRAGE_PORTAL_LABELS[slug] + "."))
 
 
 @app.route("/mirage/portal/upload", methods=["POST"])
@@ -1147,6 +1204,37 @@ def mirage_portal_content(relpath="index.html"):
     if not mirage_portal_info()["installed"]:
         abort(404)
     response = send_from_directory(MIRAGE_PORTAL_DIR, relpath)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self' data:; "
+        "script-src 'none'; connect-src 'none'; form-action 'none'; "
+        "object-src 'none'; base-uri 'none'; frame-ancestors 'self';"
+    )
+    return response
+
+
+@app.route("/mirage/portal/preview/<slug>")
+def mirage_portal_preview_builtin(slug):
+    if slug not in MIRAGE_PORTAL_LABELS:
+        abort(404)
+    return render_template(
+        "mirage_portal_preview.html",
+        portal={"label": MIRAGE_PORTAL_LABELS[slug]},
+        preview_src="/mirage/portal/library/" + slug + "/index.html",
+    )
+
+
+@app.route("/mirage/portal/library/<slug>/")
+@app.route("/mirage/portal/library/<slug>/<path:relpath>")
+def mirage_portal_library_content(slug, relpath="index.html"):
+    """Read-only preview of a built-in theme. Scripts and forms disabled by CSP."""
+    if slug not in MIRAGE_PORTAL_LABELS:
+        abort(404)
+    directory = os.path.join(MIRAGE_PORTAL_LIBRARY, slug)
+    if not os.path.isfile(os.path.join(directory, "index.html")):
+        abort(404)
+    response = send_from_directory(directory, relpath)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Content-Security-Policy"] = (
