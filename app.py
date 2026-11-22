@@ -151,11 +151,17 @@ def _require_pin():
     # The kiosk talks to itself on localhost: never ask the touchscreen for a PIN.
     if request.remote_addr in ("127.0.0.1", "::1"):
         return
-    # No PIN configured yet -> no remote protection (so you can't lock yourself out).
-    if not pin_is_set():
+    # Always let the static assets load (the locked pages use them).
+    if request.endpoint == "static":
         return
-    # Always let the unlock page, its check and the static assets load.
-    if request.endpoint in ("unlock", "static"):
+    # No PIN configured yet: remote access stays closed until a PIN is set on the
+    # touchscreen. Show the visitor where to set it instead of exposing the UI.
+    if not pin_is_set():
+        if request.method == "GET":
+            return render_template("needs_pin.html"), 403
+        abort(403)
+    # Always let the unlock page and its check load.
+    if request.endpoint == "unlock":
         return
     # Already unlocked for this browser session.
     if session.get("ok"):
