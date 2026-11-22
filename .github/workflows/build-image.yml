@@ -18,12 +18,18 @@ permissions:
 jobs:
   build:
     # arm-runner-action emulates the ARM image via qemu and must run on an x86
-    # host; it needs qemu-user-static, which installs cleanly on 22.04 (on 24.04
-    # the runner reports no installation candidate).
-    runs-on: ubuntu-22.04
+    # host. 24.04 ships e2fsprogs 1.47, which can resize the modern Pi OS ext4
+    # rootfs (22.04's 1.46.5 cannot, so the image never grows and apt runs out of
+    # space). qemu-user-static is pre-installed below.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install ARM emulation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binfmt-support
 
       - name: Build the Fennec image
         id: build
@@ -31,7 +37,7 @@ jobs:
         with:
           base_image: raspios_lite_arm64:latest
           # Headroom for the venvs, source builds and wordlists Fennec installs.
-          image_additional_mb: 6144
+          image_additional_mb: 7168
           optimize_image: true
           commands: |
             set -e
