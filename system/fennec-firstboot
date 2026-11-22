@@ -1,0 +1,23 @@
+#!/bin/bash
+# Fennec first-boot setup: generate per-device secrets.
+#
+# A pre-built Fennec disk image ships the Pwnagotchi config and caplet with the
+# __BETTERCAP_PASS__ placeholder still in place, so no bettercap password is
+# baked into the image. On the first boot this script replaces the placeholder in
+# both files with a single fresh random password. It is idempotent: once the
+# placeholder is gone it does nothing, so it is safe to run on every boot.
+set -e
+
+CONF=/etc/pwnagotchi/config.toml
+CAP=/etc/pwnagotchi/pwnagotchi-auto.cap
+PLACEHOLDER=__BETTERCAP_PASS__
+
+# Nothing to do if the config is missing or the password is already set.
+[ -f "$CONF" ] || exit 0
+grep -q "$PLACEHOLDER" "$CONF" || exit 0
+
+BC_PASS="$(openssl rand -hex 12)"
+sed -i "s/$PLACEHOLDER/$BC_PASS/" "$CONF"
+[ -f "$CAP" ] && sed -i "s/$PLACEHOLDER/$BC_PASS/" "$CAP"
+
+echo "fennec-firstboot: bettercap password generated for this device."

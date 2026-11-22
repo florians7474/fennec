@@ -1,0 +1,13 @@
+[Unit]
+Description=Fennec first-boot setup (per-device secrets)
+After=local-fs.target
+Before=fennec.service bettercap.service pwnagotchi.service
+ConditionPathExists=/etc/pwnagotchi/config.toml
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/fennec-firstboot
+
+[Install]
+WantedBy=multi-user.target

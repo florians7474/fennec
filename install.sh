@@ -204,17 +204,30 @@ if [ ! -f /usr/local/bin/pwngrid ]; then
     sudo cp "$USER_HOME/pwngrid-src/build/pwngrid" /usr/local/bin/
 fi
 
-# --- 4. Generated bettercap password ---
-BC_PASS="$(openssl rand -hex 12)"
-echo "==> bettercap password generated."
-
 # --- 5. Pwnagotchi config + caplet ---
+# The bettercap password is NOT generated here: the files keep the
+# __BETTERCAP_PASS__ placeholder and the fennec-firstboot service fills it with a
+# fresh per-device secret on first boot. That way a shared disk image never ships
+# a baked-in password (see step 6b and fennec-firstboot).
 echo "==> Setting up the Pwnagotchi config..."
 sudo mkdir -p /etc/pwnagotchi
-sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/config.toml" \
-    | sudo tee /etc/pwnagotchi/config.toml > /dev/null
-sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/pwnagotchi-auto.cap" \
-    | sudo tee /etc/pwnagotchi/pwnagotchi-auto.cap > /dev/null
+sudo cp "$SYS/config.toml" /etc/pwnagotchi/config.toml
+sudo cp "$SYS/pwnagotchi-auto.cap" /etc/pwnagotchi/pwnagotchi-auto.cap
+
+# --- 5b. First-boot secrets service ---
+# Generates per-device secrets (currently the bettercap password) the first time
+# the system boots, so a pre-built disk image carries no baked-in secret. The
+# service is idempotent: once the placeholder is filled it does nothing.
+echo "==> Installing the first-boot secrets service..."
+sudo cp "$SYS/fennec-firstboot" /usr/local/bin/fennec-firstboot
+sudo chmod +x /usr/local/bin/fennec-firstboot
+sudo cp "$SYS/fennec-firstboot.service" /etc/systemd/system/fennec-firstboot.service
+sudo systemctl daemon-reload
+sudo systemctl enable fennec-firstboot
+# Run it once now so a direct install is immediately functional (no reboot
+# needed to get the bettercap password). On a disk-image build this line is the
+# only thing to skip so the image keeps the placeholder.
+sudo systemctl start fennec-firstboot
 
 # --- 6. Launcher scripts ---
 echo "==> Installing the launcher scripts..."
