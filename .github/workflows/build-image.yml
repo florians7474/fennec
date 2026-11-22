@@ -67,6 +67,20 @@ jobs:
               HOME=/home/fennec \
               bash -lc 'cd ~/console && ./install.sh'
 
+            # Enable SSH (fennec/fennec) for remote access and troubleshooting.
+            systemctl enable ssh 2>/dev/null || true
+
+            # Diagnostics: dump the kiosk-related config into the build log.
+            echo "===== FENNEC IMAGE DIAGNOSTICS ====="
+            echo "-- default target --"; systemctl get-default 2>/dev/null || true
+            echo "-- getty autologin drop-in --"; cat /etc/systemd/system/getty@tty1.service.d/autologin.conf 2>/dev/null || echo "MISSING"
+            echo "-- .bash_profile kiosk block --"; grep -A14 "Fennec: start the kiosk" /home/fennec/.bash_profile 2>/dev/null || echo "MISSING"
+            echo "-- .xinitrc --"; cat /home/fennec/.xinitrc 2>/dev/null || echo "MISSING"
+            echo "-- packages --"; dpkg -l 2>/dev/null | grep -E "xserver-xorg-core|xinit |chromium|lightdm" || echo "none matched"
+            echo "-- config.txt overlay/spi --"; grep -iE "dtoverlay|dtparam=spi" /boot/firmware/config.txt /boot/config.txt 2>/dev/null || echo "none"
+            echo "-- X config dirs --"; ls -la /etc/X11/xorg.conf.d/ /usr/share/X11/xorg.conf.d/ 2>/dev/null || true
+            echo "===================================="
+
             # Skip Raspberry Pi OS's first-run user wizard: our fennec user exists.
             systemctl disable userconfig.service 2>/dev/null || true
             rm -f /etc/systemd/system/multi-user.target.wants/userconfig.service

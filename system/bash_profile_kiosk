@@ -1,5 +1,15 @@
 
 # --- Fennec: start the kiosk display on tty1 auto-login ---
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  exec startx -- vt1
+  startx -- vt1 >> "$HOME/kiosk.log" 2>&1
+  # startx returned: the kiosk failed to start or exited. Show why on screen and
+  # keep an interactive shell on tty1 instead of looping silently, so the error
+  # is visible and the console stays usable.
+  echo
+  echo "=== Fennec kiosk did not start ==="
+  echo "--- ~/kiosk.log (startx) ---"
+  tail -n 20 "$HOME/kiosk.log" 2>/dev/null
+  echo "--- Xorg.0.log ---"
+  tail -n 25 "$HOME/.local/share/xorg/Xorg.0.log" 2>/dev/null
+  echo "=================================="
 fi
