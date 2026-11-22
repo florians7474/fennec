@@ -81,6 +81,13 @@ select_display_profile() {
 configure_kiosk() {
     local xinit_source="$1"
 
+    # The kiosk boots to the console, auto-logs in on tty1 and runs startx (see
+    # the getty auto-login override and bash_profile below). Force console boot
+    # and remove any display manager, otherwise a desktop session owns the screen
+    # and the kiosk never starts (the system stops at graphical.target).
+    sudo systemctl set-default multi-user.target
+    sudo systemctl disable lightdm.service 2>/dev/null || true
+
     sudo cp "$SYS/Xwrapper.config" /etc/X11/Xwrapper.config
     sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
     sudo sed "s/__USER__/$USER_NAME/" "$SYS/getty-autologin.conf" \
