@@ -15,6 +15,10 @@ USER_NAME="$(whoami)"
 USER_HOME="$HOME"
 VENV="$USER_HOME/pwnagotchi-venv"
 DISPLAY_PROFILE="${FENNEC_DISPLAY:-}"
+# Image-build mode: when building a distributable disk image (in a chroot with no
+# running systemd), services are only enabled, never started, and the first-boot
+# secret generation is left for the device's real first boot.
+IMAGE_BUILD="${FENNEC_IMAGE_BUILD:-}"
 
 # The lock keeps fresh installations reproducible. Generated source folders are
 # checked out at their recorded commit on every installer run.
@@ -222,12 +226,14 @@ echo "==> Installing the first-boot secrets service..."
 sudo cp "$SYS/fennec-firstboot" /usr/local/bin/fennec-firstboot
 sudo chmod +x /usr/local/bin/fennec-firstboot
 sudo cp "$SYS/fennec-firstboot.service" /etc/systemd/system/fennec-firstboot.service
-sudo systemctl daemon-reload
+sudo systemctl daemon-reload || true
 sudo systemctl enable fennec-firstboot
 # Run it once now so a direct install is immediately functional (no reboot
-# needed to get the bettercap password). On a disk-image build this line is the
-# only thing to skip so the image keeps the placeholder.
-sudo systemctl start fennec-firstboot
+# needed to get the bettercap password). On a disk-image build this is skipped so
+# the image keeps the placeholder and each flashed card generates its own secret.
+if [ -z "$IMAGE_BUILD" ]; then
+    sudo systemctl start fennec-firstboot
+fi
 
 # --- 6. Launcher scripts ---
 echo "==> Installing the launcher scripts..."
@@ -284,7 +290,7 @@ sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo cp "$SYS/fennec-mirage-deauth.service" /etc/systemd/system/fennec-mirage-deauth.service
 sudo cp "$SYS/fennec-mole.service" /etc/systemd/system/fennec-mole.service
 sudo cp "$SYS/fennec-mole-relay.service" /etc/systemd/system/fennec-mole-relay.service
-sudo systemctl daemon-reload
+sudo systemctl daemon-reload || true
 
 # --- 8. sudoers rule (with user substitution) ---
 echo "==> Setting up Fennec's sudo rights..."
@@ -327,7 +333,7 @@ for svc in bjorn bjorn-console; do
     sudo sed "s#__HOME__#$USER_HOME#g" "$SYS/$svc.service" \
         | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
 done
-sudo systemctl daemon-reload
+sudo systemctl daemon-reload || true
 
 # --- 9. Raton: WPA cracking engine (routerkeygen + wordlists) ---
 echo "==> Setting up Raton (WPA cracking)..."
@@ -428,8 +434,13 @@ sudo systemctl reload NetworkManager || true
 echo "==> Installing the Fennec service..."
 sudo sed -e "s/__USER__/$USER_NAME/g" -e "s#__REPO__#$REPO#g" "$SYS/fennec.service" \
     | sudo tee /etc/systemd/system/fennec.service > /dev/null
-sudo systemctl daemon-reload
-sudo systemctl enable --now fennec
+sudo systemctl daemon-reload || true
+# Image build: enable only (the service starts on the device's first real boot).
+if [ -n "$IMAGE_BUILD" ]; then
+    sudo systemctl enable fennec
+else
+    sudo systemctl enable --now fennec
+fi
 
 # --- 12. Display profile ---
 case "$DISPLAY_PROFILE" in
@@ -446,7 +457,7 @@ case "$DISPLAY_PROFILE" in
         echo "==> Headless mode selected; skipping local kiosk configuration."
         ;;
 esac
-sudo systemctl daemon-reload
+sudo systemctl daemon-reload || true
 
 echo ""
 echo "==> Installation complete."

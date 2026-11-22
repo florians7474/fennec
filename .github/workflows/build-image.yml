@@ -1,0 +1,101 @@
+name: Build SD image
+
+# Builds a ready-to-flash Raspberry Pi OS image with Fennec pre-installed.
+# Runs on free arm64 hosted runners (public repos), so the source builds
+# (John jumbo, pwngrid, routerkeygen) compile without cross-emulation.
+# Triggered manually, or automatically on a version tag to attach the image
+# to the GitHub Release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the Fennec image
+        id: build
+        uses: pguyot/arm-runner-action@v2
+        with:
+          base_image: raspios_lite_arm64:latest
+          # Headroom for the venvs, source builds and wordlists Fennec installs.
+          image_additional_mb: 6144
+          optimize_image: true
+          commands: |
+            set -e
+            export DEBIAN_FRONTEND=noninteractive
+
+            # Canonical user: Fennec's services, sudoers and kiosk are wired to
+            # this name, so the image must ship with it.
+            if ! id fennec >/dev/null 2>&1; then
+              useradd -m -s /bin/bash fennec
+            fi
+            echo 'fennec:fennec' | chpasswd
+            for g in sudo gpio spi i2c netdev video plugdev dialout audio input render bluetooth; do
+              usermod -aG "$g" fennec 2>/dev/null || true
+            done
+
+            # Passwordless sudo for the build only (removed before packaging).
+            echo 'fennec ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/010-fennec-build
+
+            # Put the repo at ~/console (Fennec's reference path) and install it
+            # as fennec, in image mode (enable services, never start them; keep
+            # the bettercap placeholder for first-boot generation).
+            cp -a "$PWD" /home/fennec/console
+            chown -R fennec:fennec /home/fennec/console
+            sudo -u fennec env \
+              FENNEC_IMAGE_BUILD=1 \
+              FENNEC_DISPLAY=waveshare35c \
+              HOME=/home/fennec \
+              bash -lc 'cd ~/console && ./install.sh'
+
+            # Skip Raspberry Pi OS's first-run user wizard: our fennec user exists.
+            systemctl disable userconfig.service 2>/dev/null || true
+            rm -f /etc/systemd/system/multi-user.target.wants/userconfig.service
+
+            # Leave no secret or per-host state in the image.
+            rm -f /etc/sudoers.d/010-fennec-build
+            rm -f /home/fennec/console/whitelist.json \
+                  /home/fennec/console/scan_cache.json \
+                  /home/fennec/console/my_devices.json \
+                  /home/fennec/console/device_names.json \
+                  /home/fennec/console/traffic_history.json \
+                  /home/fennec/console/msf_config.json \
+                  /home/fennec/console/hugin_runs.json \
+                  /home/fennec/console/settings.json \
+                  /home/fennec/console/raton_verdicts.json \
+                  /home/fennec/console/events.json
+            rm -rf /home/fennec/console/tiles
+            rm -f /etc/ssh/ssh_host_*          # regenerated on first boot
+            : > /etc/machine-id || true
+            rm -f /var/lib/dbus/machine-id
+            rm -f /home/fennec/.bash_history /root/.bash_history
+            apt-get clean
+            rm -rf /var/lib/apt/lists/*
+
+      - name: Compress the image
+        run: |
+          IMG="${{ steps.build.outputs.image }}"
+          mv "$IMG" fennec.img
+          xz -T0 -9 fennec.img
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fennec-image
+          path: fennec.img.xz
+
+      - name: Attach image to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: fennec.img.xz
