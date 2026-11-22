@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fennec — Locked</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:#0d1117; color:#e6edf3;
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { height:100%; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; padding:24px; text-align:center; }
+  .logo { width:64px; height:64px; object-fit:contain; opacity:.9; }
+  .title { font-size:17px; font-weight:700; }
+  .sub { font-size:14px; color:#8b949e; max-width:340px; line-height:1.5; }
+  .step { font-size:14px; color:#e6edf3; }
+  .hl { color:#01F994; font-weight:600; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <img src="/static/fennec_lock.png" class="logo" alt="">
+    <div class="title">Remote access is locked</div>
+    <div class="sub">No PIN has been set yet, so Fennec is not reachable from the network.</div>
+    <div class="step">On the device's touchscreen, open the <span class="hl">Power</span> menu and tap <span class="hl">PIN code</span> to set one.</div>
+    <div class="sub">Once a PIN is set, reload this page and enter it to unlock access.</div>
+  </div>
+</body>
+</html>
