@@ -1,23 +1,41 @@
 #!/bin/bash
-# Fennec first-boot setup: generate per-device secrets.
+# Fennec boot-time setup. Runs on every boot (idempotent).
 #
-# A pre-built Fennec disk image ships the Pwnagotchi config and caplet with the
-# __BETTERCAP_PASS__ placeholder still in place, so no bettercap password is
-# baked into the image. On the first boot this script replaces the placeholder in
-# both files with a single fresh random password. It is idempotent: once the
-# placeholder is gone it does nothing, so it is safe to run on every boot.
+# 1. Point the X fbdev driver at the SPI/fbtft panel. Its framebuffer number is
+#    not fixed: with the KMS driver (required on Pi 5) /dev/fb0 is the HDMI/KMS
+#    output and the SPI panel is /dev/fb1, but on other setups it can be /dev/fb0.
+#    So the panel is detected by name (the one that is not the vc4/DRM device)
+#    and written into the Xorg config, instead of being hard-coded.
+# 2. On the very first boot, generate the per-device bettercap password (the
+#    image ships the __BETTERCAP_PASS__ placeholder so no secret is baked in).
 set -e
 
+LCD_CONF=/etc/X11/xorg.conf.d/99-fennec-lcd.conf
+
+# --- 1. Detect the SPI panel framebuffer and set it in the Xorg config ---
+if [ -f "$LCD_CONF" ]; then
+    lcd_fb=
+    for fb in /sys/class/graphics/fb*; do
+        [ -e "$fb/name" ] || continue
+        name=$(cat "$fb/name" 2>/dev/null || true)
+        case "$name" in
+            vc4*|*drm*|"") ;;                      # KMS/HDMI framebuffer, skip
+            *) lcd_fb="/dev/$(basename "$fb")" ;;  # SPI/fbtft panel
+        esac
+    done
+    if [ -n "$lcd_fb" ]; then
+        sed -i "s#\"fbdev\" \"/dev/fb[0-9]*\"#\"fbdev\" \"$lcd_fb\"#" "$LCD_CONF"
+        echo "fennec-firstboot: X fbdev panel set to $lcd_fb"
+    fi
+fi
+
+# --- 2. First-boot bettercap password ---
 CONF=/etc/pwnagotchi/config.toml
 CAP=/etc/pwnagotchi/pwnagotchi-auto.cap
 PLACEHOLDER=__BETTERCAP_PASS__
-
-# Nothing to do if the config is missing or the password is already set.
-[ -f "$CONF" ] || exit 0
-grep -q "$PLACEHOLDER" "$CONF" || exit 0
-
-BC_PASS="$(openssl rand -hex 12)"
-sed -i "s/$PLACEHOLDER/$BC_PASS/" "$CONF"
-[ -f "$CAP" ] && sed -i "s/$PLACEHOLDER/$BC_PASS/" "$CAP"
-
-echo "fennec-firstboot: bettercap password generated for this device."
+if [ -f "$CONF" ] && grep -q "$PLACEHOLDER" "$CONF"; then
+    bc_pass="$(openssl rand -hex 12)"
+    sed -i "s/$PLACEHOLDER/$bc_pass/" "$CONF"
+    [ -f "$CAP" ] && sed -i "s/$PLACEHOLDER/$bc_pass/" "$CAP"
+    echo "fennec-firstboot: bettercap password generated for this device."
+fi
