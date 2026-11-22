@@ -902,7 +902,7 @@ def home():
     echo_count = f"{n / 1000:.1f}k" if n >= 1000 else str(n)
     return render_template("home.html", active=active_mode,
                            connection=connection_state(), echo_count=echo_count,
-                           crashed=refresh_crashed())
+                           crashed=refresh_crashed(), local=_is_local())
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
@@ -2469,9 +2469,7 @@ def pin_clear():
 
 @app.route("/pin")
 def pin_page():
-    if not _is_local():
-        abort(403)
-    return render_template("pin.html", pin_set=pin_is_set())
+    return render_template("pin.html", pin_set=pin_is_set(), local=_is_local())
 
 
 MODULE_COLOR = {"pwnagotchi": "#19e38c", "bjorn": "#6f9bc8", "mirage": "#f0689b",

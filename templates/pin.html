@@ -28,6 +28,11 @@
 </head>
 <body>
   <div class="wrap">
+  {% if not local %}
+    <div class="title">PIN setup is on the device only</div>
+    <div class="sub">The PIN can only be set or changed from Fennec's touchscreen, never over the network.</div>
+    <button class="link" onclick="location.href='/'">Back</button>
+  {% else %}
     <div class="title" id="title">{% if pin_set %}Change PIN{% else %}Set a PIN{% endif %}</div>
     <div class="sub">Protects remote access only</div>
     <div class="dots" id="dots"></div>
@@ -35,7 +40,9 @@
     <div class="pad" id="pad"></div>
     {% if pin_set %}<button class="link danger" onclick="removePin()">Remove PIN</button>{% endif %}
     <button class="link" onclick="location.href='/'">Cancel</button>
+  {% endif %}
   </div>
+{% if local %}
 <script>
   var pin = "", busy = false;
   var dots = document.getElementById('dots');
@@ -73,5 +80,6 @@
   }
   draw();
 </script>
+{% endif %}
 </body>
 </html>

@@ -256,7 +256,7 @@
         <button class="pwr-act pwr-rotate" onclick="rotateScreen(this)">Rotate screen</button>
       </div>
       <div class="pwr-btns">
-        <button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>
+        {% if local %}<button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>{% endif %}
         <button class="pwr-act pwr-logs" onclick="location.href='/journal'">Logs</button>
       </div>
       <div class="pwr-btns">
