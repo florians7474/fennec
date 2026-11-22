@@ -71,6 +71,13 @@ jobs:
             systemctl disable userconfig.service 2>/dev/null || true
             rm -f /etc/systemd/system/multi-user.target.wants/userconfig.service
 
+            # Remove cloud-init: on a card with no network configured at flash
+            # time it stalls the first boot waiting for a datasource, so the kiosk
+            # never starts. Fennec configures the network itself from its UI.
+            apt-get purge -y cloud-init 2>/dev/null || true
+            rm -rf /etc/cloud /var/lib/cloud
+            systemctl disable cloud-init cloud-init-local cloud-config cloud-final 2>/dev/null || true
+
             # Leave no secret or per-host state in the image.
             rm -f /etc/sudoers.d/010-fennec-build
             rm -f /home/fennec/console/whitelist.json \
