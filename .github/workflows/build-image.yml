@@ -17,7 +17,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    # arm-runner-action emulates the ARM image via qemu and must run on an x86
+    # host: on an arm64 runner its binfmt setup breaks native binary execution.
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
