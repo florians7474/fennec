@@ -18,8 +18,9 @@ permissions:
 jobs:
   build:
     # arm-runner-action emulates the ARM image via qemu and must run on an x86
-    # host: on an arm64 runner its binfmt setup breaks native binary execution.
-    runs-on: ubuntu-latest
+    # host; it needs qemu-user-static, which installs cleanly on 22.04 (on 24.04
+    # the runner reports no installation candidate).
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
