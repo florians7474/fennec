@@ -110,16 +110,11 @@ def save_settings(data):
 # ---------- Remote-access PIN (the touchscreen on localhost is always exempt) ----------
 import hashlib, hmac, secrets
 
-def _secret_key():
-    s = load_settings()
-    k = s.get("secret_key")
-    if not k:
-        k = secrets.token_hex(32)
-        s["secret_key"] = k
-        save_settings(s)
-    return k
-
-app.secret_key = _secret_key()
+# A fresh session key is generated on every start, so each Fennec reboot (or
+# service restart) invalidates all existing web sessions: a remote browser is
+# always asked for the PIN again after a power cycle. The local touchscreen is
+# exempt from the PIN, so this never affects the kiosk.
+app.secret_key = secrets.token_hex(32)
 
 def pin_is_set():
     return bool(load_settings().get("pin_hash"))
