@@ -37,7 +37,42 @@ if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
     systemctl restart ssh 2>/dev/null || true
 fi
 
-# --- 3. First-boot bettercap password ---
+# --- 3. Wi-Fi from a boot-partition file (set up with no keyboard) ---
+# Drop a file named fennec-wifi.txt on the boot partition (the small drive Windows
+# shows after flashing) with the network name on line 1 and the password on
+# line 2. The Pi then joins that Wi-Fi on every boot, so SSH works with no cable.
+for wf in /boot/firmware/fennec-wifi.txt /boot/fennec-wifi.txt; do
+    [ -f "$wf" ] || continue
+    ssid=$(sed -n '1p' "$wf" | tr -d '\r')
+    psk=$(sed -n '2p' "$wf" | tr -d '\r')
+    [ -n "$ssid" ] || continue
+    raspi-config nonint do_wifi_country FR 2>/dev/null || true
+    rfkill unblock wifi 2>/dev/null || true
+    nmfile=/etc/NetworkManager/system-connections/fennec-wifi.nmconnection
+    cat > "$nmfile" <<EOF
+[connection]
+id=fennec-wifi
+type=wifi
+autoconnect=true
+[wifi]
+mode=infrastructure
+ssid=$ssid
+[wifi-security]
+key-mgmt=wpa-psk
+psk=$psk
+[ipv4]
+method=auto
+[ipv6]
+method=auto
+EOF
+    chmod 600 "$nmfile"
+    nmcli connection reload 2>/dev/null || true
+    nmcli connection up fennec-wifi 2>/dev/null || true
+    echo "fennec-firstboot: Wi-Fi configured for SSID $ssid"
+    break
+done
+
+# --- 4. First-boot bettercap password ---
 CONF=/etc/pwnagotchi/config.toml
 CAP=/etc/pwnagotchi/pwnagotchi-auto.cap
 PLACEHOLDER=__BETTERCAP_PASS__
