@@ -2278,49 +2278,25 @@ def scout():
 def scout_state():
     return jsonify(scout_engine.snapshot())
 
-def _scout_launch(mode, target=None):
-    """(Re)start Scout in the given mode, taking the radio over from the other
-    modes (Pwnagotchi, Mirage, Bjorn) and from Sentry's MITM."""
-    scout_engine.stop()
-    if app_state["active_mode"] in SERVICES:
-        stop(app_state["active_mode"])
-    if vigie_monitor.monitor_state["active"]:
-        vigie_monitor.stop()
-    if scout_engine.start(mode, target):
-        app_state["active_mode"] = "scout"
-        log_event("scout", "info", "Scout " + (("targeting " + target["name"]) if target else "sweeping"))
-        return True
-    return False
-
 @app.route("/scout/toggle")
 def scout_toggle():
-    """Start or stop the Wide sweep (the default harvesting mode)."""
+    """Start or stop the Wide sweep (Scout's single harvesting mode)."""
     if scout_engine.is_active():
         scout_engine.stop()
         if app_state["active_mode"] == "scout":
             app_state["active_mode"] = None
         log_event("scout", "info", "Scout stopped")
         return redirect(url_for("scout"))
-    if not _scout_launch("wide"):
-        return redirect(url_for("scout", err="start"))
-    return redirect(url_for("scout"))
-
-@app.route("/scout/target")
-def scout_target():
-    """Escalate to a deauth-driven capture on one whitelisted network."""
-    bssid = (request.args.get("bssid") or "").strip().upper()
-    entry = next((n for n in load_whitelist() if n["bssid"] == bssid), None)
-    if not entry:
-        return redirect(url_for("scout", err="target"))
-    target = {"bssid": bssid, "name": entry.get("name", "")}
-    if not _scout_launch("targeted", target):
-        return redirect(url_for("scout", err="start"))
-    return redirect(url_for("scout"))
-
-@app.route("/scout/sweep")
-def scout_sweep():
-    """Return from a targeted capture to the Wide sweep."""
-    if not _scout_launch("wide"):
+    # Scout drives the monitor adapter, so it takes over from the other radio
+    # modes (Pwnagotchi, Mirage, Bjorn) and from Sentry's MITM.
+    if app_state["active_mode"] in SERVICES:
+        stop(app_state["active_mode"])
+    if vigie_monitor.monitor_state["active"]:
+        vigie_monitor.stop()
+    if scout_engine.start("wide"):
+        app_state["active_mode"] = "scout"
+        log_event("scout", "info", "Scout sweeping")
+    else:
         return redirect(url_for("scout", err="start"))
     return redirect(url_for("scout"))
 

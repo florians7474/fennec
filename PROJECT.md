@@ -46,7 +46,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 | Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
-| Scout | Handshake harvester (hcxdumptool): PMKID + 4-way capture, one or two adapters, built to replace Pwnagotchi | Built, needs on-Pi validation. Runs alongside Pwnagotchi for now; Pwnagotchi is removed once Scout is proven |
+| Scout | Wide handshake harvester (hcxdumptool): PMKID + opportunistic 4-way capture, one or two adapters, built to replace Pwnagotchi | Wide capture works on the Pi. Runs alongside Pwnagotchi for now; Pwnagotchi is removed once Scout is proven. Targeted deauth is Mirage's job |
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
@@ -391,14 +391,12 @@ harvesting and dual-adapter coverage. For now Scout ships alongside Pwnagotchi
 (additive, no removal) so the SD image keeps building; Pwnagotchi and its GPS plugin
 and wardrive hook are removed once Scout is validated on the Pi.
 
-### Two postures
-- Wide (default, roaming): PMKID plus opportunistic handshakes across 2.4 and 5 GHz,
-  no deauth. PMKID is clientless, so a drive-by picks up networks with no connected
-  client. Stays in the free wide-capture scope.
-- Targeted: locks onto one whitelisted BSSID and deauthenticates its clients to force
-  the 4-way. Offensive, so it is gated on the whitelist in the toggle route, like
-  Bjorn and Mirage. (This is a lighter path than Mirage, which also deauths but to
-  lure clients onto an evil twin; the two deauth paths are kept on purpose.)
+### Scope
+Wide only: PMKID plus opportunistic handshakes across 2.4 and 5 GHz, no deauth.
+PMKID is clientless, so a drive-by picks up networks with no connected client. This
+stays in the free wide-capture scope. Forcing a specific network with a deauth is
+left to Mirage (evil twin), which already does it, rather than duplicating a flaky
+deauth path here.
 
 ### Adapters
 Capability-based detection, not brand-locked: Scout lists the monitor-capable USB
@@ -412,12 +410,12 @@ RT2800/RT3070, Atheros AR9271).
 ### Architecture
 - Orchestrator /usr/local/bin/fennec-scout (root, via fennec-scout.service, disabled
   at boot, tile-driven through sudoers). Reads /tmp/fennec-scout/config.json (mode,
-  adapters, target), sets the interfaces to monitor, runs hcxdumptool, then splits
+  adapters), sets the interfaces to monitor, runs hcxdumptool, then splits
   the rolling pcapng into one pcap per network (<essid>_<bssid>.pcap) in the
   handshakes dir with tshark, and writes stats to /tmp/fennec-scout/stats.json.
 - scout_engine.py detects the adapters, starts/stops the service and reads the stats.
-- app.py routes: /scout (page), /scout/toggle (start/stop, whitelist-gated in
-  targeted mode, takes over the radio from the other modes), /scout/state (live JSON).
+- app.py routes: /scout (page), /scout/toggle (start/stop the sweep, takes over the
+  radio from the other modes), /scout/state (live JSON).
   templates/scout.html renders the mascot, the mode switch, the adapter slots, the
   counters (handshakes / PMKID / APs) and the live capture list.
 

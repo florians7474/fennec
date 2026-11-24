@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/fennec-scout
 ExecStopPost=-/usr/bin/pkill -f "hcxdumptool.*fennec-scout"
-ExecStopPost=-/usr/bin/pkill -f "aireplay-ng.*--deauth"
 Restart=no
 
 [Install]
