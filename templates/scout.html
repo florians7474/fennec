@@ -108,7 +108,7 @@
     }
     setInterval(faceTick, 3200);
 
-    var quips = [["sniffing the air…","PMKID sweep"],["hunting on 5GHz…","hopping channels"],["nose to the ground","no deauth, just listening"]];
+    var quips = [["sniffing the air…","PMKID sweep"],["hunting on 5GHz…","hopping channels"],["flushing clients out…","deauth + capture"],["nose to the ground","forcing handshakes"]];
     var qi = 0;
     function rollQuip(s){
       if(!s.active){ document.getElementById('sstatus').textContent='Idle — press Start to hunt.';

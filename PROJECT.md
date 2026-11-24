@@ -392,11 +392,12 @@ harvesting and dual-adapter coverage. For now Scout ships alongside Pwnagotchi
 and wardrive hook are removed once Scout is validated on the Pi.
 
 ### Scope
-Wide only: PMKID plus opportunistic handshakes across 2.4 and 5 GHz, no deauth.
-PMKID is clientless, so a drive-by picks up networks with no connected client. This
-stays in the free wide-capture scope. Forcing a specific network with a deauth is
-left to Mirage (evil twin), which already does it, rather than duplicating a flaky
-deauth path here.
+Wide only: sweep every supported frequency (2.4 + 5 GHz) with continuous deauth
+(hcxdumptool's default), harvesting PMKIDs and forcing 4-way handshakes
+automatically, no interaction — the same wide, always-on behaviour as Pwnagotchi.
+PMKID is clientless, so a drive-by also picks up networks with no connected client.
+With two adapters both sweep in parallel and their captures are merged. A targeted
+evil-twin attack on one network is left to Mirage.
 
 ### Adapters
 Capability-based detection, not brand-locked: Scout lists the monitor-capable USB

