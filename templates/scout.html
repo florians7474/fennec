@@ -18,20 +18,24 @@
     .title { font-size:15px; font-weight:600; flex:1; }
     .pill { font-size:11px; font-weight:500; border-radius:20px; padding:3px 10px; }
     .pill.on { background:#7BD88F; color:#13261a; }
+    .pill.tg { background:#e3b341; color:#2a1f00; }
     .pill.idle { background:#21262d; color:#8b949e; }
 
     .barbody { flex:1 1 auto; overflow-y:auto; padding:8px 12px 12px; }
 
     .controls { display:flex; gap:8px; align-items:center; }
-    .modes { display:flex; background:#151a21; border:1px solid #30363d; border-radius:8px; padding:3px; gap:2px; }
-    .mode { border:0; background:transparent; color:#8b949e; border-radius:6px;
-            padding:6px 12px; font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; }
-    .mode.sel { background:#17311f; color:#7BD88F; }
-    .mode.sel.tg { background:#2a2113; color:#e3b341; }
-    .spacer { flex:1; }
+    .controls .lead { font-size:12px; color:#8b949e; flex:1; }
     .startbtn { border:0.5px solid #2b6d3f; background:#13261a; color:#7bd88f; border-radius:8px;
-                padding:7px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+                padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+                text-decoration:none; }
     .startbtn.stop { border-color:#7a1f1f; background:#2a1414; color:#f0999b; }
+
+    .banner { display:flex; align-items:center; gap:8px; margin-top:8px; background:#241a00;
+              border:0.5px solid #8a6d16; border-radius:8px; padding:7px 10px; }
+    .banner .bi { color:#e3b341; font-size:15px; }
+    .banner .bt { flex:1; font-size:12px; color:#e3b341; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .banner a { font-size:11px; color:#cfd4da; text-decoration:none; border:0.5px solid #4a4f57;
+                border-radius:6px; padding:4px 9px; white-space:nowrap; }
 
     .scoutband { display:flex; align-items:center; gap:10px; background:#11161d;
                  border:1px solid #23272f; border-radius:8px; padding:6px 10px; margin-top:8px; }
@@ -41,34 +45,34 @@
     .ssub { font-size:10px; color:#8b949e; margin-top:1px; }
 
     .slots { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
-    .slot { display:flex; align-items:center; gap:7px; border-radius:8px; padding:0 10px;
-            height:50px; }
+    .slot { display:flex; align-items:center; gap:7px; border-radius:8px; padding:0 10px; height:50px; }
     .slot > div { min-width:0; flex:1; }
     .slot.filled { background:#11161d; border:1px solid #2b6d3f; }
     .slot.empty  { background:#11161d; border:1px dashed #3a4150; }
     .slot .si { font-size:11px; color:#e6edf3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .slot .sj { font-size:10px; color:#8b949e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .slot.empty .si { color:#8b949e; } .slot.empty .sj { color:#6a717c; }
-    .dot { width:7px; height:7px; border-radius:50%; background:#2ea043; margin-left:auto; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#2ea043; flex:0 0 auto; }
 
     .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
     .card { background:#161b22; border-radius:8px; padding:6px 10px; }
     .card .n { font-size:10px; color:#8b949e; } .card .v { font-size:19px; font-weight:600; }
 
     .section-label { font-size:11px; color:#6e757e; margin:12px 2px 5px; display:flex; justify-content:space-between; }
-    .cap { display:flex; align-items:center; justify-content:space-between; background:#161b22;
+    .cap { display:flex; align-items:center; gap:8px; background:#161b22;
            border-radius:8px; padding:6px 10px; margin-bottom:6px; }
-    .cap .nm { font-size:12px; display:flex; align-items:center; gap:7px; min-width:0; }
-    .cap .nm span.t { font-size:10px; border-radius:10px; padding:1px 7px; }
+    .cap .nm { font-size:12px; display:flex; align-items:center; gap:7px; min-width:0; flex:1; }
+    .cap .nm .label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cap .nm span.t { font-size:10px; border-radius:10px; padding:1px 7px; flex:0 0 auto; }
     .cap .nm span.hs { background:#143a2a; color:#7bd88f; }
     .cap .nm span.pm { background:#0f5a4a; color:#9fe1cb; }
     .cap .nm span.sn { background:#21262d; color:#8b949e; }
-    .cap .bs { font-family:ui-monospace,Consolas,monospace; font-size:10px; color:#8b949e; }
+    .cap .bs { font-family:ui-monospace,Consolas,monospace; font-size:10px; color:#8b949e; flex:0 0 auto; }
+    .force { flex:0 0 auto; border:0.5px solid #8a6d16; background:#241a00; color:#e3b341;
+             border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; text-decoration:none; }
+    .targeted-row { border:0.5px solid #8a6d16; }
+    .tgtag { flex:0 0 auto; font-size:10px; color:#e3b341; }
     .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:26px; line-height:1.7; }
-
-    .picker { margin-top:8px; }
-    .picker select { width:100%; background:#151a21; color:#e6edf3; border:1px solid #30363d;
-                     border-radius:8px; padding:9px; font-size:13px; font-family:inherit; }
   </style>
 </head>
 <body>
@@ -80,25 +84,12 @@
   </div>
 
   <div class="barbody">
-    <form class="controls" id="form" method="get" action="/scout/toggle">
-      <div class="modes">
-        <button type="button" class="mode sel" id="m-wide" data-mode="wide">Wide</button>
-        <button type="button" class="mode tg" id="m-tg" data-mode="targeted">Targeted</button>
-      </div>
-      <div class="spacer"></div>
-      <input type="hidden" name="mode" id="mode" value="wide">
-      <input type="hidden" name="bssid" id="bssid" value="">
-      <button type="submit" class="startbtn" id="startbtn">Start</button>
-    </form>
-
-    <div class="picker" id="picker" style="display:none">
-      <select id="target">
-        <option value="">Choose a whitelisted target…</option>
-        {% for n in whitelist %}
-        <option value="{{ n.bssid }}">{{ n.name or 'Unnamed' }} — {{ n.bssid }}</option>
-        {% endfor %}
-      </select>
+    <div class="controls">
+      <div class="lead" id="lead">Start the sweep to harvest handshakes and PMKIDs.</div>
+      <a class="startbtn" id="startbtn" href="/scout/toggle">Start</a>
     </div>
+
+    <div id="banner"></div>
 
     <div class="scoutband">
       <img id="scoutface" src="/static/scout6.png" alt="">
@@ -123,19 +114,12 @@
   <script>
     function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
 
-    var selMode = "wide";
-    function setMode(m){
-      selMode = m;
-      document.getElementById('mode').value = m;
-      document.getElementById('m-wide').classList.toggle('sel', m==='wide');
-      document.getElementById('m-tg').classList.toggle('sel', m==='targeted');
-      document.getElementById('picker').style.display = (m==='targeted') ? 'block' : 'none';
-    }
-    document.getElementById('m-wide').onclick = function(){ if(!running) setMode('wide'); };
-    document.getElementById('m-tg').onclick   = function(){ if(!running) setMode('targeted'); };
-    document.getElementById('target').onchange = function(){ document.getElementById('bssid').value = this.value; };
+    // BSSIDs allowed for an offensive (deauth) capture, from the whitelist.
+    var WL = {};
+    {% for n in whitelist %}WL["{{ n.bssid|upper }}"] = true;
+    {% endfor %}
 
-    // Animated head: expression set follows the state, flashing "happy" on a new catch.
+    // Animated head: expression set follows the state, flashing happy on a catch.
     var FACES = {
       idle:     ["/static/scout6.png"],
       wide:     ["/static/scout1.png", "/static/scout3.png", "/static/scout2.png"],
@@ -146,26 +130,13 @@
       var img = document.getElementById('scoutface');
       if (!img) return;
       if (Date.now() < happyUntil){ img.src = "/static/scout4.png"; return; }
-      img.src = faceSet[faceI % faceSet.length];
-      faceI++;
+      img.src = faceSet[faceI % faceSet.length]; faceI++;
     }
     setInterval(faceTick, 3200);
 
-    function updateFace(s){
-      if (!s.active) faceSet = FACES.idle;
-      else faceSet = (s.mode === 'targeted') ? FACES.targeted : FACES.wide;
-      var count = (s.handshakes || 0) + (s.pmkid || 0);
-      if (count > lastCount) happyUntil = Date.now() + 1200;
-      lastCount = count;
-    }
-
     var quips = {
-      wide: [["hunting on 5GHz…","hopping channels"],
-             ["sniffing the air…","PMKID sweep"],
-             ["nose to the ground","wide capture, no deauth"]],
-      targeted: [["locked on target","forcing a reconnect"],
-                 ["deauth sent","waiting for the 4-way"],
-                 ["almost got it…","stay in range"]]
+      wide: [["sniffing the air…","PMKID sweep"],["hunting on 5GHz…","hopping channels"],["nose to the ground","no deauth, just listening"]],
+      targeted: [["locked on target","forcing a reconnect"],["deauth sent","waiting for the 4-way"],["almost got it…","stay in range"]]
     };
     var qi = 0;
     function rollQuip(s){
@@ -176,50 +147,68 @@
       document.getElementById('sstatus').textContent = q[0];
       document.getElementById('ssub').textContent = q[1];
     }
+    function updateFace(s){
+      faceSet = !s.active ? FACES.idle : (s.mode==='targeted' ? FACES.targeted : FACES.wide);
+      var count = (s.handshakes||0) + (s.pmkid||0);
+      if (count > lastCount) happyUntil = Date.now() + 1200;
+      lastCount = count;
+    }
 
     function slot(a){
       if(a) return '<div class="slot filled"><div><div class="si">'+esc(a.label)+
              '</div><div class="sj">'+esc(a.iface)+' · monitor · '+esc(a.bands)+'GHz</div></div><span class="dot"></span></div>';
       return '<div class="slot empty"><div><div class="si">Plug a 2nd adapter</div>'+
-             '<div class="sj">splits bands · capture + deauth</div></div></div>';
+             '<div class="sj">splits bands · more coverage</div></div></div>';
     }
 
-    var running = false;
     function render(s){
-      running = !!s.active;
       var st = document.getElementById('status');
-      st.className = 'pill ' + (s.active?'on':'idle');
-      st.textContent = s.active ? (s.mode==='targeted'?'Targeted':'Wide') : 'Idle';
-
-      if(s.active) setMode(s.mode==='targeted'?'targeted':'wide');
+      var tgt = s.target || null;
+      if(!s.active){ st.className='pill idle'; st.textContent='Idle'; }
+      else if(s.mode==='targeted'){ st.className='pill tg'; st.textContent='Targeting'; }
+      else { st.className='pill on'; st.textContent='Sweeping'; }
 
       var btn = document.getElementById('startbtn');
       btn.textContent = s.active ? 'Stop' : 'Start';
-      btn.classList.toggle('stop', s.active);
+      btn.className = 'startbtn' + (s.active?' stop':'');
+      btn.href = '/scout/toggle';
+      document.getElementById('lead').textContent = s.active
+        ? 'Tap a whitelisted network below to force its handshake.'
+        : 'Start the sweep to harvest handshakes and PMKIDs.';
+
+      // Targeting banner
+      var bn = document.getElementById('banner');
+      if(s.active && s.mode==='targeted' && tgt){
+        bn.innerHTML = '<div class="banner"><span class="bi">◎</span>'+
+          '<span class="bt">Targeting '+esc(tgt.name||tgt.bssid)+'</span>'+
+          '<a href="/scout/sweep">Back to sweep</a></div>';
+      } else bn.innerHTML = '';
 
       var ads = s.adapters || [];
       document.getElementById('slots').innerHTML = slot(ads[0]||null) + slot(ads[1]||null);
-
       document.getElementById('c-hs').textContent = s.handshakes||0;
       document.getElementById('c-pm').textContent = s.pmkid||0;
       document.getElementById('c-ap').textContent = s.aps||0;
 
       var rec = s.recent || [], html='';
-      if(!rec.length){ html = '<div class="empty">'+(s.active?'Listening… captures will show here.':'No captures yet.')+'</div>'; }
+      var tgtB = tgt ? (tgt.bssid||'').toUpperCase() : '';
+      if(!rec.length){ html = '<div class="empty">'+(s.active?'Listening… networks will show here.':'No captures yet.')+'</div>'; }
       else rec.forEach(function(c){
         var cls = c.type==='PMKID' ? 'pm' : (c.type==='seen' ? 'sn' : 'hs');
-        html += '<div class="cap"><div class="nm"><span class="t '+cls+'">'+esc(c.type||'HS')+
-                '</span>'+esc(c.name)+'</div><div class="bs">'+esc(c.bssid)+'</div></div>';
+        var bU = (c.bssid||'').toUpperCase();
+        var rowcls = (s.active && s.mode==='targeted' && bU===tgtB) ? ' targeted-row' : '';
+        var action = '';
+        if(s.active && s.mode==='targeted' && bU===tgtB){
+          action = '<span class="tgtag">◎ target</span>';
+        } else if(s.active && WL[bU]){
+          action = '<a class="force" href="/scout/target?bssid='+encodeURIComponent(bU)+'">⚡ force</a>';
+        }
+        html += '<div class="cap'+rowcls+'"><div class="nm"><span class="t '+cls+'">'+esc(c.type||'HS')+
+                '</span><span class="label">'+esc(c.name)+'</span></div>'+
+                '<span class="bs">'+esc(c.bssid)+'</span>'+action+'</div>';
       });
       document.getElementById('list').innerHTML = html;
     }
-
-    document.getElementById('form').onsubmit = function(e){
-      if(selMode==='targeted' && !running && !document.getElementById('bssid').value){
-        e.preventDefault();
-        alert('Choose a whitelisted target first.');
-      }
-    };
 
     function poll(){ fetch('/scout/state',{cache:'no-store'}).then(function(r){return r.json();}).then(function(s){ render(s); rollQuip(s); updateFace(s); }).catch(function(){}); }
     poll(); setInterval(poll, 3000);
