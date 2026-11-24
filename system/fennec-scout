@@ -133,14 +133,28 @@ while true; do
 
     recent="[]"
     if command -v tshark >/dev/null; then
-        declare -A CAP NAME
+        declare -A RANK STATUS BSS
+        # One line per network NAME (not per BSSID), keeping the best status seen:
+        # HS (3) > PMKID (2) > seen (1). Nameless networks (hidden/empty) are kept
+        # for Sly but never shown in the list.
+        set_status() {   # name type rank bssid
+            local cur=${RANK[$1]:-0}
+            if [ "$3" -gt "$cur" ]; then STATUS[$1]="$2"; RANK[$1]="$3"; BSS[$1]="$4"; fi
+        }
+        clean_name() {   # raw-essid -> clean name, or "" when there is none
+            local n; n=$(sanitize "$(decode_ssid "$1")")
+            case "$n" in ""|hidden|Hidden|MISSING|missing|unknown) n="";; esac
+            echo "$n" | grep -qE '[A-Za-z0-9]' || n=""
+            printf '%s' "$n"
+        }
+
         # 1) Networks with a real capture: split, keep for Sly if a 4-way or PMKID
-        #    is present, and remember the type. Bare EAPOL frames are discarded.
+        #    is present. Bare EAPOL frames are discarded.
         for b in $(tshark -r "$PCAP" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$'); do
             hex=$(echo "$b" | tr -d ':')
             essid=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
                     -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
-            name=$(sanitize "$(decode_ssid "$essid")"); [ -n "$name" ] || name="hidden"
+            name=$(clean_name "$essid")
             tmp="$RUN_DIR/split.pcap"
             tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$tmp" 2>/dev/null || continue
             type=""
@@ -151,36 +165,38 @@ while true; do
                 if [ "${hsn:-0}" -gt 0 ]; then type="HS"
                 elif [ "${pmn:-0}" -gt 0 ]; then type="PMKID"; fi
             fi
-            if [ -n "$type" ]; then
-                out="$HANDSHAKES/${name}_${hex}.pcap"
-                mv -f "$tmp" "$out" 2>/dev/null && chmod 644 "$out" 2>/dev/null
-                CAP[$b]="$type"; NAME[$b]="$name"
-            else
-                rm -f "$tmp"
-            fi
+            if [ -z "$type" ]; then rm -f "$tmp"; continue; fi
+            out="$HANDSHAKES/${name:-hidden}_${hex}.pcap"
+            mv -f "$tmp" "$out" 2>/dev/null && chmod 644 "$out" 2>/dev/null
+            [ -n "$name" ] || continue
+            if [ "$type" = "HS" ]; then set_status "$name" HS 3 "$b"
+            else set_status "$name" PMKID 2 "$b"; fi
         done
 
-        # 2) Build the list: captured networks first, then every other AP seen
-        #    (beacons) tagged "seen". Capped so a busy area stays readable.
-        items=""; n=0
-        for b in "${!CAP[@]}"; do
-            items="$items${items:+,}{\"name\":\"${NAME[$b]}\",\"bssid\":\"${b}\",\"type\":\"${CAP[$b]}\"}"
-            if [ "${CAP[$b]}" = "HS" ]; then hs=$((hs+1)); else pmkid=$((pmkid+1)); fi
-            n=$((n+1))
-        done
+        # 2) Every named AP seen (beacons) that has no capture yet -> "seen".
         aps=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid 2>/dev/null \
               | tr 'A-F' 'a-f' | grep -E '^[0-9a-f:]{17}$' | sort -u | wc -l)
         while IFS=$'\t' read -r bs ss; do
-            [ $n -ge 40 ] && break
             b=$(echo "$bs" | tr 'A-F' 'a-f')
             [[ "$b" =~ ^[0-9a-f:]{17}$ ]] || continue
-            [ -n "${CAP[$b]:-}" ] && continue
-            name=$(sanitize "$(decode_ssid "$ss")"); [ -n "$name" ] || name="hidden"
-            items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"seen\"}"
-            n=$((n+1))
+            name=$(clean_name "$ss"); [ -n "$name" ] || continue
+            set_status "$name" seen 1 "$b"
         done < <(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid -e wlan.ssid 2>/dev/null | awk '!s[$1]++')
+
+        # 3) Build the list, best status first, capped for readability.
+        items=""; n=0
+        for want in HS PMKID seen; do
+            for name in "${!STATUS[@]}"; do
+                [ "${STATUS[$name]}" = "$want" ] || continue
+                [ $n -ge 40 ] && break
+                items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${BSS[$name]}\",\"type\":\"${STATUS[$name]}\"}"
+                n=$((n+1))
+                [ "$want" = "HS" ] && hs=$((hs+1))
+                [ "$want" = "PMKID" ] && pmkid=$((pmkid+1))
+            done
+        done
         [ -n "$items" ] && recent="[$items]"
-        unset CAP NAME
+        unset RANK STATUS BSS
     fi
 
     python3 - "$STATS" "$MODE" "$hs" "$pmkid" "$aps" "$recent" <<'PY' 2>/dev/null
