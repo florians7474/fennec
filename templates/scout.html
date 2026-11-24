@@ -62,6 +62,7 @@
     .cap .nm span.t { font-size:10px; border-radius:10px; padding:1px 7px; }
     .cap .nm span.hs { background:#143a2a; color:#7bd88f; }
     .cap .nm span.pm { background:#0f5a4a; color:#9fe1cb; }
+    .cap .nm span.sn { background:#21262d; color:#8b949e; }
     .cap .bs { font-family:ui-monospace,Consolas,monospace; font-size:10px; color:#8b949e; }
     .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:26px; line-height:1.7; }
 
@@ -206,7 +207,7 @@
       var rec = s.recent || [], html='';
       if(!rec.length){ html = '<div class="empty">'+(s.active?'Listening… captures will show here.':'No captures yet.')+'</div>'; }
       else rec.forEach(function(c){
-        var cls = c.type==='PMKID' ? 'pm' : 'hs';
+        var cls = c.type==='PMKID' ? 'pm' : (c.type==='seen' ? 'sn' : 'hs');
         html += '<div class="cap"><div class="nm"><span class="t '+cls+'">'+esc(c.type||'HS')+
                 '</span>'+esc(c.name)+'</div><div class="bs">'+esc(c.bssid)+'</div></div>';
       });

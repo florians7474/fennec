@@ -158,16 +158,14 @@ PY
 
     recent="[]"
     if command -v tshark >/dev/null; then
-        bssids=$(tshark -r "$PCAP" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$')
-        items=""
-        for b in $bssids; do
+        declare -A CAP NAME
+        # 1) Networks with a real capture: split, keep for Sly if a 4-way or PMKID
+        #    is present, and remember the type. Bare EAPOL frames are discarded.
+        for b in $(tshark -r "$PCAP" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$'); do
             hex=$(echo "$b" | tr -d ':')
             essid=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
                     -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
-            essid=$(decode_ssid "$essid")
-            name=$(sanitize "${essid:-unknown}")
-            # Split to a temp file, then keep it for Sly only if it really holds a
-            # usable 4-way handshake or a PMKID. A bare EAPOL frame is not crackable.
+            name=$(sanitize "$(decode_ssid "$essid")"); [ -n "$name" ] || name="hidden"
             tmp="$RUN_DIR/split.pcap"
             tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$tmp" 2>/dev/null || continue
             type=""
@@ -178,13 +176,33 @@ PY
                 if [ "${hsn:-0}" -gt 0 ]; then type="HS"
                 elif [ "${pmn:-0}" -gt 0 ]; then type="PMKID"; fi
             fi
-            if [ -z "$type" ]; then rm -f "$tmp"; continue; fi
-            out="$HANDSHAKES/${name}_${hex}.pcap"
-            mv -f "$tmp" "$out" 2>/dev/null || { rm -f "$tmp"; continue; }
-            chmod 644 "$out" 2>/dev/null || true
-            items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"${type}\"}"
+            if [ -n "$type" ]; then
+                out="$HANDSHAKES/${name}_${hex}.pcap"
+                mv -f "$tmp" "$out" 2>/dev/null && chmod 644 "$out" 2>/dev/null
+                CAP[$b]="$type"; NAME[$b]="$name"
+            else
+                rm -f "$tmp"
+            fi
         done
+
+        # 2) Build the list: captured networks first, then every other AP seen
+        #    (beacons) tagged "seen". Capped so a busy area stays readable.
+        items=""; n=0
+        for b in "${!CAP[@]}"; do
+            items="$items${items:+,}{\"name\":\"${NAME[$b]}\",\"bssid\":\"${b}\",\"type\":\"${CAP[$b]}\"}"
+            n=$((n+1))
+        done
+        while IFS=$'\t' read -r bs ss; do
+            [ $n -ge 40 ] && break
+            b=$(echo "$bs" | tr 'A-F' 'a-f')
+            [[ "$b" =~ ^[0-9a-f:]{17}$ ]] || continue
+            [ -n "${CAP[$b]:-}" ] && continue
+            name=$(sanitize "$(decode_ssid "$ss")"); [ -n "$name" ] || name="hidden"
+            items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"seen\"}"
+            n=$((n+1))
+        done < <(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid -e wlan.ssid 2>/dev/null | awk '!s[$1]++')
         [ -n "$items" ] && recent="[$items]"
+        unset CAP NAME
     fi
 
     python3 - "$STATS" "$MODE" "$hs" "$pmkid" "$aps" "$recent" <<'PY' 2>/dev/null
