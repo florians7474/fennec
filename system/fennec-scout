@@ -112,6 +112,16 @@ fi
 
 sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32; }
 
+# tshark returns wlan.ssid as hex bytes; decode to the real text ESSID.
+decode_ssid() {
+    local s="$1"
+    if [ -n "$s" ] && [ $(( ${#s} % 2 )) -eq 0 ] && [[ "$s" =~ ^[0-9a-fA-F]+$ ]]; then
+        printf '%b' "$(echo "$s" | sed 's/../\\x&/g')" 2>/dev/null
+    else
+        printf '%s' "$s"
+    fi
+}
+
 # Split the rolling capture into one pcap per network for Sly, and refresh stats.
 while true; do
     sleep 10
@@ -154,6 +164,7 @@ PY
             hex=$(echo "$b" | tr -d ':')
             essid=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
                     -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
+            essid=$(decode_ssid "$essid")
             name=$(sanitize "${essid:-unknown}")
             out="$HANDSHAKES/${name}_${hex}.pcap"
             tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$out" 2>/dev/null || true
