@@ -83,17 +83,19 @@ PY
 chmod 644 "$STATS" 2>/dev/null
 
 start_hcx() {
-    # $1 interface, $2 channel list
+    # $1 interface, $2 channel list ("" = sweep all supported frequencies with -F)
     local i="$1" ch="$2"
+    local chopt=(-F)
+    [ -n "$ch" ] && chopt=(-c "$ch")
     if [ "$MODE" = "targeted" ] && [ -n "$TGT_BSSID" ]; then
         echo "$TGT_BSSID" | tr -d ':' | tr 'A-F' 'a-f' > "$FILTER"
-        local c="${TGT_CHAN:-$ch}"
-        hcxdumptool -i "$i" -o "$PCAP" -c "$c" \
+        [ -n "$TGT_CHAN" ] && chopt=(-c "$TGT_CHAN")
+        hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
             --filterlist_ap="$FILTER" --filtermode=2 --enable_status=3 \
             >> "$RUN_DIR/run.log" 2>&1 &
     else
         # Wide: PMKID + opportunistic handshakes, deauth disabled.
-        hcxdumptool -i "$i" -o "$PCAP" -c "$ch" \
+        hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
             --disable_deauthentication --enable_status=3 \
             >> "$RUN_DIR/run.log" 2>&1 &
     fi
@@ -104,7 +106,8 @@ if [ -n "$IFACE2" ] && [ "$MODE" != "targeted" ]; then
     start_hcx "$IFACE1" "$BAND24"
     start_hcx "$IFACE2" "$BAND5"
 else
-    start_hcx "$IFACE1" "$BANDALL"
+    # One adapter sweeps every supported frequency (2.4 + 5 GHz).
+    start_hcx "$IFACE1" ""
 fi
 
 sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32; }
@@ -116,10 +119,30 @@ while true; do
 
     hs=0; pmkid=0; aps=0
     if command -v hcxpcapngtool >/dev/null; then
-        summary=$(hcxpcapngtool "$PCAP" 2>&1 >/dev/null)
-        hs=$(echo "$summary"    | grep -iE "EAPOL.*pairs|handshake" | grep -oE '[0-9]+' | head -1)
-        pmkid=$(echo "$summary" | grep -iE "PMKID"                  | grep -oE '[0-9]+' | head -1)
-        aps=$(echo "$summary"   | grep -iE "access points|BEACON"   | grep -oE '[0-9]+' | head -1)
+        hcxpcapngtool "$PCAP" > "$RUN_DIR/summary.txt" 2>/dev/null
+        read -r hs pmkid aps < <(python3 - "$RUN_DIR/summary.txt" <<'PY' 2>/dev/null
+import re, sys
+try:
+    txt = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+except OSError:
+    txt = ""
+def find(patterns):
+    for p in patterns:
+        m = re.search(p, txt, re.I)
+        if m:
+            return int(m.group(1))
+    return 0
+hs = find([r'EAPOL pairs[^\n]*?:\s*(\d+)',
+           r'best handshakes[^\n]*?:\s*(\d+)',
+           r'handshake[^\n]*?:\s*(\d+)'])
+pmkid = find([r'PMKID\(s\)[^\n]*?:\s*(\d+)', r'PMKID[^\n]*?:\s*(\d+)'])
+aps = find([r'ESSID \(total unique\)[^\n]*?:\s*(\d+)',
+            r'ACCESS POINT[^\n]*?:\s*(\d+)',
+            r'BEACON[^\n]*?:\s*(\d+)',
+            r'ESSID[^\n]*?:\s*(\d+)'])
+print(hs, pmkid, aps)
+PY
+)
     fi
     hs=${hs:-0}; pmkid=${pmkid:-0}; aps=${aps:-0}
 
