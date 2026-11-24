@@ -48,9 +48,14 @@ IFACE2="${2:-}"
 
 monitor_up() {
     local i="$1"
+    # NetworkManager grabbing the adapter back is the usual reason capture dies:
+    # hand the interface over before switching it to monitor.
+    nmcli dev set "$i" managed no 2>/dev/null || true
+    rfkill unblock wifi 2>/dev/null || true
     ip link set "$i" down 2>/dev/null || true
     iw dev "$i" set type monitor 2>/dev/null || true
     ip link set "$i" up 2>/dev/null || true
+    iw dev "$i" info >> "$RUN_DIR/run.log" 2>&1 || true
 }
 
 pids=()
@@ -60,6 +65,10 @@ cleanup() {
     exit 0
 }
 trap cleanup TERM INT
+
+{ echo "=== scout start $(date) mode=$MODE ifaces=$IFACES ==="
+  echo -n "hcxdumptool: "; hcxdumptool --version 2>&1 | head -1
+} >> "$RUN_DIR/run.log" 2>&1
 
 monitor_up "$IFACE1"
 [ -n "$IFACE2" ] && monitor_up "$IFACE2"

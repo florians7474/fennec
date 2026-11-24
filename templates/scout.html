@@ -40,10 +40,11 @@
     .sstatus { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#7bd88f; }
     .ssub { font-size:10px; color:#8b949e; margin-top:1px; }
 
-    .slots { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
-    .slot { display:flex; align-items:center; gap:7px; border-radius:8px; padding:6px 9px; }
-    .slot.filled { background:#11161d; border:0.5px solid #2b6d3f; }
-    .slot.empty  { background:#0f1217; border:1px dashed #3a4150; }
+    .slots { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; align-items:stretch; }
+    .slot { display:flex; align-items:center; gap:7px; border-radius:8px; padding:0 10px;
+            min-height:46px; }
+    .slot.filled { background:#11161d; border:1px solid #2b6d3f; }
+    .slot.empty  { background:#11161d; border:1px dashed #3a4150; }
     .slot .si { font-size:11px; color:#e6edf3; }
     .slot .sj { font-size:10px; color:#8b949e; }
     .slot.empty .si { color:#8b949e; } .slot.empty .sj { color:#6a717c; }
@@ -98,7 +99,7 @@
     </div>
 
     <div class="scoutband">
-      <img src="/static/scout.png" alt="">
+      <img id="scoutface" src="/static/scout6.png" alt="">
       <div>
         <div class="sstatus" id="sstatus">Idle — press Start to hunt.</div>
         <div class="ssub" id="ssub"></div>
@@ -131,6 +132,30 @@
     document.getElementById('m-wide').onclick = function(){ if(!running) setMode('wide'); };
     document.getElementById('m-tg').onclick   = function(){ if(!running) setMode('targeted'); };
     document.getElementById('target').onchange = function(){ document.getElementById('bssid').value = this.value; };
+
+    // Animated head: expression set follows the state, flashing "happy" on a new catch.
+    var FACES = {
+      idle:     ["/static/scout6.png"],
+      wide:     ["/static/scout1.png", "/static/scout3.png", "/static/scout2.png"],
+      targeted: ["/static/scout5.png", "/static/scout1.png"]
+    };
+    var faceSet = FACES.idle, faceI = 0, happyUntil = 0, lastCount = 0;
+    function faceTick(){
+      var img = document.getElementById('scoutface');
+      if (!img) return;
+      if (Date.now() < happyUntil){ img.src = "/static/scout4.png"; return; }
+      img.src = faceSet[faceI % faceSet.length];
+      faceI++;
+    }
+    setInterval(faceTick, 650);
+
+    function updateFace(s){
+      if (!s.active) faceSet = FACES.idle;
+      else faceSet = (s.mode === 'targeted') ? FACES.targeted : FACES.wide;
+      var count = (s.handshakes || 0) + (s.pmkid || 0);
+      if (count > lastCount) happyUntil = Date.now() + 1200;
+      lastCount = count;
+    }
 
     var quips = {
       wide: [["hunting on 5GHz…","hopping channels"],
@@ -194,7 +219,7 @@
       }
     };
 
-    function poll(){ fetch('/scout/state',{cache:'no-store'}).then(function(r){return r.json();}).then(function(s){ render(s); rollQuip(s); }).catch(function(){}); }
+    function poll(){ fetch('/scout/state',{cache:'no-store'}).then(function(r){return r.json();}).then(function(s){ render(s); rollQuip(s); updateFace(s); }).catch(function(){}); }
     poll(); setInterval(poll, 3000);
   </script>
 </body>
