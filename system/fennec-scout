@@ -80,10 +80,10 @@ PY
 chmod 644 "$STATS" 2>/dev/null
 
 hcx_capture() {   # $1 interface, $2 output pcapng
-    # Sweep every supported frequency (-F) and let hcxdumptool deauth continuously
-    # (its default), so handshakes are forced automatically like Pwnagotchi, no
-    # interaction needed. PMKIDs are harvested at the same time.
-    hcxdumptool -i "$1" -w "$2" -F >> "$RUN_DIR/run.log" 2>&1 &
+    # Capture only (no injection): sweep every supported frequency, harvest PMKIDs
+    # and record any 4-way handshake. hcxdumptool's own deauth injection is broken
+    # on these drivers (exit-on-error), so deauth is driven separately by aireplay.
+    hcxdumptool -i "$1" -w "$2" -F --disable_deauthentication >> "$RUN_DIR/run.log" 2>&1 &
     pids+=($!)
 }
 
