@@ -121,6 +121,35 @@ def profile_for_essid(essid):
             return p
     return None
 
+def essid_from_pcap(pcap, bssid):
+    """Read the real ESSID from a beacon in the capture. The filename can lose
+    characters (bettercap drops punctuation such as the hyphen in "Bbox-..."),
+    which would break the factory-key and ESSID stages, so trust the capture."""
+    if not bssid:
+        return None
+    try:
+        out = subprocess.run(
+            ["tshark", "-r", pcap,
+             "-Y", "wlan.fc.type_subtype==0x08 && wlan.bssid==%s" % bssid.lower(),
+             "-T", "fields", "-e", "wlan.ssid"],
+            capture_output=True, text=True, timeout=30,
+        ).stdout
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    for line in out.splitlines():
+        s = line.strip().split(",")[0]
+        if not s:
+            continue
+        if len(s) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in s):
+            try:
+                s = bytes.fromhex(s).decode("utf-8", "replace")
+            except ValueError:
+                pass
+        s = s.strip()
+        if s:
+            return s
+    return None
+
 def factory_keys(essid, bssid):
     """Stage 1: targeted factory keys = box-profile routing + routerkeygen-cli."""
     profile = profile_for_essid(essid)
@@ -258,6 +287,12 @@ def _run(pcap, bssid, network, wordlist):
             crack_state["no_handshake"] = True
             crack_state["message"] = "No handshake"
         return
+
+    # The filename can lose characters; use the real ESSID from the capture so the
+    # factory-key and ESSID stages match (e.g. "Bbox-..." instead of "Bbox...").
+    real_essid = essid_from_pcap(pcap, bssid)
+    if real_essid:
+        network = real_essid
 
     for i, stage in enumerate(STAGES, start=1):
         if not crack_state["active"]:
