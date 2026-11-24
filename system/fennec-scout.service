@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/fennec-scout
-ExecStopPost=-/usr/bin/pkill -f "hcxdumptool.*fennec-scout"
+ExecStopPost=-/usr/bin/pkill -f /usr/local/bin/fennec-scout-poll
 Restart=no
 
 [Install]

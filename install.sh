@@ -262,7 +262,9 @@ sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-m
 sudo cp "$SYS/fennec-mole" /usr/local/bin/fennec-mole
 sudo cp "$SYS/fennec-mole-relay" /usr/local/bin/fennec-mole-relay
 sudo cp "$SYS/fennec-scout" /usr/local/bin/fennec-scout
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scout
+sudo cp "$SYS/fennec-scout-poll.py" /usr/local/bin/fennec-scout-poll
+sudo chmod +x /usr/local/bin/fennec-scout-poll
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scout /usr/local/bin/fennec-scout-poll
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
