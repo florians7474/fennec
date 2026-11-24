@@ -116,7 +116,15 @@ decode_ssid() {
 # Split the rolling capture into one pcap per network for Sly, and refresh stats.
 while true; do
     sleep 10
-    [ -s "$PCAP" ] || continue
+    PCAP5="${PCAP%.pcapng}-5g.pcapng"
+    [ -s "$PCAP" ] || [ -s "$PCAP5" ] || continue
+    # With two adapters each writes its own band; merge them so both are analysed.
+    SRC="$PCAP"
+    if [ -s "$PCAP5" ]; then
+        if mergecap -w "$RUN_DIR/merged.pcapng" "$PCAP" "$PCAP5" 2>/dev/null; then
+            SRC="$RUN_DIR/merged.pcapng"
+        fi
+    fi
 
     # Counters are derived from what the list actually finds (below), not from
     # hcxpcapngtool's whole-file totals, which over-count duplicate EAPOL pairs.
@@ -143,13 +151,13 @@ while true; do
 
         # 1) Networks with a real capture: split, keep for Sly if a 4-way or PMKID
         #    is present. Bare EAPOL frames are discarded.
-        for b in $(tshark -r "$PCAP" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$'); do
+        for b in $(tshark -r "$SRC" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$'); do
             hex=$(echo "$b" | tr -d ':')
-            essid=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
+            essid=$(tshark -r "$SRC" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
                     -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
             name=$(clean_name "$essid")
             tmp="$RUN_DIR/split.pcap"
-            tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$tmp" 2>/dev/null || continue
+            tshark -r "$SRC" -Y "wlan.bssid==$b" -w "$tmp" 2>/dev/null || continue
             type=""
             if command -v hcxpcapngtool >/dev/null; then
                 sum=$(hcxpcapngtool "$tmp" 2>/dev/null)
@@ -172,7 +180,7 @@ while true; do
             [[ "$b" =~ ^[0-9a-f:]{17}$ ]] || continue
             name=$(clean_name "$ss"); [ -n "$name" ] || continue
             set_status "$name" seen 1 "$b"
-        done < <(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid -e wlan.ssid 2>/dev/null | awk '!s[$1]++')
+        done < <(tshark -r "$SRC" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid -e wlan.ssid 2>/dev/null | awk '!s[$1]++')
 
         # APs seen = distinct named networks, so it matches the list below.
         aps=${#STATUS[@]}
