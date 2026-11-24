@@ -1,12 +1,14 @@
 [Unit]
 Description=Fennec first-boot setup (per-device secrets)
 After=local-fs.target
-Before=fennec.service bettercap.service pwnagotchi.service getty@tty1.service ssh.service
+Before=fennec.service bettercap.service pwnagotchi.service getty@tty1.service
 ConditionPathExists=/etc/pwnagotchi/config.toml
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# Safety net: this unit only does fast file writes, but never let it block boot.
+TimeoutStartSec=30
 ExecStart=/usr/local/bin/fennec-firstboot
 
 [Install]

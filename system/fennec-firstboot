@@ -6,10 +6,11 @@
 #    output and the SPI panel is /dev/fb1, but on other setups it can be /dev/fb0.
 #    So the panel is detected by name (the one that is not the vc4/DRM device)
 #    and written into the Xorg config, instead of being hard-coded.
-# 2. Generate SSH host keys if missing (the image ships without them so each
-#    device gets its own), otherwise sshd fails to start.
+# 2. Configure Wi-Fi from a boot-partition file so the device is reachable.
 # 3. On the very first boot, generate the per-device bettercap password (the
 #    image ships the __BETTERCAP_PASS__ placeholder so no secret is baked in).
+# All steps are fast, non-blocking file writes: this unit must never stall boot
+# (SSH host keys are baked into the image at build time, not here).
 set -e
 
 LCD_CONF=/etc/X11/xorg.conf.d/99-fennec-lcd.conf
@@ -31,13 +32,7 @@ if [ -f "$LCD_CONF" ]; then
     fi
 fi
 
-# --- 2. SSH host keys (generated here so sshd can start) ---
-if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-    ssh-keygen -A >/dev/null 2>&1 || true
-    systemctl restart ssh 2>/dev/null || true
-fi
-
-# --- 3. Wi-Fi from a boot-partition file (set up with no keyboard) ---
+# --- 2. Wi-Fi from a boot-partition file (set up with no keyboard) ---
 # Drop a file named fennec-wifi.txt on the boot partition (the small drive Windows
 # shows after flashing) with the network name on line 1 and the password on
 # line 2. The Pi then joins that Wi-Fi on every boot, so SSH works with no cable.
@@ -66,13 +61,14 @@ method=auto
 method=auto
 EOF
     chmod 600 "$nmfile"
-    nmcli connection reload 2>/dev/null || true
-    nmcli connection up fennec-wifi 2>/dev/null || true
+    # No blocking nmcli call here: NetworkManager auto-connects this keyfile on
+    # its own (autoconnect=true), so the boot never waits on the Wi-Fi.
+    nmcli connection reload >/dev/null 2>&1 &
     echo "fennec-firstboot: Wi-Fi configured for SSID $ssid"
     break
 done
 
-# --- 4. First-boot bettercap password ---
+# --- 3. First-boot bettercap password ---
 CONF=/etc/pwnagotchi/config.toml
 CAP=/etc/pwnagotchi/pwnagotchi-auto.cap
 PLACEHOLDER=__BETTERCAP_PASS__

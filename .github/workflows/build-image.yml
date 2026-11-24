@@ -105,7 +105,7 @@ jobs:
                   /home/fennec/console/raton_verdicts.json \
                   /home/fennec/console/events.json
             rm -rf /home/fennec/console/tiles
-            rm -f /etc/ssh/ssh_host_*          # regenerated on first boot
+            ssh-keygen -A                       # bake host keys so sshd always starts
             : > /etc/machine-id || true
             rm -f /var/lib/dbus/machine-id
             rm -f /home/fennec/.bash_history /root/.bash_history
