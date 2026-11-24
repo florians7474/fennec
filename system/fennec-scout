@@ -91,12 +91,12 @@ start_hcx() {
         echo "$TGT_BSSID" | tr -d ':' | tr 'A-F' 'a-f' > "$FILTER"
         [ -n "$TGT_CHAN" ] && chopt=(-c "$TGT_CHAN")
         hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
-            --filterlist_ap="$FILTER" --filtermode=2 --enable_status=3 \
+            --filterlist_ap="$FILTER" --filtermode=2 \
             >> "$RUN_DIR/run.log" 2>&1 &
     else
         # Wide: PMKID + opportunistic handshakes, deauth disabled.
         hcxdumptool -i "$i" -w "$PCAP" "${chopt[@]}" \
-            --disable_deauthentication --enable_status=3 \
+            --disable_deauthentication \
             >> "$RUN_DIR/run.log" 2>&1 &
     fi
     pids+=($!)
