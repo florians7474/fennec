@@ -33,8 +33,14 @@
                  border:1px solid #23272f; border-radius:8px; padding:6px 10px; margin-top:8px; }
     .scoutband img { width:46px; height:46px; image-rendering:pixelated; animation:bob 2.4s ease-in-out infinite; }
     @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+    .scoutband .sbtext { flex:1; min-width:0; }
     .sstatus { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#7bd88f; }
     .ssub { font-size:10px; color:#8b949e; margin-top:1px; }
+    .deauth { flex:0 0 auto; display:inline-flex; align-items:center; gap:5px; font-size:11px;
+              color:#e3b341; background:#241a00; border:0.5px solid #5a4a10; border-radius:999px;
+              padding:4px 10px; animation:pulse 1.4s ease-in-out infinite; }
+    .deauth b { font-weight:600; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
 
     .adapters { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
     .chip { display:inline-flex; align-items:center; gap:6px; font-size:11px; border-radius:999px; padding:4px 11px; }
@@ -75,10 +81,11 @@
 
     <div class="scoutband">
       <img id="scoutface" src="/static/scout6.png" alt="">
-      <div>
+      <div class="sbtext">
         <div class="sstatus" id="sstatus">Idle — press Start to hunt.</div>
         <div class="ssub" id="ssub"></div>
       </div>
+      <span class="deauth" id="deauthpill" style="display:none">⚡ <b id="deauthn">0</b></span>
     </div>
 
     <div class="adapters" id="slots"></div>
@@ -146,6 +153,12 @@
       document.getElementById('c-hs').textContent = s.handshakes||0;
       document.getElementById('c-pm').textContent = s.pmkid||0;
       document.getElementById('c-ap').textContent = s.aps||0;
+
+      var dp = document.getElementById('deauthpill');
+      if(s.active && (s.deauth||0) > 0){
+        dp.style.display='inline-flex';
+        document.getElementById('deauthn').textContent = (s.deauth||0).toLocaleString();
+      } else dp.style.display='none';
 
       var rec = s.recent || [], html='';
       if(!rec.length){ html = '<div class="empty">'+(s.active?'Listening… networks will show here.':'No captures yet.')+'</div>'; }

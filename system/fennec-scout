@@ -193,9 +193,13 @@ while true; do
         done
         [ -n "$items" ] && recent="[$items]"
         unset RANK STATUS BSS
-    fi
 
-    python3 - "$STATS" "$MODE" "$hs" "$pmkid" "$aps" "$recent" <<'PY' 2>/dev/null
+        # Deauth / disassoc frames in flight — proof the attack is running.
+        deauth=$(tshark -r "$SRC" -Y "wlan.fc.type_subtype==0x0c || wlan.fc.type_subtype==0x0a" 2>/dev/null | wc -l)
+    fi
+    deauth=${deauth:-0}
+
+    python3 - "$STATS" "$MODE" "$hs" "$pmkid" "$aps" "$recent" "$deauth" <<'PY' 2>/dev/null
 import json, sys
 try:
     recent = json.loads(sys.argv[6])
@@ -203,7 +207,8 @@ except Exception:
     recent = []
 json.dump({"mode": sys.argv[2], "status": "running",
            "handshakes": int(sys.argv[3]), "pmkid": int(sys.argv[4]),
-           "aps": int(sys.argv[5]), "recent": recent[:20]},
+           "aps": int(sys.argv[5]), "recent": recent[:20],
+           "deauth": int(sys.argv[7])},
           open(sys.argv[1], "w"))
 PY
     chmod 644 "$STATS" 2>/dev/null

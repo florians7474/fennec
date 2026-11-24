@@ -185,5 +185,6 @@ def snapshot():
         "handshakes": int(stats.get("handshakes", 0) or 0),
         "pmkid": int(stats.get("pmkid", 0) or 0),
         "aps": int(stats.get("aps", 0) or 0),
+        "deauth": int(stats.get("deauth", 0) or 0),
         "recent": recent[:20],
     }
