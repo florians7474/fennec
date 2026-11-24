@@ -177,14 +177,15 @@ while true; do
         done
 
         # 2) Every named AP seen (beacons) that has no capture yet -> "seen".
-        aps=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid 2>/dev/null \
-              | tr 'A-F' 'a-f' | grep -E '^[0-9a-f:]{17}$' | sort -u | wc -l)
         while IFS=$'\t' read -r bs ss; do
             b=$(echo "$bs" | tr 'A-F' 'a-f')
             [[ "$b" =~ ^[0-9a-f:]{17}$ ]] || continue
             name=$(clean_name "$ss"); [ -n "$name" ] || continue
             set_status "$name" seen 1 "$b"
         done < <(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid -e wlan.ssid 2>/dev/null | awk '!s[$1]++')
+
+        # APs seen = distinct named networks, so it matches the list below.
+        aps=${#STATUS[@]}
 
         # 3) Build the list, best status first, capped for readability.
         items=""; n=0
