@@ -1,0 +1,12 @@
+[Unit]
+Description=Scout handshake harvester (Fennec module)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fennec-scout
+ExecStopPost=-/usr/bin/pkill -f "hcxdumptool.*/tmp/fennec-scout/scout.pcapng"
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

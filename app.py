@@ -8,6 +8,7 @@ import socket
 import raton_engine
 import vigie_monitor
 import mole_engine
+import scout_engine
 import hugin
 import hugin_msf
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, send_from_directory, Response, session
@@ -182,6 +183,7 @@ SERVICES = {
     "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi", "fennec-wardrive"],
     "bjorn": ["bjorn", "bjorn-console"],
     "mirage": ["fennec-mirage"],
+    "scout": ["fennec-scout"],
 }
 
 import glob
@@ -455,7 +457,7 @@ EVENTS_MAX = 200
 MODULE_SERVICE = {"pwnagotchi": "pwnagotchi", "bjorn": "bjorn", "mirage": "fennec-mirage"}
 MODULE_LABEL = {"pwnagotchi": "Pwnagotchi", "bjorn": "Bjorn", "mirage": "Mirage",
                 "cracking": "Sly", "vigie": "Sentry", "hugin": "Hugin",
-                "mole": "Mole", "echo": "Echo", "fennec": "Fennec"}
+                "mole": "Mole", "echo": "Echo", "scout": "Scout", "fennec": "Fennec"}
 
 _events_lock = _threading.Lock()
 
@@ -894,6 +896,10 @@ def home():
         active_mode = None
         app_state["active_mode"] = None
     if active_mode == "vigie" and not vigie_monitor.monitor_state.get("active"):
+        active_mode = None
+        app_state["active_mode"] = None
+    # Scout is service-backed: if it stopped on its own, release the active mode.
+    if active_mode == "scout" and not scout_engine.is_active():
         active_mode = None
         app_state["active_mode"] = None
     # Echo is a viewer, not a service — show how many networks are mapped.
@@ -2258,6 +2264,51 @@ def mole_relay():
     else:
         return redirect(url_for("mole", err="start"))
     return redirect(url_for("mole"))
+
+# ---------- Scout (handshake harvester) ----------
+
+@app.route("/scout")
+def scout():
+    nets = load_whitelist()
+    nets.sort(key=lambda r: (r.get("name") or "").lower())
+    return render_template("scout.html", whitelist=nets,
+                           err=request.args.get("err"))
+
+@app.route("/scout/state")
+def scout_state():
+    return jsonify(scout_engine.snapshot())
+
+@app.route("/scout/toggle")
+def scout_toggle():
+    if scout_engine.is_active():
+        scout_engine.stop()
+        if app_state["active_mode"] == "scout":
+            app_state["active_mode"] = None
+        log_event("scout", "info", "Scout stopped")
+        return redirect(url_for("scout"))
+
+    mode = "targeted" if request.args.get("mode") == "targeted" else "wide"
+    target = None
+    if mode == "targeted":
+        bssid = (request.args.get("bssid") or "").strip().upper()
+        entry = next((n for n in load_whitelist() if n["bssid"] == bssid), None)
+        if not entry:
+            return redirect(url_for("scout", err="target"))
+        target = {"bssid": bssid, "name": entry.get("name", "")}
+
+    # Scout drives the monitor adapter, so it takes over from the other radio
+    # modes (Pwnagotchi, Mirage, Bjorn) and from Sentry's MITM.
+    if app_state["active_mode"] in SERVICES:
+        stop(app_state["active_mode"])
+    if vigie_monitor.monitor_state["active"]:
+        vigie_monitor.stop()
+
+    if scout_engine.start(mode, target):
+        app_state["active_mode"] = "scout"
+        log_event("scout", "info", "Scout started (" + mode + ")")
+    else:
+        return redirect(url_for("scout", err="start"))
+    return redirect(url_for("scout"))
 
 # ---------- Whitelist (routes) ----------
 

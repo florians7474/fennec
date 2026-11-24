@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Scout</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .topbar { flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:8px 12px;
+              background:#161b22; border-bottom:1px solid #30363d; }
+    .back { color:#e6edf3; text-decoration:none; font-size:22px; line-height:1; padding:0 4px; }
+    .tete { width:24px; height:24px; }
+    .title { font-size:15px; font-weight:600; flex:1; }
+    .pill { font-size:11px; font-weight:500; border-radius:20px; padding:3px 10px; }
+    .pill.on { background:#7BD88F; color:#13261a; }
+    .pill.idle { background:#21262d; color:#8b949e; }
+
+    .barbody { flex:1 1 auto; overflow-y:auto; padding:8px 12px 12px; }
+
+    .controls { display:flex; gap:8px; align-items:center; }
+    .modes { display:flex; background:#151a21; border:1px solid #30363d; border-radius:8px; padding:3px; gap:2px; }
+    .mode { border:0; background:transparent; color:#8b949e; border-radius:6px;
+            padding:6px 12px; font-size:12px; font-weight:500; cursor:pointer; font-family:inherit; }
+    .mode.sel { background:#17311f; color:#7BD88F; }
+    .mode.sel.tg { background:#2a2113; color:#e3b341; }
+    .spacer { flex:1; }
+    .startbtn { border:0.5px solid #2b6d3f; background:#13261a; color:#7bd88f; border-radius:8px;
+                padding:7px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .startbtn.stop { border-color:#7a1f1f; background:#2a1414; color:#f0999b; }
+
+    .scoutband { display:flex; align-items:center; gap:10px; background:#11161d;
+                 border:1px solid #23272f; border-radius:8px; padding:6px 10px; margin-top:8px; }
+    .scoutband img { width:46px; height:46px; image-rendering:pixelated; animation:bob 2.4s ease-in-out infinite; }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+    .sstatus { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#7bd88f; }
+    .ssub { font-size:10px; color:#8b949e; margin-top:1px; }
+
+    .slots { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+    .slot { display:flex; align-items:center; gap:7px; border-radius:8px; padding:6px 9px; }
+    .slot.filled { background:#11161d; border:0.5px solid #2b6d3f; }
+    .slot.empty  { background:#0f1217; border:1px dashed #3a4150; }
+    .slot .si { font-size:11px; color:#e6edf3; }
+    .slot .sj { font-size:10px; color:#8b949e; }
+    .slot.empty .si { color:#8b949e; } .slot.empty .sj { color:#6a717c; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#2ea043; margin-left:auto; }
+
+    .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+    .card { background:#161b22; border-radius:8px; padding:6px 10px; }
+    .card .n { font-size:10px; color:#8b949e; } .card .v { font-size:19px; font-weight:600; }
+
+    .section-label { font-size:11px; color:#6e757e; margin:12px 2px 5px; display:flex; justify-content:space-between; }
+    .cap { display:flex; align-items:center; justify-content:space-between; background:#161b22;
+           border-radius:8px; padding:6px 10px; margin-bottom:6px; }
+    .cap .nm { font-size:12px; display:flex; align-items:center; gap:7px; min-width:0; }
+    .cap .nm span.t { font-size:10px; border-radius:10px; padding:1px 7px; }
+    .cap .nm span.hs { background:#143a2a; color:#7bd88f; }
+    .cap .nm span.pm { background:#0f5a4a; color:#9fe1cb; }
+    .cap .bs { font-family:ui-monospace,Consolas,monospace; font-size:10px; color:#8b949e; }
+    .empty { color:#8b949e; font-size:13px; text-align:center; margin-top:26px; line-height:1.7; }
+
+    .picker { margin-top:8px; }
+    .picker select { width:100%; background:#151a21; color:#e6edf3; border:1px solid #30363d;
+                     border-radius:8px; padding:9px; font-size:13px; font-family:inherit; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="/">&larr;</a>
+    <img class="tete" src="/static/scout.png" alt="">
+    <div class="title">Scout</div>
+    <span class="pill idle" id="status">Idle</span>
+  </div>
+
+  <div class="barbody">
+    <form class="controls" id="form" method="get" action="/scout/toggle">
+      <div class="modes">
+        <button type="button" class="mode sel" id="m-wide" data-mode="wide">Wide</button>
+        <button type="button" class="mode tg" id="m-tg" data-mode="targeted">Targeted</button>
+      </div>
+      <div class="spacer"></div>
+      <input type="hidden" name="mode" id="mode" value="wide">
+      <input type="hidden" name="bssid" id="bssid" value="">
+      <button type="submit" class="startbtn" id="startbtn">Start</button>
+    </form>
+
+    <div class="picker" id="picker" style="display:none">
+      <select id="target">
+        <option value="">Choose a whitelisted target…</option>
+        {% for n in whitelist %}
+        <option value="{{ n.bssid }}">{{ n.name or 'Unnamed' }} — {{ n.bssid }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="scoutband">
+      <img src="/static/scout.png" alt="">
+      <div>
+        <div class="sstatus" id="sstatus">Idle — press Start to hunt.</div>
+        <div class="ssub" id="ssub"></div>
+      </div>
+    </div>
+
+    <div class="slots" id="slots"></div>
+
+    <div class="cards">
+      <div class="card"><div class="n">Handshakes</div><div class="v" id="c-hs">0</div></div>
+      <div class="card"><div class="n">PMKID</div><div class="v" id="c-pm">0</div></div>
+      <div class="card"><div class="n">APs seen</div><div class="v" id="c-ap">0</div></div>
+    </div>
+
+    <div class="section-label"><span>Live captures</span><span>feeds Sly &rarr;</span></div>
+    <div id="list"></div>
+  </div>
+
+  <script>
+    function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+
+    var selMode = "wide";
+    function setMode(m){
+      selMode = m;
+      document.getElementById('mode').value = m;
+      document.getElementById('m-wide').classList.toggle('sel', m==='wide');
+      document.getElementById('m-tg').classList.toggle('sel', m==='targeted');
+      document.getElementById('picker').style.display = (m==='targeted') ? 'block' : 'none';
+    }
+    document.getElementById('m-wide').onclick = function(){ if(!running) setMode('wide'); };
+    document.getElementById('m-tg').onclick   = function(){ if(!running) setMode('targeted'); };
+    document.getElementById('target').onchange = function(){ document.getElementById('bssid').value = this.value; };
+
+    var quips = {
+      wide: [["hunting on 5GHz…","hopping channels"],
+             ["sniffing the air…","PMKID sweep"],
+             ["nose to the ground","wide capture, no deauth"]],
+      targeted: [["locked on target","forcing a reconnect"],
+                 ["deauth sent","waiting for the 4-way"],
+                 ["almost got it…","stay in range"]]
+    };
+    var qi = 0;
+    function rollQuip(s){
+      if(!s.active){ document.getElementById('sstatus').textContent='Idle — press Start to hunt.';
+                     document.getElementById('ssub').textContent=''; return; }
+      var set = quips[s.mode==='targeted'?'targeted':'wide'];
+      var q = set[qi % set.length]; qi++;
+      document.getElementById('sstatus').textContent = q[0];
+      document.getElementById('ssub').textContent = q[1];
+    }
+
+    function slot(a){
+      if(a) return '<div class="slot filled"><div><div class="si">'+esc(a.label)+
+             '</div><div class="sj">'+esc(a.iface)+' · monitor · '+esc(a.bands)+'GHz</div></div><span class="dot"></span></div>';
+      return '<div class="slot empty"><div><div class="si">Plug a 2nd adapter</div>'+
+             '<div class="sj">splits bands · capture + deauth</div></div></div>';
+    }
+
+    var running = false;
+    function render(s){
+      running = !!s.active;
+      var st = document.getElementById('status');
+      st.className = 'pill ' + (s.active?'on':'idle');
+      st.textContent = s.active ? (s.mode==='targeted'?'Targeted':'Wide') : 'Idle';
+
+      if(s.active) setMode(s.mode==='targeted'?'targeted':'wide');
+
+      var btn = document.getElementById('startbtn');
+      btn.textContent = s.active ? 'Stop' : 'Start';
+      btn.classList.toggle('stop', s.active);
+
+      var ads = s.adapters || [];
+      document.getElementById('slots').innerHTML = slot(ads[0]||null) + slot(ads[1]||null);
+
+      document.getElementById('c-hs').textContent = s.handshakes||0;
+      document.getElementById('c-pm').textContent = s.pmkid||0;
+      document.getElementById('c-ap').textContent = s.aps||0;
+
+      var rec = s.recent || [], html='';
+      if(!rec.length){ html = '<div class="empty">'+(s.active?'Listening… captures will show here.':'No captures yet.')+'</div>'; }
+      else rec.forEach(function(c){
+        var cls = c.type==='PMKID' ? 'pm' : 'hs';
+        html += '<div class="cap"><div class="nm"><span class="t '+cls+'">'+esc(c.type||'HS')+
+                '</span>'+esc(c.name)+'</div><div class="bs">'+esc(c.bssid)+'</div></div>';
+      });
+      document.getElementById('list').innerHTML = html;
+    }
+
+    document.getElementById('form').onsubmit = function(e){
+      if(selMode==='targeted' && !running && !document.getElementById('bssid').value){
+        e.preventDefault();
+        alert('Choose a whitelisted target first.');
+      }
+    };
+
+    function poll(){ fetch('/scout/state',{cache:'no-store'}).then(function(r){return r.json();}).then(function(s){ render(s); rollQuip(s); }).catch(function(){}); }
+    poll(); setInterval(poll, 3000);
+  </script>
+</body>
+</html>

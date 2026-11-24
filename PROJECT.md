@@ -46,6 +46,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 | Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
+| Scout | Handshake harvester (hcxdumptool): PMKID + 4-way capture, one or two adapters, built to replace Pwnagotchi | Built, needs on-Pi validation. Runs alongside Pwnagotchi for now; Pwnagotchi is removed once Scout is proven |
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
@@ -375,6 +376,57 @@ mole_engine.relay_snapshot() reports targets and loot; the screen lists them.
 - Tune the relay loot parsing to the real ntlmrelayx output once tested.
 - Add a mole.png mascot to match the other tiles; wire the report to a file export
   and the planned VPS handoff.
+
+## Scout — handshake harvester
+Scout is Fennec's own capture module, built to replace Pwnagotchi with a lighter,
+more aggressive harvester tuned for the Pi 5 and for roaming. It drives one or two
+monitor-mode adapters with hcxdumptool and writes its loot where Sly already reads
+it, so cracking is unchanged. Fox mascot = Scout, a hound that sniffs out and
+retrieves handshakes.
+
+### Why not Pwnagotchi
+Fennec only used Pwnagotchi's capture engine; its e-paper face, AI brain and web UI
+were disabled at install. Scout keeps the capture, drops the rest, and adds PMKID
+harvesting and dual-adapter coverage. For now Scout ships alongside Pwnagotchi
+(additive, no removal) so the SD image keeps building; Pwnagotchi and its GPS plugin
+and wardrive hook are removed once Scout is validated on the Pi.
+
+### Two postures
+- Wide (default, roaming): PMKID plus opportunistic handshakes across 2.4 and 5 GHz,
+  no deauth. PMKID is clientless, so a drive-by picks up networks with no connected
+  client. Stays in the free wide-capture scope.
+- Targeted: locks onto one whitelisted BSSID and deauthenticates its clients to force
+  the 4-way. Offensive, so it is gated on the whitelist in the toggle route, like
+  Bjorn and Mirage. (This is a lighter path than Mirage, which also deauths but to
+  lure clients onto an evil twin; the two deauth paths are kept on purpose.)
+
+### Adapters
+Capability-based detection, not brand-locked: Scout lists the monitor-capable USB
+interfaces (built-in wlan0 station excluded) and adapts. One adapter sweeps all
+bands; a second, if plugged in, splits the bands (one on 2.4 GHz, one on 5 GHz) for
+parallel coverage. The Scout page shows a slot per adapter and a "plug a 2nd adapter"
+hint when only one is present. Compatibility depends on the kernel driver supporting
+monitor + injection (MediaTek MT76xx, Realtek RTL88xxAU via the DKMS driver, Ralink
+RT2800/RT3070, Atheros AR9271).
+
+### Architecture
+- Orchestrator /usr/local/bin/fennec-scout (root, via fennec-scout.service, disabled
+  at boot, tile-driven through sudoers). Reads /tmp/fennec-scout/config.json (mode,
+  adapters, target), sets the interfaces to monitor, runs hcxdumptool, then splits
+  the rolling pcapng into one pcap per network (<essid>_<bssid>.pcap) in the
+  handshakes dir with tshark, and writes stats to /tmp/fennec-scout/stats.json.
+- scout_engine.py detects the adapters, starts/stops the service and reads the stats.
+- app.py routes: /scout (page), /scout/toggle (start/stop, whitelist-gated in
+  targeted mode, takes over the radio from the other modes), /scout/state (live JSON).
+  templates/scout.html renders the mascot, the mode switch, the adapter slots, the
+  counters (handshakes / PMKID / APs) and the live capture list.
+
+### To do
+- Validate the hcxdumptool flags and the per-network split on the Pi (flag syntax
+  varies by hcxdumptool version).
+- Absorb the GPS tagging and Echo wardriving that Pwnagotchi currently provides, then
+  remove Pwnagotchi.
+- Feed Sly's per-file verdict back into the live list (crackable / robust tags).
 
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
