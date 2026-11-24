@@ -166,18 +166,22 @@ PY
                     -T fields -e wlan.ssid 2>/dev/null | grep -v '^$' | head -1)
             essid=$(decode_ssid "$essid")
             name=$(sanitize "${essid:-unknown}")
-            out="$HANDSHAKES/${name}_${hex}.pcap"
-            tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$out" 2>/dev/null || true
-            chmod 644 "$out" 2>/dev/null || true
-            # Tag the capture: a real 4-way handshake (EAPOL pairs) beats a PMKID.
-            type="HS"
+            # Split to a temp file, then keep it for Sly only if it really holds a
+            # usable 4-way handshake or a PMKID. A bare EAPOL frame is not crackable.
+            tmp="$RUN_DIR/split.pcap"
+            tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$tmp" 2>/dev/null || continue
+            type=""
             if command -v hcxpcapngtool >/dev/null; then
-                sum=$(hcxpcapngtool "$out" 2>/dev/null)
+                sum=$(hcxpcapngtool "$tmp" 2>/dev/null)
                 hsn=$(echo "$sum" | grep -iE "EAPOL pairs" | grep -oE '[0-9]+' | head -1)
                 pmn=$(echo "$sum" | grep -iE "PMKID"       | grep -oE '[0-9]+' | head -1)
                 if [ "${hsn:-0}" -gt 0 ]; then type="HS"
                 elif [ "${pmn:-0}" -gt 0 ]; then type="PMKID"; fi
             fi
+            if [ -z "$type" ]; then rm -f "$tmp"; continue; fi
+            out="$HANDSHAKES/${name}_${hex}.pcap"
+            mv -f "$tmp" "$out" 2>/dev/null || { rm -f "$tmp"; continue; }
+            chmod 644 "$out" 2>/dev/null || true
             items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"${type}\"}"
         done
         [ -n "$items" ] && recent="[$items]"
