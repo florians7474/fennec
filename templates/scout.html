@@ -36,15 +36,11 @@
     .sstatus { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#7bd88f; }
     .ssub { font-size:10px; color:#8b949e; margin-top:1px; }
 
-    .slots { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
-    .slot { display:flex; align-items:center; gap:7px; border-radius:8px; padding:0 12px; height:44px; width:100%; }
-    .slot > div { min-width:0; flex:1; }
-    .slot.filled { background:#11161d; border:1px solid #2b6d3f; }
-    .slot.empty  { background:#11161d; border:1px dashed #3a4150; }
-    .slot .si { font-size:11px; color:#e6edf3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .slot .sj { font-size:10px; color:#8b949e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .slot.empty .si { color:#8b949e; } .slot.empty .sj { color:#6a717c; }
-    .dot { width:7px; height:7px; border-radius:50%; background:#2ea043; flex:0 0 auto; }
+    .adapters { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
+    .chip { display:inline-flex; align-items:center; gap:6px; font-size:11px; border-radius:999px; padding:4px 11px; }
+    .chip.on { background:#11261a; border:0.5px solid #2b6d3f; color:#bfe9c9; }
+    .chip.on .d { width:6px; height:6px; border-radius:50%; background:#2ea043; }
+    .chip.add { border:1px dashed #3a4150; color:#8b949e; }
 
     .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
     .card { background:#161b22; border-radius:8px; padding:6px 10px; }
@@ -85,7 +81,7 @@
       </div>
     </div>
 
-    <div class="slots" id="slots"></div>
+    <div class="adapters" id="slots"></div>
 
     <div class="cards">
       <div class="card"><div class="n">Handshakes</div><div class="v" id="c-hs">0</div></div>
@@ -128,11 +124,9 @@
       lastCount = count;
     }
 
-    function slot(a){
-      if(a) return '<div class="slot filled"><div><div class="si">'+esc(a.label)+
-             '</div><div class="sj">'+esc(a.iface)+' · monitor · '+esc(a.bands)+'GHz</div></div><span class="dot"></span></div>';
-      return '<div class="slot empty"><div><div class="si">Plug a 2nd adapter</div>'+
-             '<div class="sj">splits bands · more coverage</div></div></div>';
+    function chip(a){
+      if(a) return '<span class="chip on"><span class="d"></span>'+esc(a.label)+' · '+esc(a.iface)+' · '+esc(a.bands)+'GHz</span>';
+      return '<span class="chip add">+ 2nd adapter</span>';
     }
 
     function render(s){
@@ -148,7 +142,7 @@
         : 'Start the sweep to harvest handshakes and PMKIDs.';
 
       var ads = s.adapters || [];
-      document.getElementById('slots').innerHTML = slot(ads[0]||null) + slot(ads[1]||null);
+      document.getElementById('slots').innerHTML = chip(ads[0]||null) + chip(ads[1]||null);
       document.getElementById('c-hs').textContent = s.handshakes||0;
       document.getElementById('c-pm').textContent = s.pmkid||0;
       document.getElementById('c-ap').textContent = s.aps||0;
