@@ -941,7 +941,14 @@ def read_handshakes():
         files = os.listdir(HANDSHAKES_DIR)
     except OSError:
         return []
-    for f in files:
+    # Several files can share one BSSID (e.g. a stale small capture and the real
+    # full one). Process largest first so the file with the actual handshake wins.
+    def _size(f):
+        try:
+            return os.path.getsize(os.path.join(HANDSHAKES_DIR, f))
+        except OSError:
+            return 0
+    for f in sorted(files, key=_size, reverse=True):
         if not f.endswith(".pcap"):
             continue
         base = f[:-5]
@@ -953,7 +960,7 @@ def read_handshakes():
             continue
         bssid = ":".join(raw[i:i+2] for i in range(0, 12, 2)).upper()
         if bssid not in captures:
-            captures[bssid] = {"name": name, "bssid": bssid, "file": f}
+            captures[bssid] = {"name": name.strip("-_"), "bssid": bssid, "file": f}
     return sorted(captures.values(), key=lambda c: c["name"].lower())
 
 def direct_scan():
