@@ -110,7 +110,7 @@ else
     start_hcx "$IFACE1" ""
 fi
 
-sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32; }
+sanitize() { echo "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-32 | sed 's/^_*//; s/_*$//'; }
 
 # tshark returns wlan.ssid as hex bytes; decode to the real text ESSID.
 decode_ssid() {
@@ -169,7 +169,16 @@ PY
             out="$HANDSHAKES/${name}_${hex}.pcap"
             tshark -r "$PCAP" -Y "wlan.bssid==$b" -w "$out" 2>/dev/null || true
             chmod 644 "$out" 2>/dev/null || true
-            items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"HS\"}"
+            # Tag the capture: a real 4-way handshake (EAPOL pairs) beats a PMKID.
+            type="HS"
+            if command -v hcxpcapngtool >/dev/null; then
+                sum=$(hcxpcapngtool "$out" 2>/dev/null)
+                hsn=$(echo "$sum" | grep -iE "EAPOL pairs" | grep -oE '[0-9]+' | head -1)
+                pmn=$(echo "$sum" | grep -iE "PMKID"       | grep -oE '[0-9]+' | head -1)
+                if [ "${hsn:-0}" -gt 0 ]; then type="HS"
+                elif [ "${pmn:-0}" -gt 0 ]; then type="PMKID"; fi
+            fi
+            items="$items${items:+,}{\"name\":\"${name}\",\"bssid\":\"${b}\",\"type\":\"${type}\"}"
         done
         [ -n "$items" ] && recent="[$items]"
     fi
