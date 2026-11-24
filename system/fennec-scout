@@ -127,34 +127,9 @@ while true; do
     sleep 10
     [ -s "$PCAP" ] || continue
 
+    # Counters are derived from what the list actually finds (below), not from
+    # hcxpcapngtool's whole-file totals, which over-count duplicate EAPOL pairs.
     hs=0; pmkid=0; aps=0
-    if command -v hcxpcapngtool >/dev/null; then
-        hcxpcapngtool "$PCAP" > "$RUN_DIR/summary.txt" 2>/dev/null
-        read -r hs pmkid aps < <(python3 - "$RUN_DIR/summary.txt" <<'PY' 2>/dev/null
-import re, sys
-try:
-    txt = open(sys.argv[1], encoding="utf-8", errors="replace").read()
-except OSError:
-    txt = ""
-def find(patterns):
-    for p in patterns:
-        m = re.search(p, txt, re.I)
-        if m:
-            return int(m.group(1))
-    return 0
-hs = find([r'EAPOL pairs[^\n]*?:\s*(\d+)',
-           r'best handshakes[^\n]*?:\s*(\d+)',
-           r'handshake[^\n]*?:\s*(\d+)'])
-pmkid = find([r'PMKID\(s\)[^\n]*?:\s*(\d+)', r'PMKID[^\n]*?:\s*(\d+)'])
-aps = find([r'ESSID \(total unique\)[^\n]*?:\s*(\d+)',
-            r'ACCESS POINT[^\n]*?:\s*(\d+)',
-            r'BEACON[^\n]*?:\s*(\d+)',
-            r'ESSID[^\n]*?:\s*(\d+)'])
-print(hs, pmkid, aps)
-PY
-)
-    fi
-    hs=${hs:-0}; pmkid=${pmkid:-0}; aps=${aps:-0}
 
     recent="[]"
     if command -v tshark >/dev/null; then
@@ -190,8 +165,11 @@ PY
         items=""; n=0
         for b in "${!CAP[@]}"; do
             items="$items${items:+,}{\"name\":\"${NAME[$b]}\",\"bssid\":\"${b}\",\"type\":\"${CAP[$b]}\"}"
+            if [ "${CAP[$b]}" = "HS" ]; then hs=$((hs+1)); else pmkid=$((pmkid+1)); fi
             n=$((n+1))
         done
+        aps=$(tshark -r "$PCAP" -Y "wlan.fc.type_subtype==0x08" -T fields -e wlan.bssid 2>/dev/null \
+              | tr 'A-F' 'a-f' | grep -E '^[0-9a-f:]{17}$' | sort -u | wc -l)
         while IFS=$'\t' read -r bs ss; do
             [ $n -ge 40 ] && break
             b=$(echo "$bs" | tr 'A-F' 'a-f')
