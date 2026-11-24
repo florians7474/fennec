@@ -385,7 +385,7 @@ it, so cracking is unchanged. Fox mascot = Scout, a hound that sniffs out and
 retrieves handshakes.
 
 ### Why not Pwnagotchi
-Fennec only used Pwnagotchi's capture engine; its e-paper face, AI brain and web UI
+Fennec only used Pwnagotchi's capture engine; its e-paper face, reinforcement-learning brain and web UI
 were disabled at install. Scout keeps the capture, drops the rest, and adds PMKID
 harvesting and dual-adapter coverage. For now Scout ships alongside Pwnagotchi
 (additive, no removal) so the SD image keeps building; Pwnagotchi and its GPS plugin
@@ -426,10 +426,22 @@ together on a single adapter (two if present).
   templates/scout.html renders the mascot, the mode switch, the adapter slots, the
   counters (handshakes / PMKID / APs) and the live capture list.
 
+### Validated on the Pi
+- Capture is real: hcxpcapngtool reports EAPOL pairs/PMKID and writes a non-empty
+  .22000; aircrack-ng accepts the handshake and cracks it. Sly runs end to end on a
+  Scout capture.
+- read_handshakes now keeps the largest file per BSSID, so a stale small capture no
+  longer hides the real one from Sly.
+
 ### To do
+- Keep the real ESSID (with its hyphen) in the capture filename: bettercap writes
+  "Bbox682B676D" instead of "Bbox-682B676D", so Sly's factory-key and ESSID stages
+  do not match a Bbox yet.
+- Scout should not write to a handshake file while Sly reads it; deposit stable,
+  per-session captures (the long-lived aggregate file also ends up with a corrupt
+  record that slows aircrack's read).
 - Absorb the GPS tagging and Echo wardriving that Pwnagotchi currently provides, then
-  remove Pwnagotchi (Scout already uses the same bettercap engine, so this mostly
-  means pointing the wardrive/GPS at Scout's bettercap instance).
+  remove Pwnagotchi (Scout already uses the same bettercap engine).
 - Feed Sly's per-file verdict back into the live list (crackable / robust tags).
 - Replace the estimated deauth count with bettercap's real deauth event count.
 
