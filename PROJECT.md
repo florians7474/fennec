@@ -432,11 +432,10 @@ together on a single adapter (two if present).
   Scout capture.
 - read_handshakes now keeps the largest file per BSSID, so a stale small capture no
   longer hides the real one from Sly.
+- Sly reads the real ESSID from the capture (not the filename), so the factory-key
+  and ESSID stages match even when bettercap drops the hyphen from the filename.
 
 ### To do
-- Keep the real ESSID (with its hyphen) in the capture filename: bettercap writes
-  "Bbox682B676D" instead of "Bbox-682B676D", so Sly's factory-key and ESSID stages
-  do not match a Bbox yet.
 - Scout should not write to a handshake file while Sly reads it; deposit stable,
   per-session captures (the long-lived aggregate file also ends up with a corrupt
   record that slows aircrack's read).
