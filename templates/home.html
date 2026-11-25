@@ -121,6 +121,7 @@
     .pwr-rotate { background:#6e40c9; }
     .pwr-pin { background:#374151; }
     .pwr-logs { background:#44506b; }
+    .pwr-pass { background:#374151; }
 
     /* Lock screen (nomadic use: ignore accidental touches while in a bag) */
     .lock-overlay { display:none; position:absolute; inset:0; z-index:100;
@@ -264,12 +265,14 @@
         <button class="pwr-act pwr-rotate" onclick="rotateScreen(this)">Rotate screen</button>
       </div>
       <div class="pwr-btns">
-        {% if local %}<button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>{% endif %}
         <button class="pwr-act pwr-logs" onclick="location.href='/journal'">Logs</button>
-      </div>
-      <div class="pwr-btns">
         <button class="pwr-act pwr-pass" onclick="location.href='/settings/password'">Password</button>
       </div>
+      {% if local %}
+      <div class="pwr-btns">
+        <button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>
+      </div>
+      {% endif %}
       <div class="pwr-btns">
         <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
         <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>
