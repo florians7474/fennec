@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Scout stats poller.
+"""Scoutchi stats poller.
 
 Reads bettercap's REST API (the access points it sees) and the handshakes
 directory (what has actually been captured this session), and writes a compact
-state file for the Scout screen. Modelled on fennec-wardrive, which reads the
+state file for the Scoutchi screen. Modelled on fennec-wardrive, which reads the
 same API.
 
 Output: /tmp/fennec-scout/stats.json, consumed by scout_engine.snapshot().

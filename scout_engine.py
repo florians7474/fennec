@@ -1,4 +1,4 @@
-"""Scout engine. Scout is Fennec's handshake harvester: it drives one or two
+"""Scoutchi engine. Scoutchi is Fennec's handshake harvester: it drives one or two
 monitor-mode adapters with hcxdumptool to collect WPA PMKIDs and 4-way
 handshakes, geared for roaming (wardriving) where PMKID capture brings in far
 more networks than a passive listen. It has two postures:
@@ -26,7 +26,7 @@ CONFIG_FILE = os.path.join(RUN_DIR, "config.json")
 STATS_FILE = os.path.join(RUN_DIR, "stats.json")
 SERVICE = "fennec-scout"
 
-# The built-in chip drives the Pi's own Wi-Fi connection (station), so Scout
+# The built-in chip drives the Pi's own Wi-Fi connection (station), so Scoutchi
 # leaves it alone and only uses USB monitor adapters.
 STATION_IFACE = "wlan0"
 
@@ -169,11 +169,11 @@ def _read_stats():
 
 
 def snapshot():
-    """JSON-able state for the Scout screen."""
+    """JSON-able state for the Scoutchi screen."""
     active = is_active()
     stats = _read_stats()
     # Show the adapters that are plugged in right now so the second-adapter slot
-    # reflects reality whether Scout is running or not.
+    # reflects reality whether Scoutchi is running or not.
     adapters = detect_adapters()
     recent = stats.get("recent") if isinstance(stats.get("recent"), list) else []
     return {

@@ -1,4 +1,4 @@
-"""Tests for the Scout engine: adapter parsing and snapshot, all hardware-free."""
+"""Tests for the Scoutchi engine: adapter parsing and snapshot, all hardware-free."""
 
 import os
 import sys

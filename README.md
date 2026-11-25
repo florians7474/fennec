@@ -34,8 +34,8 @@ https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
 
 | Tile | Role | Status |
 |------|------|--------|
-| **Scout** | Active Wi-Fi harvester: continuous deauth with handshake and PMKID capture, one or two adapters | ✅ Working |
-| **Pwnagotchi** | Passive Wi-Fi handshake capture (legacy, being replaced by Scout) | ✅ Working |
+| **Scoutchi** | Active Wi-Fi harvester: continuous deauth with handshake and PMKID capture, one or two adapters | ✅ Working |
+| **Pwnagotchi** | Passive Wi-Fi handshake capture (legacy, being replaced by Scoutchi) | ✅ Working |
 | **Echo** | Captures, wardriving and attack-surface map by GPS location | ✅ Working |
 | **Sly** | Offline WPA cracking on your own captures | ✅ Working |
 | **Mirage** | Evil-twin AP to recover a Wi-Fi key when Sly's offline cracking fails | ✅ Working |
@@ -48,8 +48,8 @@ The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Off
 
 All modules are operational: automatic installation, control from the tile, and a live view inside the interface.
 
-- **Scout — active harvester.** Sweeps every channel on one or two adapters, continuously deauthenticating nearby access points to force reconnections, and captures both 4-way handshakes and clientless PMKIDs straight into Sly's folder. Built on bettercap, it supersedes Pwnagotchi: wider (2.4 + 5 GHz, two adapters in parallel) and active rather than passive, with an animated mascot and live counters (handshakes, PMKID, APs seen, deauth) in the tile.
-- **Pwnagotchi — passive capture** (legacy, kept while Scout is validated). Captures handshakes in the background and mirrors its head live in the tile.
+- **Scoutchi — active harvester.** Sweeps every channel on one or two adapters, continuously deauthenticating nearby access points to force reconnections, and captures both 4-way handshakes and clientless PMKIDs straight into Sly's folder. Built on bettercap, it supersedes Pwnagotchi: wider (2.4 + 5 GHz, two adapters in parallel) and active rather than passive, with an animated mascot and live counters (handshakes, PMKID, APs seen, deauth) in the tile.
+- **Pwnagotchi — passive capture** (legacy, kept while Scoutchi is validated). Captures handshakes in the background and mirrors its head live in the tile.
 - **Echo — map & wardriving.** Plots captured handshakes by GPS and logs every network merely seen during a run (passive, WiGLE-style, via bettercap), placing seen networks at a signal-weighted **estimated position** refined on each pass. Two on-screen views: **Status** (whitelist / handshake / seen) and **Risk** (open or WEP, WPS, WPA2/3), with a real Sly crack verdict overriding the guess. Map tiles are cached locally and work offline, with a live GPS badge and outlier-trimmed centring.
 - **Sly — offline WPA cracking.** Runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-tap handoff to GPU cracking. Captures with no usable handshake are flagged, so a network is never wrongly reported as robust.
 - **Mirage — evil-twin AP** (the follow-up when Sly can't crack the key). Clones the SSID of a whitelisted target on the USB adapter (hostapd), hands out DHCP and redirects every request to an onboard captive portal (dnsmasq catch-all), and lists the clients that join live. A built-in **portal library** ships ready-to-use captive pages (Default, Hotel and Station themes, each in English and French) that apply in one tap and can be previewed on screen; a custom portal can still be uploaded as a ZIP, and a starter template is downloadable so a custom page keeps the working password form. Security is read from a real `iw` scan, so a target is labelled accurately as WPA2, WPA3 or WPA2/WPA3 transition. An optional deauth (bettercap) pushes a target's clients toward the twin, allowed whenever management-frame protection is not required (so WPA2 and transition networks qualify, a pure WPA3/PMF network does not); the same deauth also records the resulting 4-way handshake into Sly's folder for offline cracking. Whitelisted targets only.
@@ -104,7 +104,7 @@ that is driver-compatible with the Waveshare (C), so it reuses the same config
 
 The script is idempotent and adapts to any user. It installs the system packages
 (including nmap), enables SPI (needed by Bjorn's e-paper display), installs the
-Scout harvester (bettercap-based), sets up
+Scoutchi harvester (bettercap-based), sets up
 Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli,
 installs Bjorn in its own venv from a pinned requirements file that works on
 Python 3.13, downloads the Sly wordlists (10k-common, probable-wpa and
@@ -133,8 +133,8 @@ code, the Logs, reboot and shut down.
 ## Architecture
 
 - **Fennec**: Flask app that drives the modules without modifying them (port 5000)
-- **Scout**: in-house harvester built on bettercap (channel hopping, handshake + PMKID capture into Sly's folder, continuous deauth of every AP, one or two adapters; a poller reads bettercap's REST API for live stats)
-- **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd (legacy, being replaced by Scout)
+- **Scoutchi**: in-house harvester built on bettercap (channel hopping, handshake + PMKID capture into Sly's folder, continuous deauth of every AP, one or two adapters; a poller reads bettercap's REST API for live stats)
+- **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd (legacy, being replaced by Scoutchi)
 - **Echo**: in-house wardriving and GPS map (reads Pwnagotchi's `.gps.json` handshakes, a bettercap-fed wardrive logger with signal-weighted position estimates, offline OSM tile cache, Leaflet served locally, risk/attack-surface view with Sly verdict override)
 - **Sly**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
 - **Mirage**: in-house evil-twin launcher that picks up where Sly leaves off (hostapd rogue AP cloning a whitelisted SSID on the USB adapter, dnsmasq DHCP + DNS catch-all, a captive-portal web layer with a built-in theme library plus custom-ZIP upload, live client view from the dnsmasq leases, `iw`-based WPA2/WPA3/PMF detection, bettercap deauth gated on PMF and a second monitor adapter, and handshake capture handed to Sly)
@@ -149,8 +149,8 @@ code, the Logs, reboot and shut down.
 ## Features
 
 - [x] Fennec launcher and tile interface
-- [x] Scout module (bettercap harvester: continuous deauth, handshake + PMKID capture, one or two adapters, live counters)
-- [x] Pwnagotchi module (install, control, display) — legacy, being replaced by Scout
+- [x] Scoutchi module (bettercap harvester: continuous deauth, handshake + PMKID capture, one or two adapters, live counters)
+- [x] Pwnagotchi module (install, control, display) — legacy, being replaced by Scoutchi
 - [x] One-command installer (SPI enabled, works on a fresh card in one pass)
 - [x] Touchscreen display and Chromium kiosk auto-starting at boot
 - [x] On-screen power menu: lock screen (hold to unlock), screen rotation, PIN code, Logs, reboot, shut down

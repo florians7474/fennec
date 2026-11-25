@@ -46,7 +46,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 | Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
-| Scout | Wide handshake harvester (bettercap): PMKID + 4-way capture with continuous deauth, one or two adapters, built to replace Pwnagotchi | Runs on the Pi. Alongside Pwnagotchi for now; Pwnagotchi is removed once Scout is proven |
+| Scoutchi | Wide handshake harvester (bettercap): PMKID + 4-way capture with continuous deauth, one or two adapters, built to replace Pwnagotchi | Runs on the Pi. Alongside Pwnagotchi for now; Pwnagotchi is removed once Scoutchi is proven |
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Sly and Hugin are
@@ -377,19 +377,19 @@ mole_engine.relay_snapshot() reports targets and loot; the screen lists them.
 - Add a mole.png mascot to match the other tiles; wire the report to a file export
   and the planned VPS handoff.
 
-## Scout — handshake harvester
-Scout is Fennec's own capture module, built to replace Pwnagotchi with a lighter,
+## Scoutchi — handshake harvester
+Scoutchi is Fennec's own capture module, built to replace Pwnagotchi with a lighter,
 more aggressive harvester tuned for the Pi 5 and for roaming. It drives one or two
 monitor-mode adapters with bettercap and writes its loot where Sly already reads
-it, so cracking is unchanged. Fox mascot = Scout, a hound that sniffs out and
+it, so cracking is unchanged. Fox mascot = Scoutchi, a hound that sniffs out and
 retrieves handshakes.
 
 ### Why not Pwnagotchi
 Fennec only used Pwnagotchi's capture engine; its e-paper face, reinforcement-learning brain and web UI
-were disabled at install. Scout keeps the capture, drops the rest, and adds PMKID
-harvesting and dual-adapter coverage. For now Scout ships alongside Pwnagotchi
+were disabled at install. Scoutchi keeps the capture, drops the rest, and adds PMKID
+harvesting and dual-adapter coverage. For now Scoutchi ships alongside Pwnagotchi
 (additive, no removal) so the SD image keeps building; Pwnagotchi and its GPS plugin
-and wardrive hook are removed once Scout is validated on the Pi.
+and wardrive hook are removed once Scoutchi is validated on the Pi.
 
 ### Scope
 Wide only: sweep every supported frequency (2.4 + 5 GHz) with continuous deauth
@@ -400,10 +400,10 @@ With two adapters both sweep in parallel. A targeted
 evil-twin attack on one network is left to Mirage.
 
 ### Adapters
-Capability-based detection, not brand-locked: Scout lists the monitor-capable USB
+Capability-based detection, not brand-locked: Scoutchi lists the monitor-capable USB
 interfaces (built-in wlan0 station excluded) and adapts. One adapter sweeps all
 bands; a second, if plugged in, splits the bands (one on 2.4 GHz, one on 5 GHz) for
-parallel coverage. The Scout page shows a slot per adapter and a "plug a 2nd adapter"
+parallel coverage. The Scoutchi page shows a slot per adapter and a "plug a 2nd adapter"
 hint when only one is present. Compatibility depends on the kernel driver supporting
 monitor + injection (MediaTek MT76xx, Realtek RTL88xxAU via the DKMS driver, Ralink
 RT2800/RT3070, Atheros AR9271).
@@ -429,18 +429,18 @@ together on a single adapter (two if present).
 ### Validated on the Pi
 - Capture is real: hcxpcapngtool reports EAPOL pairs/PMKID and writes a non-empty
   .22000; aircrack-ng accepts the handshake and cracks it. Sly runs end to end on a
-  Scout capture.
+  Scoutchi capture.
 - read_handshakes now keeps the largest file per BSSID, so a stale small capture no
   longer hides the real one from Sly.
 - Sly reads the real ESSID from the capture (not the filename), so the factory-key
   and ESSID stages match even when bettercap drops the hyphen from the filename.
 
 ### To do
-- Scout should not write to a handshake file while Sly reads it; deposit stable,
+- Scoutchi should not write to a handshake file while Sly reads it; deposit stable,
   per-session captures (the long-lived aggregate file also ends up with a corrupt
   record that slows aircrack's read).
 - Absorb the GPS tagging and Echo wardriving that Pwnagotchi currently provides, then
-  remove Pwnagotchi (Scout already uses the same bettercap engine).
+  remove Pwnagotchi (Scoutchi already uses the same bettercap engine).
 - Feed Sly's per-file verdict back into the live list (crackable / robust tags).
 - Replace the estimated deauth count with bettercap's real deauth event count.
 

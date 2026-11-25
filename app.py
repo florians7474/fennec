@@ -457,7 +457,7 @@ EVENTS_MAX = 200
 MODULE_SERVICE = {"pwnagotchi": "pwnagotchi", "bjorn": "bjorn", "mirage": "fennec-mirage"}
 MODULE_LABEL = {"pwnagotchi": "Pwnagotchi", "bjorn": "Bjorn", "mirage": "Mirage",
                 "cracking": "Sly", "vigie": "Sentry", "hugin": "Hugin",
-                "mole": "Mole", "echo": "Echo", "scout": "Scout", "fennec": "Fennec"}
+                "mole": "Mole", "echo": "Echo", "scout": "Scoutchi", "fennec": "Fennec"}
 
 _events_lock = _threading.Lock()
 
@@ -949,7 +949,7 @@ def home():
     if active_mode == "vigie" and not vigie_monitor.monitor_state.get("active"):
         active_mode = None
         app_state["active_mode"] = None
-    # Scout is service-backed: if it stopped on its own, release the active mode.
+    # Scoutchi is service-backed: if it stopped on its own, release the active mode.
     if active_mode == "scout" and not scout_engine.is_active():
         active_mode = None
         app_state["active_mode"] = None
@@ -2368,7 +2368,7 @@ def mole_relay():
         return redirect(url_for("mole", err="start"))
     return redirect(url_for("mole"))
 
-# ---------- Scout (handshake harvester) ----------
+# ---------- Scoutchi (handshake harvester) ----------
 
 @app.route("/scout")
 def scout():
@@ -2383,14 +2383,14 @@ def scout_state():
 
 @app.route("/scout/toggle")
 def scout_toggle():
-    """Start or stop the Wide sweep (Scout's single harvesting mode)."""
+    """Start or stop the Wide sweep (Scoutchi's single harvesting mode)."""
     if scout_engine.is_active():
         scout_engine.stop()
         if app_state["active_mode"] == "scout":
             app_state["active_mode"] = None
-        log_event("scout", "info", "Scout stopped")
+        log_event("scout", "info", "Scoutchi stopped")
         return redirect(url_for("scout"))
-    # Scout drives the monitor adapter, so it takes over from the other radio
+    # Scoutchi drives the monitor adapter, so it takes over from the other radio
     # modes (Pwnagotchi, Mirage, Bjorn) and from Sentry's MITM.
     if app_state["active_mode"] in SERVICES:
         stop(app_state["active_mode"])
@@ -2398,7 +2398,7 @@ def scout_toggle():
         vigie_monitor.stop()
     if scout_engine.start("wide"):
         app_state["active_mode"] = "scout"
-        log_event("scout", "info", "Scout sweeping")
+        log_event("scout", "info", "Scoutchi sweeping")
     else:
         return redirect(url_for("scout", err="start"))
     return redirect(url_for("scout"))
