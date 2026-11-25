@@ -25,14 +25,17 @@ def check_route(path):
     except Exception as e:
         failures.append(f"{path} raised {e!r}")
         return
-    if r.status_code != 200:
+    if r.status_code >= 400:
         failures.append(f"{path} returned {r.status_code}")
     else:
-        print(f"ok   {path} -> 200")
+        # A redirect (e.g. "/" -> Wi-Fi onboarding when offline) is a healthy
+        # response for a smoke test; only 4xx/5xx are failures.
+        print(f"ok   {path} -> {r.status_code}")
 
 
 for path in ["/", "/map", "/connection", "/tiles/status", "/gps",
-             "/mirage/portal", "/mirage/portal/preview", "/scout", "/scout/state"]:
+             "/mirage/portal", "/mirage/portal/preview", "/scout", "/scout/state",
+             "/setup/wifi"]:
     check_route(path)
 
 
