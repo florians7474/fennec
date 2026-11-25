@@ -90,7 +90,7 @@
     .echo  { background:linear-gradient(150deg,#2a3566,#141c33); }
     .mirage { background:linear-gradient(150deg,#f0689b,#b0295b); }
     .mole  { background:linear-gradient(150deg,#c98a3a,#7a4e12); }
-    .scout { background:linear-gradient(150deg,#d8803a,#8a4a12); }
+    .scout { background:linear-gradient(150deg,#19e38c,#0a7d4e); }
     .scout img { width:64px; height:64px; }
     .mole img { width:70px; height:70px; z-index:1; }
     .mirage img { width:70px; height:70px; }
@@ -186,6 +186,12 @@
 
     <div class="page">
 
+      <a class="app" id="scout-tile" href="/scout">
+        <div class="icone scout"><img src="/static/scout.png" alt="Scout"></div>
+        <div class="name">Scout</div>
+        <div class="state"><span class="pastille"></span><span id="scout-state">harvester</span></div>
+      </a>
+
       <a class="app {{ 'err' if 'pwnagotchi' in crashed else ('on' if active=='pwnagotchi' else '') }}" href="/mode/pwnagotchi">
         <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
         <div class="name">Pwnagotchi</div>
@@ -236,12 +242,6 @@
         <div class="icone mole"><img src="/static/mole.png" alt="Mole"></div>
         <div class="name">Mole</div>
         <div class="state"><span class="pastille"></span><span id="mole-state">drop box</span></div>
-      </a>
-
-      <a class="app" id="scout-tile" href="/scout">
-        <div class="icone scout"><img src="/static/scout.png" alt="Scout"></div>
-        <div class="name">Scout</div>
-        <div class="state"><span class="pastille"></span><span id="scout-state">harvester</span></div>
       </a>
 
     </div>
