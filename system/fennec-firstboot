@@ -32,7 +32,26 @@ if [ -f "$LCD_CONF" ]; then
     fi
 fi
 
-# --- 2. Wi-Fi from a boot-partition file (set up with no keyboard) ---
+# --- 2. Enable the Wi-Fi radio so networks are scannable out of the box ---
+# A Raspberry Pi keeps Wi-Fi rfkill-blocked until a regulatory country is set.
+# Without this a fresh image shows no networks at all, and the first-run Wi-Fi
+# setup screen has nothing to offer. So set a country, unblock rfkill and turn
+# the radio on on every boot, independently of any Wi-Fi file below. The country
+# defaults to FR but can be overridden with a fennec-country.txt file (a single
+# ISO code such as US) dropped on the boot partition.
+wifi_country=FR
+for cf in /boot/firmware/fennec-country.txt /boot/fennec-country.txt; do
+    [ -f "$cf" ] || continue
+    c=$(sed -n '1p' "$cf" | tr -d '\r' | tr -d '[:space:]' | tr 'a-z' 'A-Z')
+    [ -n "$c" ] && wifi_country="$c"
+    break
+done
+raspi-config nonint do_wifi_country "$wifi_country" 2>/dev/null || true
+rfkill unblock wifi 2>/dev/null || true
+nmcli radio wifi on >/dev/null 2>&1 || true
+echo "fennec-firstboot: Wi-Fi radio enabled (country $wifi_country)"
+
+# --- 3. Wi-Fi from a boot-partition file (set up with no keyboard) ---
 # Drop a file named fennec-wifi.txt on the boot partition (the small drive Windows
 # shows after flashing) with the network name on line 1 and the password on
 # line 2. The Pi then joins that Wi-Fi on every boot, so SSH works with no cable.
@@ -41,8 +60,6 @@ for wf in /boot/firmware/fennec-wifi.txt /boot/fennec-wifi.txt; do
     ssid=$(sed -n '1p' "$wf" | tr -d '\r')
     psk=$(sed -n '2p' "$wf" | tr -d '\r')
     [ -n "$ssid" ] || continue
-    raspi-config nonint do_wifi_country FR 2>/dev/null || true
-    rfkill unblock wifi 2>/dev/null || true
     nmfile=/etc/NetworkManager/system-connections/fennec-wifi.nmconnection
     cat > "$nmfile" <<EOF
 [connection]
@@ -68,7 +85,7 @@ EOF
     break
 done
 
-# --- 3. First-boot bettercap password ---
+# --- 4. First-boot bettercap password ---
 CONF=/etc/pwnagotchi/config.toml
 CAP=/etc/pwnagotchi/pwnagotchi-auto.cap
 PLACEHOLDER=__BETTERCAP_PASS__
