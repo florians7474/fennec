@@ -222,15 +222,15 @@
         <div class="state"><span class="pastille"></span>{{ 'crashed' if 'bjorn' in crashed else ('active' if active=='bjorn' else 'stopped') }}</div>
       </a>
 
+    </div>
+
+    <div class="page">
+
       <a class="app" id="hugin-tile" href="/hugin">
         <div class="icone hugin"><img src="/static/hugin.png" alt="Hugin"></div>
         <div class="name">Hugin</div>
         <div class="state"><span class="pastille"></span><span id="hugin-state">Metasploit</span></div>
       </a>
-
-    </div>
-
-    <div class="page">
 
       <a class="app {{ 'on' if active=='vigie' }}" href="/vigie">
         <div class="icone vigie"><img src="/static/vigie.png" alt="Sentry"></div>
