@@ -87,6 +87,9 @@ configure_kiosk() {
     # and the kiosk never starts (the system stops at graphical.target).
     sudo systemctl set-default multi-user.target
     sudo systemctl disable lightdm.service 2>/dev/null || true
+    # Force the tty1 getty to start at boot: it is what auto-logs in and runs
+    # startx for the kiosk, and it does not always come up on its own.
+    sudo systemctl enable getty@tty1.service
 
     sudo cp "$SYS/Xwrapper.config" /etc/X11/Xwrapper.config
     sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
