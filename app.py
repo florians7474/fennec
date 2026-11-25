@@ -606,6 +606,34 @@ def known_wifi_profiles():
             ssids.add(p[0])
     return ssids
 
+def scan_wifi_simple():
+    """Nearby Wi-Fi networks for first-run onboarding: list of
+    {ssid, bssid, signal, secure}, strongest first, one entry per SSID."""
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "SSID,BSSID,SIGNAL,SECURITY",
+             "device", "wifi", "list", "--rescan", "yes"],
+            capture_output=True, text=True, timeout=25,
+        )
+    except Exception:
+        return []
+    best = {}
+    for line in r.stdout.splitlines():
+        p = _nmcli_split(line)
+        if len(p) < 4:
+            continue
+        ssid, bssid, signal, security = p[0], p[1], p[2], p[3]
+        if not ssid:                      # hidden network, skip
+            continue
+        try:
+            sig = int(signal)
+        except ValueError:
+            sig = 0
+        if ssid not in best or sig > best[ssid]["signal"]:
+            best[ssid] = {"ssid": ssid, "bssid": bssid, "signal": sig,
+                          "secure": bool(security and security != "--")}
+    return sorted(best.values(), key=lambda n: -n["signal"])
+
 def bjorn_wifi_gate():
     """Whether Bjorn may start. Ethernet = implicit authorization (physical act).
     On Wi-Fi, allowed only if the connected SSID is in the whitelist (any band of
@@ -890,6 +918,13 @@ def merge_traffic(mac, live):
 
 @app.route("/")
 def home():
+    # First-run onboarding on the touchscreen: if the Pi is offline, send the
+    # kiosk straight to the Wi-Fi setup screen (unless skipped this boot). Only
+    # on localhost, so remote web users are never forced into it.
+    if (request.remote_addr in ("127.0.0.1", "::1")
+            and connection_state()["type"] is None
+            and not session.get("wifi_setup_skipped")):
+        return redirect(url_for("setup_wifi"))
     active_mode = app_state["active_mode"]
     # Sly runs in a thread, not a service: the dot follows the engine's real state.
     if active_mode == "cracking" and not raton_engine.crack_state.get("active"):
@@ -1985,6 +2020,42 @@ def connection_stop():
 def connection_state_json():
     """Live connection for the header badge (polled by the kiosk home page)."""
     return jsonify(connection_state())
+
+# ---------- First-run Wi-Fi onboarding ----------
+
+@app.route("/setup/wifi")
+def setup_wifi():
+    """Join any nearby Wi-Fi from the touchscreen (first-run onboarding)."""
+    return render_template("setup_wifi.html",
+                           networks=scan_wifi_simple(),
+                           conn=connection_state(),
+                           err=request.args.get("err"))
+
+@app.route("/setup/wifi/connect", methods=["POST"])
+def setup_wifi_connect():
+    ssid = request.form.get("ssid", "").strip()
+    bssid = request.form.get("bssid", "").strip()
+    key = request.form.get("key", "")
+    if not ssid or not bssid:
+        return redirect(url_for("setup_wifi", err="Pick a network first"))
+    try:
+        r = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-wifi-connect", ssid, bssid, key],
+            capture_output=True, text=True, timeout=45,
+        )
+    except Exception:
+        return redirect(url_for("setup_wifi", err="Connection command failed"))
+    if r.returncode != 0:
+        lines = (r.stderr or r.stdout or "").strip().splitlines()
+        msg = lines[-1].strip() if lines else "Connection failed"
+        return redirect(url_for("setup_wifi", err=msg[:120]))
+    session.pop("wifi_setup_skipped", None)
+    return redirect(url_for("home"))
+
+@app.route("/setup/wifi/skip")
+def setup_wifi_skip():
+    session["wifi_setup_skipped"] = True
+    return redirect(url_for("home"))
 
 # ---------- Sentry ----------
 
