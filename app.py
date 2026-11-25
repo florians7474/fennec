@@ -2622,6 +2622,47 @@ def pin_page():
     return render_template("pin.html", pin_set=pin_is_set(), local=_is_local())
 
 
+# ---------- System (SSH) password ----------
+
+_PASSWD_ERRORS = {
+    "BAD_CURRENT": "Current password is wrong.",
+    "TOO_SHORT": "The new password must be at least 6 characters.",
+    "SAME": "The new password must be different from the current one.",
+    "NO_USER": "Could not read the account.",
+    "ERROR": "Could not change the password.",
+}
+
+
+@app.route("/settings/password")
+def settings_password():
+    return render_template("settings_password.html")
+
+
+@app.route("/settings/password/change", methods=["POST"])
+def settings_password_change():
+    data = request.get_json(silent=True) or request.form
+    current = data.get("current") or ""
+    new = data.get("new") or ""
+    confirm = data.get("confirm") or ""
+    if new != confirm:
+        return jsonify(ok=False, error="The new passwords do not match."), 400
+    if len(new) < 6:
+        return jsonify(ok=False, error=_PASSWD_ERRORS["TOO_SHORT"]), 400
+    try:
+        r = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-passwd"],
+            input="%s\n%s\n" % (current, new),
+            text=True, capture_output=True, timeout=15,
+        )
+    except Exception:
+        return jsonify(ok=False, error=_PASSWD_ERRORS["ERROR"]), 500
+    token = (r.stdout or "").strip().splitlines()
+    token = token[-1].strip() if token else ""
+    if r.returncode == 0 and token == "OK":
+        return jsonify(ok=True)
+    return jsonify(ok=False, error=_PASSWD_ERRORS.get(token, _PASSWD_ERRORS["ERROR"])), 400
+
+
 MODULE_COLOR = {"pwnagotchi": "#19e38c", "bjorn": "#6f9bc8", "mirage": "#f0689b",
                 "cracking": "#ffb020", "vigie": "#28c0d4", "hugin": "#a78bfa",
                 "echo": "#2a3566", "fennec": "#01F994"}

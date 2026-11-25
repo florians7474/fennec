@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Change the Unix (SSH) password of the account running Fennec.
+
+Called by the web app through sudo. It reads two lines on stdin, the current
+password then the new one, verifies the current password against /etc/shadow,
+and only then sets the new one with chpasswd. Passwords are never passed on the
+command line (they would show up in the process list); they stay on stdin.
+
+Output: prints "OK" and exits 0 on success. On failure it prints one of
+"BAD_CURRENT", "TOO_SHORT", "SAME", "NO_USER" or "ERROR" and exits non-zero.
+"""
+import crypt
+import os
+import subprocess
+import sys
+
+MIN_LEN = 6
+
+
+def shadow_hash(user):
+    try:
+        with open("/etc/shadow", "r") as f:
+            for line in f:
+                parts = line.split(":")
+                if parts and parts[0] == user:
+                    return parts[1]
+    except Exception:
+        return None
+    return None
+
+
+def main():
+    # The account to change is the one that invoked sudo (the Fennec user),
+    # never root. Fall back to "fennec" if SUDO_USER is not set.
+    user = os.environ.get("SUDO_USER") or "fennec"
+    if user == "root" or "/" in user or "\0" in user:
+        print("NO_USER")
+        return 1
+
+    data = sys.stdin.read().split("\n")
+    current = data[0] if len(data) > 0 else ""
+    new = data[1] if len(data) > 1 else ""
+
+    if len(new) < MIN_LEN:
+        print("TOO_SHORT")
+        return 1
+    if new == current:
+        print("SAME")
+        return 1
+
+    h = shadow_hash(user)
+    if not h or h in ("!", "*", "", "!!"):
+        # No usable hash to verify against.
+        print("NO_USER")
+        return 1
+    if crypt.crypt(current, h) != h:
+        print("BAD_CURRENT")
+        return 1
+
+    try:
+        p = subprocess.run(
+            ["chpasswd"],
+            input="%s:%s\n" % (user, new),
+            text=True, capture_output=True, timeout=10,
+        )
+    except Exception:
+        print("ERROR")
+        return 1
+    if p.returncode != 0:
+        print("ERROR")
+        return 1
+    print("OK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
