@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fennec — Ready</title>
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }
+  html,body { margin:0; height:100%; background:#0d1117; color:#e6edf3;
+    font-family:-apple-system,Segoe UI,Roboto,sans-serif; overflow:hidden; }
+  .wrap { height:100%; display:flex; flex-direction:column; padding:10px 12px; }
+  .head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .check { width:34px; height:34px; border-radius:50%; background:#01F994; color:#07120c;
+    font-size:20px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .htext .title { font-size:16px; font-weight:700; }
+  .htext .sub { font-size:12px; color:#8b949e; }
+  .cards { flex:1; overflow-y:auto; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:10px;
+    padding:8px 10px; margin-bottom:6px; }
+  .card .lbl { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:.04em; }
+  .card .val { font-size:16px; font-weight:700; margin-top:2px; word-break:break-all;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; -webkit-user-select:text; user-select:text; }
+  .hint { font-size:11px; color:#8b949e; margin-top:2px; }
+  .warn { background:#3d2a12; border:1px solid #d29922; color:#f0c36d; font-size:12px;
+    padding:8px 10px; border-radius:10px; margin-bottom:6px; }
+  .foot { padding-top:6px; }
+  .btn { width:100%; background:#01F994; border:1px solid #01F994; color:#07120c;
+    border-radius:10px; padding:12px; font-size:15px; font-weight:700; }
+  .btn:active { filter:brightness(1.15); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="check">&#10003;</div>
+      <div class="htext">
+        <div class="title">Fennec is online</div>
+        <div class="sub">
+          {% if conn.type == "wifi" %}Connected to {{ conn.name }}{% else %}Connected{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      {% if ip %}
+      <div class="card">
+        <div class="lbl">Web interface</div>
+        <div class="val">http://{{ ip }}:5000</div>
+        <div class="hint">Open this in a browser on the same network.</div>
+      </div>
+      <div class="card">
+        <div class="lbl">SSH access</div>
+        <div class="val">ssh fennec@{{ ip }}</div>
+        <div class="hint">For the terminal, from another computer.</div>
+      </div>
+      {% else %}
+      <div class="warn">
+        Connected, but no IP address was detected yet. Give it a few seconds,
+        then check your router, or reopen this screen.
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="foot">
+      <a class="btn" href="/" style="display:block;text-align:center;text-decoration:none;">Continue</a>
+    </div>
+  </div>
+</body>
+</html>

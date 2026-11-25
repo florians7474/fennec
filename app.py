@@ -553,6 +553,22 @@ def connection_state():
         return {"type": "wifi", "name": ssid}
     return {"type": None, "name": "Offline"}
 
+def primary_ip():
+    """The Pi's main LAN IP (first address of `hostname -I`), or None if offline.
+    Used on the setup "done" screen so the user gets the real web and SSH
+    addresses, not an example."""
+    try:
+        r = subprocess.run(["hostname", "-I"],
+                           capture_output=True, text=True, timeout=5)
+    except Exception:
+        return None
+    for tok in r.stdout.split():
+        tok = tok.strip()
+        # Skip IPv6 and loopback; the first IPv4 is the LAN address.
+        if tok and ":" not in tok and not tok.startswith("127."):
+            return tok
+    return None
+
 WIFI_IFACE = "wlan0"  # built-in station interface; USB adapter stays for monitor
 
 def _nmcli_split(line):
@@ -2050,7 +2066,16 @@ def setup_wifi_connect():
         msg = lines[-1].strip() if lines else "Connection failed"
         return redirect(url_for("setup_wifi", err=msg[:120]))
     session.pop("wifi_setup_skipped", None)
-    return redirect(url_for("home"))
+    return redirect(url_for("setup_done"))
+
+@app.route("/setup/done")
+def setup_done():
+    """Shown right after the first-run Wi-Fi connect: the real web and SSH
+    addresses so the user can reach the device from another machine."""
+    ip = primary_ip()
+    return render_template("setup_done.html",
+                           conn=connection_state(),
+                           ip=ip)
 
 @app.route("/setup/wifi/skip")
 def setup_wifi_skip():
