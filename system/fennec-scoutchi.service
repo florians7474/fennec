@@ -1,11 +1,11 @@
 [Unit]
-Description=Scout handshake harvester (Fennec module)
+Description=Scoutchi handshake harvester (Fennec module)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/fennec-scout
-ExecStopPost=-/usr/bin/pkill -f /usr/local/bin/fennec-scout-poll
+ExecStart=/usr/local/bin/fennec-scoutchi
+ExecStopPost=-/usr/bin/pkill -f /usr/local/bin/fennec-scoutchi-poll
 Restart=no
 
 [Install]

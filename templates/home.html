@@ -90,8 +90,8 @@
     .echo  { background:linear-gradient(150deg,#2a3566,#141c33); }
     .mirage { background:linear-gradient(150deg,#f0689b,#b0295b); }
     .mole  { background:linear-gradient(150deg,#c98a3a,#7a4e12); }
-    .scout { background:linear-gradient(150deg,#ffd23f,#e0a008); }
-    .scout img { width:72px; height:72px; object-fit:contain; }
+    .scoutchi { background:linear-gradient(150deg,#ffd23f,#e0a008); }
+    .scoutchi img { width:72px; height:72px; object-fit:contain; }
     .mole img { width:70px; height:70px; z-index:1; }
     .mirage img { width:70px; height:70px; }
     .hugin img { width:70px; height:70px; }
@@ -186,10 +186,10 @@
 
     <div class="page">
 
-      <a class="app" id="scout-tile" href="/scout">
-        <div class="icone scout"><img src="/static/scout.png" alt="Scoutchi"></div>
+      <a class="app" id="scoutchi-tile" href="/scoutchi">
+        <div class="icone scoutchi"><img src="/static/scoutchi.png" alt="Scoutchi"></div>
         <div class="name">Scoutchi</div>
-        <div class="state"><span class="pastille"></span><span id="scout-state">harvester</span></div>
+        <div class="state"><span class="pastille"></span><span id="scoutchi-state">harvester</span></div>
       </a>
 
       <a class="app {{ 'err' if 'pwnagotchi' in crashed else ('on' if active=='pwnagotchi' else '') }}" href="/mode/pwnagotchi">
@@ -427,11 +427,11 @@
   <script>
     // Scoutchi tile: green dot while the harvester is running.
     (function(){
-      var tile = document.getElementById('scout-tile');
-      var state = document.getElementById('scout-state');
+      var tile = document.getElementById('scoutchi-tile');
+      var state = document.getElementById('scoutchi-state');
       if (!tile) return;
       function refresh(){
-        fetch('/scout/state', {cache:'no-store'})
+        fetch('/scoutchi/state', {cache:'no-store'})
           .then(function(r){ return r.json(); })
           .then(function(s){
             tile.classList.toggle('on', !!(s && s.active));

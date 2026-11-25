@@ -6,7 +6,7 @@ directory (what has actually been captured this session), and writes a compact
 state file for the Scoutchi screen. Modelled on fennec-wardrive, which reads the
 same API.
 
-Output: /tmp/fennec-scout/stats.json, consumed by scout_engine.snapshot().
+Output: /tmp/fennec-scoutchi/stats.json, consumed by scoutchi_engine.snapshot().
 """
 import base64
 import glob
@@ -17,7 +17,7 @@ import subprocess
 import time
 import urllib.request
 
-RUN_DIR = "/tmp/fennec-scout"
+RUN_DIR = "/tmp/fennec-scoutchi"
 STATS = os.path.join(RUN_DIR, "stats.json")
 CAPLET = "/etc/pwnagotchi/pwnagotchi-auto.cap"
 API = "http://127.0.0.1:8081/api/session"

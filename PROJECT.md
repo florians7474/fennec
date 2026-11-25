@@ -411,19 +411,19 @@ RT2800/RT3070, Atheros AR9271).
 ### Architecture
 Built on bettercap, the same engine Pwnagotchi uses, so capture and deauth run
 together on a single adapter (two if present).
-- Orchestrator /usr/local/bin/fennec-scout (root, via fennec-scout.service, disabled
-  at boot, tile-driven through sudoers). Reads /tmp/fennec-scout/config.json
+- Orchestrator /usr/local/bin/fennec-scoutchi (root, via fennec-scoutchi.service, disabled
+  at boot, tile-driven through sudoers). Reads /tmp/fennec-scoutchi/config.json
   (adapters), sets the interfaces to monitor, and runs bettercap per adapter with:
   wifi.recon on (channel hopping), handshakes written per-AP to the handshakes dir
   Sly reads (aggregate false), and a ticker firing wifi.deauth ff:ff:ff:ff:ff:ff
   every 10 s (continuous deauth of every AP). Card 1 carries bettercap's REST API.
-- fennec-scout-poll (root) reads that REST API (APs seen) plus the handshakes dir
+- fennec-scoutchi-poll (root) reads that REST API (APs seen) plus the handshakes dir
   (what was captured this session, classified HS vs PMKID with hcxpcapngtool) and
-  writes /tmp/fennec-scout/stats.json, including a climbing deauth count.
-- scout_engine.py detects the adapters, starts/stops the service and reads the stats.
-- app.py routes: /scout (page), /scout/toggle (start/stop the sweep, takes over the
-  radio from the other modes), /scout/state (live JSON).
-  templates/scout.html renders the mascot, the mode switch, the adapter slots, the
+  writes /tmp/fennec-scoutchi/stats.json, including a climbing deauth count.
+- scoutchi_engine.py detects the adapters, starts/stops the service and reads the stats.
+- app.py routes: /scoutchi (page), /scoutchi/toggle (start/stop the sweep, takes over the
+  radio from the other modes), /scoutchi/state (live JSON).
+  templates/scoutchi.html renders the mascot, the mode switch, the adapter slots, the
   counters (handshakes / PMKID / APs) and the live capture list.
 
 ### Validated on the Pi

@@ -29,11 +29,11 @@
                 text-decoration:none; }
     .startbtn.stop { border-color:#7a1f1f; background:#2a1414; color:#f0999b; }
 
-    .scoutband { display:flex; align-items:center; gap:10px; background:#11161d;
+    .scoutchiband { display:flex; align-items:center; gap:10px; background:#11161d;
                  border:1px solid #23272f; border-radius:8px; padding:6px 10px; margin-top:8px; }
-    .scoutband img { height:46px; width:auto; image-rendering:pixelated; animation:bob 2.4s ease-in-out infinite; filter:brightness(0) invert(1); }
+    .scoutchiband img { height:46px; width:auto; image-rendering:pixelated; animation:bob 2.4s ease-in-out infinite; filter:brightness(0) invert(1); }
     @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
-    .scoutband .sbtext { flex:1; min-width:0; }
+    .scoutchiband .sbtext { flex:1; min-width:0; }
     .sstatus { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:#7bd88f; }
     .ssub { font-size:10px; color:#8b949e; margin-top:1px; }
     .deauth { flex:0 0 auto; display:inline-flex; align-items:center; gap:5px; font-size:11px;
@@ -67,7 +67,7 @@
 <body>
   <div class="topbar">
     <a class="back" href="/">&larr;</a>
-    <img class="tete" src="/static/scout.png" alt="">
+    <img class="tete" src="/static/scoutchi.png" alt="">
     <div class="title">Scoutchi</div>
     <span class="pill idle" id="status">Idle</span>
   </div>
@@ -75,11 +75,11 @@
   <div class="barbody">
     <div class="controls">
       <div class="lead" id="lead">Start the sweep to harvest handshakes and PMKIDs.</div>
-      <a class="startbtn" id="startbtn" href="/scout/toggle">Start</a>
+      <a class="startbtn" id="startbtn" href="/scoutchi/toggle">Start</a>
     </div>
 
-    <div class="scoutband">
-      <img id="scoutface" src="/static/scout6.png" alt="">
+    <div class="scoutchiband">
+      <img id="scoutchiface" src="/static/scoutchi6.png" alt="">
       <div class="sbtext">
         <div class="sstatus" id="sstatus">Idle — press Start to hunt.</div>
         <div class="ssub" id="ssub"></div>
@@ -103,13 +103,13 @@
     function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
 
     var FACES = {
-      idle: ["/static/scout6.png"],
-      wide: ["/static/scout1.png", "/static/scout3.png", "/static/scout5.png", "/static/scout2.png", "/static/scout4.png"]
+      idle: ["/static/scoutchi6.png"],
+      wide: ["/static/scoutchi1.png", "/static/scoutchi3.png", "/static/scoutchi5.png", "/static/scoutchi2.png", "/static/scoutchi4.png"]
     };
     var faceSet = FACES.idle, faceI = 0, happyUntil = 0, lastCount = 0;
     function faceTick(){
-      var img = document.getElementById('scoutface'); if (!img) return;
-      if (Date.now() < happyUntil){ img.src = "/static/scout4.png"; return; }
+      var img = document.getElementById('scoutchiface'); if (!img) return;
+      if (Date.now() < happyUntil){ img.src = "/static/scoutchi4.png"; return; }
       img.src = faceSet[faceI % faceSet.length]; faceI++;
     }
     setInterval(faceTick, 3200);
@@ -170,7 +170,7 @@
       document.getElementById('list').innerHTML = html;
     }
 
-    function poll(){ fetch('/scout/state',{cache:'no-store'}).then(function(r){return r.json();}).then(function(s){ render(s); rollQuip(s); updateFace(s); }).catch(function(){}); }
+    function poll(){ fetch('/scoutchi/state',{cache:'no-store'}).then(function(r){return r.json();}).then(function(s){ render(s); rollQuip(s); updateFace(s); }).catch(function(){}); }
     poll(); setInterval(poll, 3000);
   </script>
 </body>

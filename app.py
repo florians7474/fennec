@@ -8,7 +8,7 @@ import socket
 import raton_engine
 import vigie_monitor
 import mole_engine
-import scout_engine
+import scoutchi_engine
 import hugin
 import hugin_msf
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify, send_file, send_from_directory, Response, session
@@ -183,7 +183,7 @@ SERVICES = {
     "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi", "fennec-wardrive"],
     "bjorn": ["bjorn", "bjorn-console"],
     "mirage": ["fennec-mirage"],
-    "scout": ["fennec-scout"],
+    "scoutchi": ["fennec-scoutchi"],
 }
 
 import glob
@@ -457,7 +457,7 @@ EVENTS_MAX = 200
 MODULE_SERVICE = {"pwnagotchi": "pwnagotchi", "bjorn": "bjorn", "mirage": "fennec-mirage"}
 MODULE_LABEL = {"pwnagotchi": "Pwnagotchi", "bjorn": "Bjorn", "mirage": "Mirage",
                 "cracking": "Sly", "vigie": "Sentry", "hugin": "Hugin",
-                "mole": "Mole", "echo": "Echo", "scout": "Scoutchi", "fennec": "Fennec"}
+                "mole": "Mole", "echo": "Echo", "scoutchi": "Scoutchi", "fennec": "Fennec"}
 
 _events_lock = _threading.Lock()
 
@@ -950,7 +950,7 @@ def home():
         active_mode = None
         app_state["active_mode"] = None
     # Scoutchi is service-backed: if it stopped on its own, release the active mode.
-    if active_mode == "scout" and not scout_engine.is_active():
+    if active_mode == "scoutchi" and not scoutchi_engine.is_active():
         active_mode = None
         app_state["active_mode"] = None
     # Echo is a viewer, not a service — show how many networks are mapped.
@@ -2370,38 +2370,38 @@ def mole_relay():
 
 # ---------- Scoutchi (handshake harvester) ----------
 
-@app.route("/scout")
-def scout():
+@app.route("/scoutchi")
+def scoutchi():
     nets = load_whitelist()
     nets.sort(key=lambda r: (r.get("name") or "").lower())
-    return render_template("scout.html", whitelist=nets,
+    return render_template("scoutchi.html", whitelist=nets,
                            err=request.args.get("err"))
 
-@app.route("/scout/state")
-def scout_state():
-    return jsonify(scout_engine.snapshot())
+@app.route("/scoutchi/state")
+def scoutchi_state():
+    return jsonify(scoutchi_engine.snapshot())
 
-@app.route("/scout/toggle")
-def scout_toggle():
+@app.route("/scoutchi/toggle")
+def scoutchi_toggle():
     """Start or stop the Wide sweep (Scoutchi's single harvesting mode)."""
-    if scout_engine.is_active():
-        scout_engine.stop()
-        if app_state["active_mode"] == "scout":
+    if scoutchi_engine.is_active():
+        scoutchi_engine.stop()
+        if app_state["active_mode"] == "scoutchi":
             app_state["active_mode"] = None
-        log_event("scout", "info", "Scoutchi stopped")
-        return redirect(url_for("scout"))
+        log_event("scoutchi", "info", "Scoutchi stopped")
+        return redirect(url_for("scoutchi"))
     # Scoutchi drives the monitor adapter, so it takes over from the other radio
     # modes (Pwnagotchi, Mirage, Bjorn) and from Sentry's MITM.
     if app_state["active_mode"] in SERVICES:
         stop(app_state["active_mode"])
     if vigie_monitor.monitor_state["active"]:
         vigie_monitor.stop()
-    if scout_engine.start("wide"):
-        app_state["active_mode"] = "scout"
-        log_event("scout", "info", "Scoutchi sweeping")
+    if scoutchi_engine.start("wide"):
+        app_state["active_mode"] = "scoutchi"
+        log_event("scoutchi", "info", "Scoutchi sweeping")
     else:
-        return redirect(url_for("scout", err="start"))
-    return redirect(url_for("scout"))
+        return redirect(url_for("scoutchi", err="start"))
+    return redirect(url_for("scoutchi"))
 
 # ---------- Whitelist (routes) ----------
 

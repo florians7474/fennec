@@ -34,7 +34,7 @@ def check_route(path):
 
 
 for path in ["/", "/map", "/connection", "/tiles/status", "/gps",
-             "/mirage/portal", "/mirage/portal/preview", "/scout", "/scout/state",
+             "/mirage/portal", "/mirage/portal/preview", "/scoutchi", "/scoutchi/state",
              "/setup/wifi", "/setup/done", "/settings/password"]:
     check_route(path)
 

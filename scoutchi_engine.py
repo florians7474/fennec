@@ -12,19 +12,19 @@ more networks than a passive listen. It has two postures:
 Captures are written where Sly already reads them (the handshakes dir), one pcap
 per network named <essid>_<bssid>.pcap, so cracking needs no change.
 
-The capture runs as root in the fennec-scout systemd service (the orchestrator
-/usr/local/bin/fennec-scout). This module detects the adapters, starts and stops
-that service, and reads the stats the orchestrator writes under /tmp/fennec-scout.
+The capture runs as root in the fennec-scoutchi systemd service (the orchestrator
+/usr/local/bin/fennec-scoutchi). This module detects the adapters, starts and stops
+that service, and reads the stats the orchestrator writes under /tmp/fennec-scoutchi.
 """
 import os
 import glob
 import json
 import subprocess
 
-RUN_DIR = "/tmp/fennec-scout"
+RUN_DIR = "/tmp/fennec-scoutchi"
 CONFIG_FILE = os.path.join(RUN_DIR, "config.json")
 STATS_FILE = os.path.join(RUN_DIR, "stats.json")
-SERVICE = "fennec-scout"
+SERVICE = "fennec-scoutchi"
 
 # The built-in chip drives the Pi's own Wi-Fi connection (station), so Scoutchi
 # leaves it alone and only uses USB monitor adapters.

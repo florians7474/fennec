@@ -264,12 +264,12 @@ sudo cp "$SYS/fennec-mirage-deauth" /usr/local/bin/fennec-mirage-deauth
 sudo cp "$SYS/fennec-mirage-portal-manage" /usr/local/bin/fennec-mirage-portal-manage
 sudo cp "$SYS/fennec-mole" /usr/local/bin/fennec-mole
 sudo cp "$SYS/fennec-mole-relay" /usr/local/bin/fennec-mole-relay
-sudo cp "$SYS/fennec-scout" /usr/local/bin/fennec-scout
-sudo cp "$SYS/fennec-scout-poll.py" /usr/local/bin/fennec-scout-poll
-sudo chmod +x /usr/local/bin/fennec-scout-poll
+sudo cp "$SYS/fennec-scoutchi" /usr/local/bin/fennec-scoutchi
+sudo cp "$SYS/fennec-scoutchi-poll.py" /usr/local/bin/fennec-scoutchi-poll
+sudo chmod +x /usr/local/bin/fennec-scoutchi-poll
 sudo cp "$SYS/fennec-passwd" /usr/local/bin/fennec-passwd
 sudo chmod +x /usr/local/bin/fennec-passwd
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scout /usr/local/bin/fennec-scout-poll
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scoutchi /usr/local/bin/fennec-scoutchi-poll
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
@@ -305,7 +305,7 @@ sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo cp "$SYS/fennec-mirage-deauth.service" /etc/systemd/system/fennec-mirage-deauth.service
 sudo cp "$SYS/fennec-mole.service" /etc/systemd/system/fennec-mole.service
 sudo cp "$SYS/fennec-mole-relay.service" /etc/systemd/system/fennec-mole-relay.service
-sudo cp "$SYS/fennec-scout.service" /etc/systemd/system/fennec-scout.service
+sudo cp "$SYS/fennec-scoutchi.service" /etc/systemd/system/fennec-scoutchi.service
 sudo systemctl daemon-reload || true
 
 # --- 8. sudoers rule (with user substitution) ---
