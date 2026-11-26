@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Fennec - Full install on Raspberry Pi OS (64-bit, Bookworm/Trixie).
-# Installs Fennec, Pwnagotchi (jayofelony fork), bettercap and pwngrid,
-# and sets up the systemd services driven by the launcher.
+# Installs Fennec and bettercap, and sets up the systemd services driven by the
+# launcher. Capture is handled by Scoutchi (built on bettercap).
 #
 # Usage:  cd ~/fennec && ./install.sh
 #
@@ -13,7 +13,6 @@ REPO="$(cd "$(dirname "$0")" && pwd)"      # repo folder (where this script live
 SYS="$REPO/system"                         # system file templates
 USER_NAME="$(whoami)"
 USER_HOME="$HOME"
-VENV="$USER_HOME/pwnagotchi-venv"
 DISPLAY_PROFILE="${FENNEC_DISPLAY:-}"
 # Image-build mode: when building a distributable disk image (in a chroot with no
 # running systemd), services are only enabled, never started, and the first-boot
@@ -184,46 +183,15 @@ sudo systemctl disable --now dnsmasq 2>/dev/null || true
 echo "==> Enabling SPI..."
 sudo raspi-config nonint do_spi 0 || true
 
-# --- 2. Python environment (venv) + Pwnagotchi ---
-if [ ! -d "$VENV" ]; then
-    echo "==> Creating the Python venv..."
-    python3 -m venv "$VENV"
-fi
-
-clone_pinned "Pwnagotchi" "$PWNAGOTCHI_REPOSITORY" "$PWNAGOTCHI_REF" "$USER_HOME/pwnagotchi-src"
-
-# GPS plugin fix: it tries to replace ".pcapng" while bettercap saves captures
-# as ".pcap". Without this fix the plugin overwrites the handshake with the
-# position JSON instead of writing a .gps.json next to it. Patch the source
-# before installing it into the venv.
-sed -i 's/\.pcapng/.pcap/' "$USER_HOME/pwnagotchi-src/pwnagotchi/plugins/default/gps.py"
-
-echo "==> Installing Pwnagotchi into the venv (long)..."
-# Install Pwnagotchi WITHOUT its reinforcement-learning stack (torch, torchvision,
-# stable_baselines3, shimmy) — ~2.5 GB of CUDA wheels that are useless on the Pi.
-# The AI is disabled in config.toml and ai.load() returns before importing them,
-# so they are never needed. Install the package with --no-deps, then its runtime
-# dependencies minus the AI ones (their own sub-dependencies are pulled normally).
-"$VENV/bin/pip" install --prefer-binary --no-deps "$USER_HOME/pwnagotchi-src"
-"$VENV/bin/pip" install --prefer-binary \
-    Pillow PyYAML rpi.lgpio dbus-python file-read-backwards flask flask-cors \
-    flask-wtf gast gpiozero inky pycryptodome pydrive2 python-dateutil requests \
-    rpi_hardware_pwm scapy smbus2 spidev toml tweepy websockets python-prctl
-
-# --- 3. Build pwngrid ---
-if [ ! -f /usr/local/bin/pwngrid ]; then
-    echo "==> Building pwngrid..."
-    clone_pinned "pwngrid" "$PWNGRID_REPOSITORY" "$PWNGRID_REF" "$USER_HOME/pwngrid-src"
-    ( cd "$USER_HOME/pwngrid-src" && make )
-    sudo cp "$USER_HOME/pwngrid-src/build/pwngrid" /usr/local/bin/
-fi
-
-# --- 5. Pwnagotchi config + caplet ---
+# --- 5. bettercap caplet + GPS config ---
 # The bettercap password is NOT generated here: the files keep the
 # __BETTERCAP_PASS__ placeholder and the fennec-firstboot service fills it with a
 # fresh per-device secret on first boot. That way a shared disk image never ships
 # a baked-in password (see step 6b and fennec-firstboot).
-echo "==> Setting up the Pwnagotchi config..."
+echo "==> Setting up the bettercap caplet and GPS config..."
+# Shared bettercap plumbing Scoutchi uses: the caplet holds the REST API
+# credentials (Scoutchi reads them and passes the caplet to its own bettercap),
+# and config.toml carries the GPS device/baudrate Scoutchi reads.
 sudo mkdir -p /etc/pwnagotchi
 sudo cp "$SYS/config.toml" /etc/pwnagotchi/config.toml
 sudo cp "$SYS/pwnagotchi-auto.cap" /etc/pwnagotchi/pwnagotchi-auto.cap
@@ -247,17 +215,13 @@ fi
 
 # --- 6. Launcher scripts ---
 echo "==> Installing the launcher scripts..."
-sudo cp "$SYS/fennec-bettercap" /usr/local/bin/fennec-bettercap
-sudo cp "$SYS/fennec-pwngrid"   /usr/local/bin/fennec-pwngrid
 sudo cp "$SYS/fennec-clear-handshakes" /usr/local/bin/fennec-clear-handshakes
 sudo cp "$SYS/fennec-netscan" /usr/local/bin/fennec-netscan
 sudo cp "$SYS/fennec-monitor" /usr/local/bin/fennec-monitor
 sudo cp "$SYS/fennec-wifi-scan" /usr/local/bin/fennec-wifi-scan
 sudo cp "$SYS/fennec-dns-force" /usr/local/bin/fennec-dns-force
-sudo cp "$SYS/fennec-pwna-iface" /usr/local/bin/fennec-pwna-iface
 sudo cp "$SYS/fennec-wifi-connect" /usr/local/bin/fennec-wifi-connect
 sudo cp "$SYS/fennec-wifi-disconnect" /usr/local/bin/fennec-wifi-disconnect
-sudo cp "$SYS/fennec-wardrive" /usr/local/bin/fennec-wardrive
 sudo cp "$SYS/fennec-mirage-ap" /usr/local/bin/fennec-mirage-ap
 sudo cp "$SYS/fennec-mirage-portal" /usr/local/bin/fennec-mirage-portal
 sudo cp "$SYS/fennec-mirage-deauth" /usr/local/bin/fennec-mirage-deauth
@@ -269,7 +233,7 @@ sudo cp "$SYS/fennec-scoutchi-poll.py" /usr/local/bin/fennec-scoutchi-poll
 sudo chmod +x /usr/local/bin/fennec-scoutchi-poll
 sudo cp "$SYS/fennec-passwd" /usr/local/bin/fennec-passwd
 sudo chmod +x /usr/local/bin/fennec-passwd
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-pwna-iface /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-wardrive /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scoutchi /usr/local/bin/fennec-scoutchi-poll
+sudo chmod +x /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-wifi-scan /usr/local/bin/fennec-dns-force /usr/local/bin/fennec-wifi-connect /usr/local/bin/fennec-wifi-disconnect /usr/local/bin/fennec-mirage-ap /usr/local/bin/fennec-mirage-portal /usr/local/bin/fennec-mirage-deauth /usr/local/bin/fennec-mirage-portal-manage /usr/local/bin/fennec-mole /usr/local/bin/fennec-mole-relay /usr/local/bin/fennec-scoutchi /usr/local/bin/fennec-scoutchi-poll
 
 # Mirage portal: refresh the shipped default while preserving custom portals.
 sudo mkdir -p /opt/fennec-mirage/default-portal /opt/fennec-mirage/portal
@@ -295,12 +259,8 @@ elif grep -q '"kind"[[:space:]]*:[[:space:]]*"default"' /opt/fennec-mirage/porta
 fi
 sudo chmod -R a+rX /opt/fennec-mirage
 
-# --- 7. systemd services (with venv substitution) ---
+# --- 7. systemd services ---
 echo "==> Installing the systemd services..."
-for svc in bettercap pwngrid-peer pwnagotchi fennec-wardrive; do
-    sudo sed "s#__VENV__#$VENV#g" "$SYS/$svc.service" \
-        | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
-done
 sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service
 sudo cp "$SYS/fennec-mirage-deauth.service" /etc/systemd/system/fennec-mirage-deauth.service
 sudo cp "$SYS/fennec-mole.service" /etc/systemd/system/fennec-mole.service
@@ -430,7 +390,7 @@ fi
 sudo chmod -R a+rX /opt/john
 
 # Mole active relay (phase 2): impacket's ntlmrelayx + mitm6, in a dedicated venv
-# so they stay isolated from the system and the Pwnagotchi venv.
+# so they stay isolated from the system and the other venvs.
 echo "==> Installing Mole relay tools (impacket, mitm6)..."
 if [ ! -x /opt/mole-venv/bin/mitm6 ]; then
     sudo python3 -m venv /opt/mole-venv

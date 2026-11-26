@@ -118,7 +118,9 @@ def test_device_sort_order(monkeypatch):
 def test_wardrive_path_matches_logger():
     # Regression: Fennec once read wardrive.json from the wrong path, so the
     # weekend's data stayed invisible. The read path must equal the write path.
-    with open(os.path.join(ROOT, "system", "fennec-wardrive")) as f:
+    # The Scoutchi poller is the live writer now (see test_poller_contract_matches_echo);
+    # the archived Pwnagotchi-era logger kept the same path and is checked here too.
+    with open(os.path.join(ROOT, "archive", "pwnagotchi", "fennec-wardrive")) as f:
         script = f.read()
     m = re.search(r'STORE\s*=\s*"([^"]+)"', script)
     assert m, "STORE path not found in fennec-wardrive"

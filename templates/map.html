@@ -245,13 +245,13 @@
     setTimeout(fit, 150);
 
     // Live GPS indicator so the fix can be checked on the device (e.g. in the
-    // car) without SSH. Needs Pwnagotchi running (bettercap provides the GPS).
+    // car) without SSH. Needs Scoutchi running (bettercap provides the GPS).
     function pollGps() {
       fetch('/gps').then(r => r.json()).then(s => {
         const el = document.getElementById('gpsbadge');
         if (!s.ok) {
           el.className = 'gpsbadge';
-          el.textContent = 'GPS: start Pwnagotchi';
+          el.textContent = 'GPS: start Scoutchi';
         } else if (s.fix !== '0' && s.sats >= 4) {
           el.className = 'gpsbadge ok';
           el.textContent = 'GPS fix · ' + s.sats + ' sats';

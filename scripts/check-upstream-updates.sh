@@ -22,8 +22,6 @@ check_upstream() {
     fi
 }
 
-check_upstream "Pwnagotchi" "$PWNAGOTCHI_REPOSITORY" "$PWNAGOTCHI_TRACKING_REF" "$PWNAGOTCHI_REF"
-check_upstream "pwngrid" "$PWNGRID_REPOSITORY" "$PWNGRID_TRACKING_REF" "$PWNGRID_REF"
 check_upstream "Bjorn" "$BJORN_REPOSITORY" "$BJORN_TRACKING_REF" "$BJORN_REF"
 check_upstream "routerkeygen" "$ROUTERKEYGEN_REPOSITORY" "$ROUTERKEYGEN_TRACKING_REF" "$ROUTERKEYGEN_REF"
 check_upstream "SecLists" "$SECLISTS_REPOSITORY" "$SECLISTS_TRACKING_REF" "$SECLISTS_REF"

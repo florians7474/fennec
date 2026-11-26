@@ -10,7 +10,7 @@ Local folder on the Pi: ~/console  (SSH: ssh florian@fennec.local)
 ## Legal scope
 Offensive actions (cracking, Bjorn scan, connecting) are only allowed on
 a user-declared whitelist of networks, identified by BSSID
-(whitelist.json, not tracked in git). Pwnagotchi wide capture stays free.
+(whitelist.json, not tracked in git). Scoutchi wide capture stays free.
 Ethernet access = implicit authorization (physical act), so the BSSID lock
 only applies to Wi-Fi.
 
@@ -32,12 +32,11 @@ only applies to Wi-Fi.
   used as the test adapter
 
 ## Ports
-Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
+Fennec :5000 · Bjorn :8000 · bettercap API (Scoutchi) :8081
 
 ## Modules
 | Module | Role | Status |
 |--------|------|--------|
-| Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Sly | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live; guided GPU export) |
 | Mirage | Evil-twin AP + captive portal, takes over when Sly's offline crack fails | Done (SSID clone of a whitelisted target, DHCP + DNS catch-all, captive-portal web layer with a built-in theme library + custom-ZIP upload, live client view, `iw`-based WPA2/WPA3/PMF detection, deauth via bettercap gated on PMF + a second monitor adapter, handshake capture handed to Sly) |
@@ -46,11 +45,10 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 | Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
-| Scoutchi | Wide handshake harvester (bettercap): PMKID + 4-way capture with continuous deauth, one or two adapters, built to replace Pwnagotchi | Runs on the Pi. Alongside Pwnagotchi for now; Pwnagotchi is removed once Scoutchi is proven |
-Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
-by their tile via systemd services kept disabled at boot (sudoers rules allow
-florian to systemctl start/stop them without a password). Sly and Hugin are
-coded in-house.
+| Scoutchi | Wide handshake harvester (bettercap): PMKID + 4-way capture with continuous deauth, one or two adapters, plus GPS tagging and wardriving | Done, the sole capture module. Replaced Pwnagotchi, which is archived in archive/pwnagotchi/ |
+Bjorn runs "behind" Fennec: installed on the Pi, started/stopped by its tile via a
+systemd service kept disabled at boot (sudoers rules allow florian to systemctl
+start/stop it without a password). Scoutchi, Sly and Hugin are coded in-house.
 
 ## Connection, scan and lists
 - Header badge: shows the Pi's real connection, read live from nmcli — Ethernet,
@@ -77,7 +75,7 @@ coded in-house.
   - Direct scan: a live nmcli scan stored as a snapshot (scan_cache.json,
     gitignored). "Scan" from Allowed networks runs it; "Rescan" refreshes it;
     Clear all empties the snapshot (it stays empty until the next scan).
-  - Spotted by Pwnagotchi: lists the .pcap captures; Clear all deletes them via
+  - Captured handshakes: lists the .pcap captures; Clear all deletes them via
     a small sudo helper (/usr/local/bin/fennec-clear-handshakes).
 - All Clear all buttons use an in-page 480x320 confirm dialog, not the browser's
   native popup (which is unusable on the kiosk touchscreen).
@@ -100,7 +98,7 @@ coded in-house.
   debugger is never exposed.
 - Journal (power menu -> Logs): one page listing recent events newest-first
   (time, module, level). Tiles show a red dot when a systemd-backed module
-  (Pwnagotchi, Bjorn, Mirage) crashes. Besides lifecycle events, "attention"
+  (Bjorn, Mirage) crashes. Besides lifecycle events, "attention"
   (amber) signals flag anomalies that are not errors (empty wardrive, captures
   without a GPS fix, no usable handshake, Metasploit unreachable). An Alerts
   filter shows warnings and errors only. Capped at the last 200 (events.json).
@@ -169,7 +167,7 @@ Sly). Whitelisted targets only.
   and the detail.
 - Traffic watch ("Watch" button): starts a MITM of the whole subnet via bettercap
   (/usr/local/bin/fennec-monitor, sudo) to reveal the domains each device
-  contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Sly, and they
+  contacts. It runs as an exclusive mode (stops Scoutchi/Bjorn/Sly, and they
   stop it). The capture script runs two sources on the forwarded traffic: tshark
   (TLS SNI, QUIC destination) and an on-demand dnsmasq the Pi redirects port 53 to
   (dedicated nat chain VIGIE_DNS), which answers and logs every cleartext DNS query
@@ -273,7 +271,7 @@ short candidate is ever shown or tested.
   instead of a misleading "Robust". Presence is cached per file (mtime + size).
 
 ## Hugin — Bjorn companion
-Hugin is to Bjorn what Sly is to Pwnagotchi: it turns Bjorn's raw output into
+Hugin is to Bjorn what Sly is to Scoutchi: it turns Bjorn's raw output into
 something readable, then adds Metasploit correlation and (deported) execution.
 Raven mascot (Odin's Huginn, "thought").
 
@@ -387,9 +385,9 @@ retrieves handshakes.
 ### Why not Pwnagotchi
 Fennec only used Pwnagotchi's capture engine; its e-paper face, reinforcement-learning brain and web UI
 were disabled at install. Scoutchi keeps the capture, drops the rest, and adds PMKID
-harvesting and dual-adapter coverage. For now Scoutchi ships alongside Pwnagotchi
-(additive, no removal) so the SD image keeps building; Pwnagotchi and its GPS plugin
-and wardrive hook are removed once Scoutchi is validated on the Pi.
+harvesting, dual-adapter coverage, and the GPS tagging and wardriving Pwnagotchi
+used to provide. Pwnagotchi has been removed from the active install (no second
+venv, no pwngrid build, no clone) and archived in archive/pwnagotchi/ for reference.
 
 ### Scope
 Wide only: sweep every supported frequency (2.4 + 5 GHz) with continuous deauth
@@ -409,7 +407,7 @@ monitor + injection (MediaTek MT76xx, Realtek RTL88xxAU via the DKMS driver, Ral
 RT2800/RT3070, Atheros AR9271).
 
 ### Architecture
-Built on bettercap, the same engine Pwnagotchi uses, so capture and deauth run
+Built on bettercap, the same engine Pwnagotchi used, so capture and deauth run
 together on a single adapter (two if present).
 - Orchestrator /usr/local/bin/fennec-scoutchi (root, via fennec-scoutchi.service, disabled
   at boot, tile-driven through sudoers). Reads /tmp/fennec-scoutchi/config.json
@@ -452,9 +450,8 @@ together on a single adapter (two if present).
   touches; the poller publishes a settled, atomic copy into Sly's dir, so Sly never
   reads a file mid-write (removed the old race on the shared handshake file).
 - GPS tagging and Echo wardriving are now native to Scoutchi (bettercap GPS on card 1,
-  .gps.json sidecars and wardrive.json written by the poller). Validate outdoors on the
-  Pi with the VK-162 fix, then remove Pwnagotchi (Scoutchi already uses the same
-  bettercap engine).
+  .gps.json sidecars and wardrive.json written by the poller). Still to validate
+  outdoors on the Pi with the VK-162 fix. Pwnagotchi has been removed and archived.
 - Sly's verdict is surfaced where it matters (Echo and the Sly list), not in
   Scoutchi: Scoutchi only harvests, so a crackable/robust tag there would be noise.
 - Replace the estimated deauth count with bettercap's real deauth event count.
@@ -462,7 +459,7 @@ together on a single adapter (two if present).
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
 adapts to any user/path; generates a random bettercap password; nothing
-sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn (clone + dedicated
+sensitive in the repo). Installs Fennec, bettercap and Bjorn (clone + dedicated
 venv + systemd services), and all Sly deps (routerkeygen, hcxtools, John,
 nmap, and the wordlists 10k-common / probable-wpa / rockyou fetched from
 SecLists). Fennec itself is installed as a systemd service (enabled at boot),
@@ -499,7 +496,7 @@ Notes:
 - Sentry uses small sudo helpers installed to /usr/local/bin: fennec-netscan
   (nmap ARP sweep), fennec-monitor (bettercap MITM + tshark + on-demand dnsmasq),
   fennec-dns-force (Force DNS: block DoT/DoH) and fennec-clear-handshakes (delete
-  Pwnagotchi captures). Each is granted by an exact-path rule in fennec.sudoers,
+  captured handshakes). Each is granted by an exact-path rule in fennec.sudoers,
   so no broad sudo is given.
 - Connection uses two more sudo helpers, fennec-wifi-connect (clears a stale
   profile, frees wlan0, rescans, then nmcli connect) and fennec-wifi-disconnect,
@@ -550,18 +547,17 @@ console -> fennec, the folder was not).
   and VPN detection (WireGuard, OpenVPN, IPsec/IKEv2). v1 (device radar) and v2
   (per-device port scan/type,
   naming, traffic watch via MITM with saved history) were already done.
-- Echo phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
-  handshake when a fix is available, and the Echo tile plots them (colour-coded
-  by whitelist status, tap to add to the whitelist). The plugin is enabled in
-  config.toml ([main.plugins.gps], device /dev/ttyACM0) and install.sh patches a
-  bug in it (it replaced ".pcapng" while bettercap writes ".pcap", which made it
-  overwrite the handshake instead of writing the .gps.json). Markers sit at the
-  capture position (where the Pi was), not at the access point.
+- Echo phase 1: done. Scoutchi's poller writes a .gps.json next to each handshake
+  when a fix is available (bettercap's GPS module, enabled on card 1 from
+  config.toml's [main.plugins.gps], device /dev/ttyACM0), and the Echo tile plots
+  them (colour-coded by whitelist status, tap to add to the whitelist). Markers sit
+  at the capture position (where the Pi was), not at the access point. (Originally
+  the Pwnagotchi GPS plugin did this; Scoutchi now carries it, see the Scoutchi
+  section.)
 - Echo phase 2: done. Wardriving reuses bettercap instead of a separate
-  airodump-ng (which would conflict with Pwnagotchi over the single monitor
-  interface): while Pwnagotchi runs, the fennec-wardrive service (bound to
-  pwnagotchi.service, driven by its tile) polls bettercap's REST API every few
-  seconds, reads every AP in range plus the current GPS fix, and appends them to
+  airodump-ng (which would conflict over the single monitor interface): Scoutchi's
+  poller polls bettercap's REST API every few seconds, reads every AP in range plus
+  the current GPS fix, and appends them to
   handshakes/wardrive.json (keyed by BSSID; only logged when there is a real
   fix). It also records WPS and keeps an incremental signal-weighted centroid
   per BSSID, so a seen AP is plotted at its estimated real location, refined on

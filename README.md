@@ -34,8 +34,7 @@ https://github.com/user-attachments/assets/14991e5f-1f13-4fef-ae11-81ae7df54729
 
 | Tile | Role | Status |
 |------|------|--------|
-| **Scoutchi** | Active Wi-Fi harvester: continuous deauth with handshake and PMKID capture, one or two adapters | ✅ Working |
-| **Pwnagotchi** | Passive Wi-Fi handshake capture (legacy, being replaced by Scoutchi) | ✅ Working |
+| **Scoutchi** | Active Wi-Fi harvester: continuous deauth with handshake and PMKID capture, one or two adapters, GPS tagging and wardriving | ✅ Working |
 | **Echo** | Captures, wardriving and attack-surface map by GPS location | ✅ Working |
 | **Sly** | Offline WPA cracking on your own captures | ✅ Working |
 | **Mirage** | Evil-twin AP to recover a Wi-Fi key when Sly's offline cracking fails | ✅ Working |
@@ -48,13 +47,12 @@ The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Off
 
 All modules are operational: automatic installation, control from the tile, and a live view inside the interface.
 
-- **Scoutchi — active harvester.** Sweeps every channel on one or two adapters, continuously deauthenticating nearby access points to force reconnections, and captures both 4-way handshakes and clientless PMKIDs straight into Sly's folder. Built on bettercap, it supersedes Pwnagotchi: wider (2.4 + 5 GHz, two adapters in parallel) and active rather than passive, with an animated mascot and live counters (handshakes, PMKID, APs seen, deauth) in the tile.
-- **Pwnagotchi — passive capture** (legacy, kept while Scoutchi is validated). Captures handshakes in the background and mirrors its head live in the tile.
+- **Scoutchi — active harvester.** Sweeps every channel on one or two adapters, continuously deauthenticating nearby access points to force reconnections, and captures both 4-way handshakes and clientless PMKIDs straight into Sly's folder. Built on bettercap, it supersedes Pwnagotchi: wider (2.4 + 5 GHz, two adapters in parallel) and active rather than passive, with an animated mascot and live counters (handshakes, PMKID, APs seen, deauth) in the tile. It also carries the GPS tagging and wardriving that feed Echo, so no separate capture daemon is needed.
 - **Echo — map & wardriving.** Plots captured handshakes by GPS and logs every network merely seen during a run (passive, WiGLE-style, via bettercap), placing seen networks at a signal-weighted **estimated position** refined on each pass. Two on-screen views: **Status** (whitelist / handshake / seen) and **Risk** (open or WEP, WPS, WPA2/3), with a real Sly crack verdict overriding the guess. Map tiles are cached locally and work offline, with a live GPS badge and outlier-trimmed centring.
 - **Sly — offline WPA cracking.** Runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-tap handoff to GPU cracking. Captures with no usable handshake are flagged, so a network is never wrongly reported as robust.
 - **Mirage — evil-twin AP** (the follow-up when Sly can't crack the key). Clones the SSID of a whitelisted target on the USB adapter (hostapd), hands out DHCP and redirects every request to an onboard captive portal (dnsmasq catch-all), and lists the clients that join live. A built-in **portal library** ships ready-to-use captive pages (Default, Hotel and Station themes, each in English and French) that apply in one tap and can be previewed on screen; a custom portal can still be uploaded as a ZIP, and a starter template is downloadable so a custom page keeps the working password form. Security is read from a real `iw` scan, so a target is labelled accurately as WPA2, WPA3 or WPA2/WPA3 transition. An optional deauth (bettercap) pushes a target's clients toward the twin, allowed whenever management-frame protection is not required (so WPA2 and transition networks qualify, a pure WPA3/PMF network does not); the same deauth also records the resulting 4-way handshake into Sly's folder for offline cracking. Whitelisted targets only.
 - **Bjorn — recon & targeted attacks.** Scans and probes the network the Pi is on, naming it and its subnet before you start, with a live console in the tile. On Wi-Fi it starts only for a whitelisted network; on Ethernet it starts freely, since plugging in a cable is itself a deliberate authorization.
-- **Hugin — Bjorn companion** (what Sly is to Pwnagotchi). Reads Bjorn's results per device (ports, services, vulnerabilities, actions, files) and suggests Metasploit modules two ways — by CVE (local index) and by open service (service→module map) — flagged as candidates, with a ready-to-run `.rc` plan per module. Execution is **deported**: Metasploit runs on a separate lab machine driven over RPC (run a module, watch a session open, list sessions, run in-session commands). Lab use only, on authorized targets.
+- **Hugin — Bjorn companion** (what Sly is to Scoutchi). Reads Bjorn's results per device (ports, services, vulnerabilities, actions, files) and suggests Metasploit modules two ways — by CVE (local index) and by open service (service→module map) — flagged as candidates, with a ready-to-run `.rc` plan per module. Execution is **deported**: Metasploit runs on a separate lab machine driven over RPC (run a module, watch a session open, list sessions, run in-session commands). Lab use only, on authorized targets.
 - **Sentry — device radar & traffic watch.** Scans the subnet (nmap ARP) and lists every device (IP, MAC, vendor) with unknowns surfaced and a one-tap "mine" chip; tap for detail (ports, guessed type, hostname). **Watch** mode turns it into a passive monitor (bettercap MITM) revealing the domains each device contacts (TLS SNI/QUIC via tshark, plus cleartext DNS via an on-demand dnsmasq), with timestamped per-network history, a **Force DNS** toggle against DoT/DoH, and VPN detection.
 - **Mole — wired drop box.** Plug the Pi into a LAN over Ethernet, press Start, and it coerces Windows hosts into authenticating to it (Responder: LLMNR/NBT-NS/mDNS poisoning with a rogue WPAD proxy and DHCP), captures their NetNTLMv2 hashes, maps the subnet (nmap), and cracks the captured hashes offline with John. The screen reports recovered passwords, the accounts and domain seen, the hosts found, and a one-line verdict on the network. Ethernet is the authorization: plugging in a cable is a deliberate act. An aggressive **Relay** mode (mitm6 + ntlmrelayx) goes further: it coerces authentication and relays it to the network's SMB services, and to a domain controller when present, to dump accounts and Active Directory data. Lab use only, on authorized networks.
 ## Legal scope
@@ -104,8 +102,7 @@ that is driver-compatible with the Waveshare (C), so it reuses the same config
 
 The script is idempotent and adapts to any user. It installs the system packages
 (including nmap), enables SPI (needed by Bjorn's e-paper display), installs the
-Scoutchi harvester (bettercap-based), sets up
-Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli,
+Scoutchi harvester (bettercap-based), builds routerkeygen-cli,
 installs Bjorn in its own venv from a pinned requirements file that works on
 Python 3.13, downloads the Sly wordlists (10k-common, probable-wpa and
 rockyou from SecLists), generates a random bettercap password, and configures
@@ -116,7 +113,7 @@ a service and opens automatically in the selected kiosk profile.
 
 ## Reproducible releases
 
-Each stable release locks Fennec's external source revisions in `system/sources.lock`: Pwnagotchi, pwngrid, Bjorn, routerkeygen and SecLists are checked out at their recorded commits, while the Waveshare overlay archive is verified with SHA-256. A fresh installation of the same Fennec release therefore uses the same tracked sources.
+Each stable release locks Fennec's external source revisions in `system/sources.lock`: Bjorn, routerkeygen and SecLists are checked out at their recorded commits, while the Waveshare overlay archive is verified with SHA-256. A fresh installation of the same Fennec release therefore uses the same tracked sources.
 
 The weekly upstream monitor only opens a GitHub issue when newer upstream revisions exist. It never changes an installed Pi or updates the lock file automatically. New versions are reviewed, tested and released explicitly.
 
@@ -133,9 +130,8 @@ code, the Logs, reboot and shut down.
 ## Architecture
 
 - **Fennec**: Flask app that drives the modules without modifying them (port 5000)
-- **Scoutchi**: in-house harvester built on bettercap (channel hopping, handshake + PMKID capture into Sly's folder, continuous deauth of every AP, one or two adapters; a poller reads bettercap's REST API for live stats)
-- **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd (legacy, being replaced by Scoutchi)
-- **Echo**: in-house wardriving and GPS map (reads Pwnagotchi's `.gps.json` handshakes, a bettercap-fed wardrive logger with signal-weighted position estimates, offline OSM tile cache, Leaflet served locally, risk/attack-surface view with Sly verdict override)
+- **Scoutchi**: in-house harvester built on bettercap (channel hopping, handshake + PMKID capture into Sly's folder, continuous deauth of every AP, one or two adapters; a poller reads bettercap's REST API for live stats, writes a `.gps.json` per capture and maintains the wardrive map)
+- **Echo**: in-house wardriving and GPS map (reads the `.gps.json` handshakes and the wardrive logger Scoutchi writes, signal-weighted position estimates, offline OSM tile cache, Leaflet served locally, risk/attack-surface view with Sly verdict override)
 - **Sly**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
 - **Mirage**: in-house evil-twin launcher that picks up where Sly leaves off (hostapd rogue AP cloning a whitelisted SSID on the USB adapter, dnsmasq DHCP + DNS catch-all, a captive-portal web layer with a built-in theme library plus custom-ZIP upload, live client view from the dnsmasq leases, `iw`-based WPA2/WPA3/PMF detection, bettercap deauth gated on PMF and a second monitor adapter, and handshake capture handed to Sly)
 - **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
@@ -150,7 +146,7 @@ code, the Logs, reboot and shut down.
 
 - [x] Fennec launcher and tile interface
 - [x] Scoutchi module (bettercap harvester: continuous deauth, handshake + PMKID capture, one or two adapters, live counters)
-- [x] Pwnagotchi module (install, control, display) — legacy, being replaced by Scoutchi
+- [x] Pwnagotchi module removed (replaced by Scoutchi; kept in `archive/pwnagotchi/`)
 - [x] One-command installer (SPI enabled, works on a fresh card in one pass)
 - [x] Touchscreen display and Chromium kiosk auto-starting at boot
 - [x] On-screen power menu: lock screen (hold to unlock), screen rotation, PIN code, Logs, reboot, shut down
@@ -186,7 +182,7 @@ code, the Logs, reboot and shut down.
 
 Fennec drives several open-source projects, installed and run as separate programs — it does not fork or bundle their source. All names, mascots and trademarks belong to their respective owners; Fennec is an independent project and is not affiliated with or endorsed by them.
 
-- **Pwnagotchi** — created by [@evilsocket](https://github.com/evilsocket), maintained by [jayofelony/pwnagotchi](https://github.com/jayofelony/pwnagotchi). Licensed under **GPL-3.0**. The Pwnagotchi module icon (`static/pwnagotchi.png`) is taken from the Pwnagotchi project and remains under GPL-3.0.
+- **Pwnagotchi** — created by [@evilsocket](https://github.com/evilsocket), maintained by [jayofelony/pwnagotchi](https://github.com/jayofelony/pwnagotchi). Licensed under **GPL-3.0**. Pwnagotchi was Fennec's first harvester and has been replaced by Scoutchi; its files are kept in `archive/pwnagotchi/`. The Pwnagotchi module icon (`archive/pwnagotchi/pwnagotchi.png`) is taken from the Pwnagotchi project and remains under GPL-3.0.
 - **Bjorn** — created by [infinition](https://github.com/infinition/Bjorn). Copyright © 2024 infinition, licensed under the **MIT License**. The Bjorn module icon (`static/bjorn.png`) is taken from the Bjorn project and is used under the MIT License.
 - **Responder** — created by [lgandx/Responder](https://github.com/lgandx/Responder) (originally by Laurent Gaffié). Licensed under **GPL-3.0**. Installed from source and run as a separate program by the Mole module.
 - **Leaflet** (BSD-2-Clause) is vendored in `static/leaflet/`; map tiles © **OpenStreetMap** contributors (ODbL).

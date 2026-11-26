@@ -60,7 +60,6 @@ HISTORY_FILE  = os.path.join(BASE, "traffic_history.json")  # {network: {mac: {d
 app_state = {"active_mode": None, "network": None}
 
 MODES = {
-    "pwnagotchi": {"name": "Pwnagotchi", "classe": "pwn",   "url": None},
     "cracking":    {"name": "Sly",      "classe": "cass",  "url": None},
     "bjorn":      {"name": "Bjorn",      "classe": "bjorn", "url": None},
     "mirage":     {"name": "Mirage",     "classe": "mirage", "url": None},
@@ -180,7 +179,6 @@ import base64
 
 # systemd services managed by each mode, in start order
 SERVICES = {
-    "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi", "fennec-wardrive"],
     "bjorn": ["bjorn", "bjorn-console"],
     "mirage": ["fennec-mirage"],
     "scoutchi": ["fennec-scoutchi"],
@@ -454,8 +452,8 @@ EVENTS_FILE = os.path.join(BASE, "events.json")
 EVENTS_MAX = 200
 
 # Module -> primary systemd unit (crash detection) and display label (journal).
-MODULE_SERVICE = {"pwnagotchi": "pwnagotchi", "bjorn": "bjorn", "mirage": "fennec-mirage"}
-MODULE_LABEL = {"pwnagotchi": "Pwnagotchi", "bjorn": "Bjorn", "mirage": "Mirage",
+MODULE_SERVICE = {"bjorn": "bjorn", "mirage": "fennec-mirage"}
+MODULE_LABEL = {"bjorn": "Bjorn", "mirage": "Mirage",
                 "cracking": "Sly", "vigie": "Sentry", "hugin": "Hugin",
                 "mole": "Mole", "echo": "Echo", "scoutchi": "Scoutchi", "fennec": "Fennec"}
 
@@ -520,18 +518,6 @@ def log_echo_health(count, nogps):
         _echo_last["nogps"] = nogps
         if nogps:
             log_event("echo", "warn", "Echo: " + str(nogps) + " capture(s) without GPS position")
-
-@app.route("/pwna-ui")
-def pwna_ui():
-    from flask import Response
-    url = "http://127.0.0.1:8080/ui"
-    ident = base64.b64encode(b"pwnagotchi:pwnagotchi").decode()
-    req = urllib.request.Request(url, headers={"Authorization": f"Basic {ident}"})
-    try:
-        with urllib.request.urlopen(req, timeout=5) as r:
-            return Response(r.read(), mimetype="image/png")
-    except Exception:
-        abort(503)
 
 def connection_state():
     """The Pi's real network connection: ethernet, or the station Wi-Fi (wlan0)
@@ -1078,12 +1064,6 @@ def mode(name):
         wps_ok = detect_monitor_iface() is not None
         return render_template("cracking.html", captures=captures, seen=seen, wps_ok=wps_ok)
 
-    if name == "pwnagotchi":
-        active = is_active("pwnagotchi")
-        app_state["active_mode"] = "pwnagotchi" if active else app_state["active_mode"]
-        url_ui = "/pwna-ui"
-        return render_template("mode.html", key=name, info=MODES[name], active=active,
-                               url_ui=url_ui, url_iframe=None)
     if name == "bjorn":
         active = is_active("bjorn")
         app_state["active_mode"] = "bjorn" if active else app_state["active_mode"]
@@ -1582,9 +1562,7 @@ def crack_test(bssid):
     capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", name="cracking"))
-    # Sly takes over: stop the running modes (Pwnagotchi / Bjorn / Sentry)
-    if is_active("pwnagotchi"):
-        stop("pwnagotchi")
+    # Sly takes over: stop the running modes (Bjorn / Sentry)
     if is_active("bjorn"):
         stop("bjorn")
     if vigie_monitor.monitor_state["active"]:
@@ -1783,9 +1761,9 @@ def _bettercap_creds():
 
 @app.route("/gps")
 def gps_state():
-    # Live GPS status read from bettercap (up while a capture harvester runs,
-    # Pwnagotchi or Scoutchi, both on the same API port), so the Echo can show a
-    # fix indicator on the device — no SSH needed in the car.
+    # Live GPS status read from bettercap (up while Scoutchi runs, which carries
+    # the bettercap REST API on the same port), so the Echo can show a fix
+    # indicator on the device — no SSH needed in the car.
     import base64
     user, pw = _bettercap_creds()
     try:
@@ -1799,7 +1777,7 @@ def gps_state():
                        sats=int(g.get("NumSatellites") or 0),
                        fix=str(g.get("FixQuality") or "0"))
     except Exception:
-        return jsonify(ok=False)  # bettercap/Pwnagotchi not running
+        return jsonify(ok=False)  # bettercap/Scoutchi not running
 
 
 def _risk_level(enc, wps):
@@ -2417,7 +2395,7 @@ def scoutchi_toggle():
         log_event("scoutchi", "info", "Scoutchi stopped")
         return redirect(url_for("scoutchi"))
     # Scoutchi drives the monitor adapter, so it takes over from the other radio
-    # modes (Pwnagotchi, Mirage, Bjorn) and from Sentry's MITM.
+    # modes (Mirage, Bjorn) and from Sentry's MITM.
     if app_state["active_mode"] in SERVICES:
         stop(app_state["active_mode"])
     if vigie_monitor.monitor_state["active"]:
@@ -2494,7 +2472,7 @@ def whitelist_reset():
 @app.route("/scan")
 def scan():
     source = request.args.get("source", "direct")
-    if source == "pwna":
+    if source == "captures":
         networks = read_handshakes()
     else:
         source = "direct"
@@ -2507,7 +2485,7 @@ def scan():
 
 @app.route("/scan/vider/<source>")
 def scan_clear(source):
-    if source == "pwna":
+    if source == "captures":
         try:
             subprocess.run(
                 ["sudo", "-n", "/usr/local/bin/fennec-clear-handshakes"],
@@ -2515,7 +2493,7 @@ def scan_clear(source):
             )
         except Exception:
             pass
-        return redirect(url_for("scan", source="pwna"))
+        return redirect(url_for("scan", source="captures"))
     save_scan([])
     return redirect(url_for("scan", source="direct"))
 
@@ -2689,7 +2667,7 @@ def settings_password_change():
     return jsonify(ok=False, error=_PASSWD_ERRORS.get(token, _PASSWD_ERRORS["ERROR"])), 400
 
 
-MODULE_COLOR = {"pwnagotchi": "#19e38c", "bjorn": "#6f9bc8", "mirage": "#f0689b",
+MODULE_COLOR = {"bjorn": "#6f9bc8", "mirage": "#f0689b",
                 "cracking": "#ffb020", "vigie": "#28c0d4", "hugin": "#a78bfa",
                 "echo": "#2a3566", "fennec": "#01F994"}
 

@@ -2,7 +2,7 @@ name: Build SD image
 
 # Builds a ready-to-flash Raspberry Pi OS image with Fennec pre-installed.
 # Runs on free arm64 hosted runners (public repos), so the source builds
-# (John jumbo, pwngrid, routerkeygen) compile without cross-emulation.
+# (John jumbo, routerkeygen) compile without cross-emulation.
 # Triggered manually, or automatically on a version tag to attach the image
 # to the GitHub Release.
 

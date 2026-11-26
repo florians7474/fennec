@@ -1,14 +1,6 @@
 # Fennec external source lock
 # Update only through a reviewed Fennec release.
 
-PWNAGOTCHI_REPOSITORY="https://github.com/jayofelony/pwnagotchi.git"
-PWNAGOTCHI_REF="6cdc89226478fd42d7bcca6a9faa05d9f3280701"
-PWNAGOTCHI_TRACKING_REF="master"
-
-PWNGRID_REPOSITORY="https://github.com/jayofelony/pwngrid.git"
-PWNGRID_REF="913a03fe53d9ae69e70ff070c9d35c6ada071e9c"
-PWNGRID_TRACKING_REF="master"
-
 BJORN_REPOSITORY="https://github.com/infinition/Bjorn.git"
 BJORN_REF="61a4758e5ee3d37d43c10eb690340626139912c0"
 BJORN_TRACKING_REF="main"

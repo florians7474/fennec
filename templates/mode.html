@@ -26,9 +26,6 @@
     .btn.stop { background:#da3633; }
     .vue { height:272px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; }
     .vue.plein { padding:0; }
-    .vue .pwna-live { width:100%; height:100%; object-fit:contain;
-                      image-rendering:pixelated; background:#000; display:none; }
-    .vue .pwna-live.prete { display:block; }
     .loading { display:flex; flex-direction:column; align-items:center; gap:14px; color:#8b949e; }
     .loading .anneau { width:40px; height:40px; border-radius:50%;
                           border:3px solid #21262d; border-top-color:#19e38c;
@@ -44,8 +41,7 @@
 
     /* Portrait (90/270): the Bjorn embed (cadre + scaled iframe) is sized for
        the 480px landscape width, so refit it to the 320px portrait width and
-       let its view fill the remaining height. Only the Bjorn case is touched
-       (Pwnagotchi's view is left alone). */
+       let its view fill the remaining height. Only the Bjorn case is touched. */
     html[data-portrait] .topbar { min-height:48px; flex-wrap:nowrap; gap:6px;
       padding:7px 10px; }
     html[data-portrait] .vue.plein { height:432px; align-items:flex-start; }
@@ -74,12 +70,6 @@
         <div class="anneau"></div>
         <div class="txt">Bjorn is starting…</div>
       </div>
-    {% elif active and url_ui %}
-      <div class="loading" id="pwna-loading">
-        <div class="anneau"></div>
-        <div class="txt">Pwnagotchi is starting…</div>
-      </div>
-      <img class="pwna-live" id="pwna-live" alt="">
     {% elif active %}
       <div class="vide">This mode is running.<br>Its interface will appear here once started on the Pi.</div>
     {% elif reseau_scan %}
@@ -140,27 +130,6 @@
           }, 3000);
         });
       }
-      var img = document.getElementById("pwna-live");
-      var charge = document.getElementById("pwna-loading");
-      if (!img) return;
-      // Preload into a temporary image: while Pwnagotchi's UI isn't ready
-      // (error 503), keep the animation and retry, without ever showing the
-      // broken-image icon. Only show what actually loads.
-      function refresh() {
-        var tmp = new Image();
-        tmp.onload = function () {
-          img.src = tmp.src;
-          img.classList.add("prete");
-          if (charge) charge.style.display = "none";
-        };
-        tmp.onerror = function () {
-          img.classList.remove("prete");
-          if (charge) charge.style.display = "flex";
-        };
-        tmp.src = "/pwna-ui?t=" + Date.now();
-      }
-      refresh();
-      setInterval(refresh, 2000);
     })();
   </script>
 </body>

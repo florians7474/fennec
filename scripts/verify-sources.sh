@@ -26,8 +26,6 @@ verify_git_ref() {
     [[ "$actual" = "$ref" ]] || fail "$name resolved to $actual instead of $ref."
 }
 
-require_sha PWNAGOTCHI_REF "$PWNAGOTCHI_REF"
-require_sha PWNGRID_REF "$PWNGRID_REF"
 require_sha BJORN_REF "$BJORN_REF"
 require_sha ROUTERKEYGEN_REF "$ROUTERKEYGEN_REF"
 require_sha SECLISTS_REF "$SECLISTS_REF"
@@ -41,8 +39,6 @@ if [[ "${1:-}" = "--offline" ]]; then
     exit 0
 fi
 
-verify_git_ref "Pwnagotchi" "$PWNAGOTCHI_REPOSITORY" "$PWNAGOTCHI_REF"
-verify_git_ref "pwngrid" "$PWNGRID_REPOSITORY" "$PWNGRID_REF"
 verify_git_ref "Bjorn" "$BJORN_REPOSITORY" "$BJORN_REF"
 verify_git_ref "routerkeygen" "$ROUTERKEYGEN_REPOSITORY" "$ROUTERKEYGEN_REF"
 verify_git_ref "SecLists" "$SECLISTS_REPOSITORY" "$SECLISTS_REF"
