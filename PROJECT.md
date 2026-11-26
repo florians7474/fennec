@@ -414,6 +414,15 @@ up and the adapter slot flickers. install.sh ships a udev rule
 interface (bInterfaceClass e0), targeted by VID:PID: the Wi-Fi works, and no other
 adapter's Bluetooth nor the Pi's onboard Bluetooth is affected.
 
+Pi 5 USB current cap: the Pi 5 limits total USB current to 600 mA unless it detects a
+5A PSU, which brown-out-resets power-hungry Wi-Fi adapters (they enumerate, load
+firmware, then disconnect in a loop; get_throttled can still read 0x0 because the Pi
+rail itself is fine). install.sh adds usb_max_current_enable=1 to config.txt to lift
+the cap. This assumes a capable supply - the official 27W (5V/5A) PSU is recommended;
+on a weak supply the Pi may then under-volt instead. With the cap lifted, one adapter
+(even a large amplified one) is stable; two power-hungry adapters at once can still
+exceed the lifted budget, so dual-adapter operation needs a powered USB hub.
+
 ### Architecture
 Built on bettercap, the same engine Pwnagotchi used, so capture and deauth run
 together on a single adapter (two if present).

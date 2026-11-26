@@ -191,6 +191,18 @@ echo "==> Installing USB quirk rules..."
 sudo cp "$SYS/99-fennec-mt7921-no-bt.rules" /etc/udev/rules.d/99-fennec-mt7921-no-bt.rules
 sudo udevadm control --reload-rules 2>/dev/null || true
 
+# The Pi 5 caps total USB current to 600 mA unless it detects a 5A PSU, which
+# brown-out-resets power-hungry Wi-Fi adapters (the device enumerates, loads its
+# firmware, then disconnects in a loop). Fennec needs such an adapter, so lift the
+# cap. This assumes a capable supply - the official 27W (5V/5A) PSU is recommended;
+# on a weak supply the Pi itself may then under-volt.
+CONFIG_TXT=/boot/firmware/config.txt
+[ -f "$CONFIG_TXT" ] || CONFIG_TXT=/boot/config.txt
+if [ -f "$CONFIG_TXT" ] && ! grep -q '^usb_max_current_enable=1' "$CONFIG_TXT"; then
+    echo "==> Lifting the Pi 5 USB current cap (needs a reboot to take effect)..."
+    echo "usb_max_current_enable=1" | sudo tee -a "$CONFIG_TXT" >/dev/null
+fi
+
 # --- 5. bettercap caplet + GPS config ---
 # The bettercap password is NOT generated here: the files keep the
 # __BETTERCAP_PASS__ placeholder and the fennec-firstboot service fills it with a
