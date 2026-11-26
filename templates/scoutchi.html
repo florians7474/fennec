@@ -47,6 +47,7 @@
     .chip.on { background:#11261a; border:0.5px solid #2b6d3f; color:#bfe9c9; }
     .chip.on .d { width:6px; height:6px; border-radius:50%; background:#2ea043; }
     .chip.add { border:1px dashed #3a4150; color:#8b949e; }
+    .adapthint { font-size:10px; color:#6e7681; margin-top:6px; display:none; }
 
     .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
     .card { background:#161b22; border-radius:8px; padding:6px 10px; }
@@ -89,6 +90,7 @@
     </div>
 
     <div class="adapters" id="slots"></div>
+    <div class="adapthint" id="adapthint">A 2nd adapter needs a powered USB hub — the Pi can't power two at once.</div>
 
     <div class="cards">
       <div class="card"><div class="n">Handshakes</div><div class="v" id="c-hs">0</div></div>
@@ -156,6 +158,8 @@
             : 'Start the sweep to harvest handshakes and PMKIDs.');
 
       document.getElementById('slots').innerHTML = chip(ads[0]||null, 0) + chip(ads[1]||null, 1);
+      // Two power-hungry adapters exceed the Pi's USB budget, so warn until a 2nd is in.
+      document.getElementById('adapthint').style.display = ads.length < 2 ? 'block' : 'none';
       document.getElementById('c-hs').textContent = s.handshakes||0;
       document.getElementById('c-pm').textContent = s.pmkid||0;
       document.getElementById('c-ap').textContent = s.aps||0;
