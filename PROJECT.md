@@ -414,18 +414,23 @@ together on a single adapter (two if present).
 - Orchestrator /usr/local/bin/fennec-scoutchi (root, via fennec-scoutchi.service, disabled
   at boot, tile-driven through sudoers). Reads /tmp/fennec-scoutchi/config.json
   (adapters), sets the interfaces to monitor, and runs bettercap per adapter with:
-  wifi.recon on (channel hopping), handshakes written per-AP to the handshakes dir
-  Sly reads (aggregate false), and a ticker firing wifi.deauth ff:ff:ff:ff:ff:ff
-  every 10 s (continuous deauth of every AP). Card 1 carries bettercap's REST API,
-  and (when a GPS receiver is wired) bettercap's GPS module, enabled on that card
-  from the gps section of config.toml so position is available on the same API.
+  wifi.recon on (channel hopping), handshakes written per-AP (aggregate false) to a
+  working dir (/tmp/fennec-scoutchi/live) that only bettercap touches, and a ticker
+  firing wifi.deauth ff:ff:ff:ff:ff:ff every 10 s (continuous deauth of every AP).
+  Card 1 carries bettercap's REST API, and (when a GPS receiver is wired) bettercap's
+  GPS module, enabled on that card from the gps section of config.toml so position is
+  available on the same API.
 - fennec-scoutchi-poll (root) reads that REST API (APs seen plus the GPS fix) plus
-  the handshakes dir (what was captured this session, classified HS vs PMKID with
-  hcxpcapngtool) and writes /tmp/fennec-scoutchi/stats.json, including a climbing
-  deauth count. It also carries the GPS work Pwnagotchi used to do, so Echo works
-  with Scoutchi alone: it writes a <capture>.gps.json next to each new handshake
-  (its capture position) and maintains /etc/pwnagotchi/wardrive.json, the
-  signal-weighted centroid of every AP seen with a fix — the same file and format
+  bettercap's working dir (what was captured this session, classified HS vs PMKID
+  with hcxpcapngtool) and writes /tmp/fennec-scoutchi/stats.json, including a climbing
+  deauth count. It is also the safe handoff to Sly: bettercap keeps re-appending to a
+  per-AP file as it re-captures, so the poller publishes a stable copy into the
+  handshakes dir Sly reads only once a file has settled (unchanged for one interval)
+  and holds a real handshake or PMKID, copied atomically (temp + rename) so Sly never
+  reads a half-written file. It also carries the GPS work Pwnagotchi used to do, so
+  Echo works with Scoutchi alone: it writes a <capture>.gps.json next to each
+  published handshake (its capture position) and maintains /etc/pwnagotchi/wardrive.json,
+  the signal-weighted centroid of every AP seen with a fix — the same file and format
   Echo already reads, so the map needs no change.
 - scoutchi_engine.py detects the adapters, starts/stops the service and reads the stats.
 - app.py routes: /scoutchi (page), /scoutchi/toggle (start/stop the sweep, takes over the
@@ -443,9 +448,9 @@ together on a single adapter (two if present).
   and ESSID stages match even when bettercap drops the hyphen from the filename.
 
 ### To do
-- Scoutchi should not write to a handshake file while Sly reads it; deposit stable,
-  per-session captures (the long-lived aggregate file also ends up with a corrupt
-  record that slows aircrack's read).
+- Stable per-session captures: done. bettercap now writes to a working dir only it
+  touches; the poller publishes a settled, atomic copy into Sly's dir, so Sly never
+  reads a file mid-write (removed the old race on the shared handshake file).
 - GPS tagging and Echo wardriving are now native to Scoutchi (bettercap GPS on card 1,
   .gps.json sidecars and wardrive.json written by the poller). Validate outdoors on the
   Pi with the VK-162 fix, then remove Pwnagotchi (Scoutchi already uses the same

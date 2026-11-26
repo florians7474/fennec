@@ -152,3 +152,81 @@ def test_poller_contract_matches_echo():
     assert m and app.WARDRIVE_FILE == m.group(1)
     poll = _load_poller()
     assert poll.gps_json_path("/x/Box_00.pcap") == "/x/Box_00.gps.json"
+
+
+# --- stable per-session publishing (Sly never reads a file being written) ---
+
+def test_publish_only_when_settled_and_real(tmp_path, monkeypatch):
+    poll = _load_poller()
+    live = tmp_path / "live"; live.mkdir()
+    dest = tmp_path / "hs"; dest.mkdir()
+    monkeypatch.setattr(poll, "LIVE", str(live))
+    monkeypatch.setattr(poll, "HANDSHAKES", str(dest))
+    # Pretend the capture holds a 4-way handshake.
+    monkeypatch.setattr(poll, "hcx_counts", lambda p: (1, 0))
+
+    cap = live / "Box_001122334455.pcap"
+    cap.write_bytes(b"xxxx")
+    settle, published, cache = {}, {}, {}
+
+    # First pass: file just seen, not settled yet -> nothing published.
+    poll.scan_and_publish({}, cache, settle, published, None)
+    assert not (dest / "Box_001122334455.pcap").exists()
+
+    # Second pass with the same (mtime, size): settled -> published atomically.
+    poll.scan_and_publish({}, cache, settle, published, None)
+    assert (dest / "Box_001122334455.pcap").exists()
+    # No stray temp file left behind.
+    assert not list(dest.glob("*.fennectmp"))
+
+
+def test_publish_skips_empty_capture(tmp_path, monkeypatch):
+    poll = _load_poller()
+    live = tmp_path / "live"; live.mkdir()
+    dest = tmp_path / "hs"; dest.mkdir()
+    monkeypatch.setattr(poll, "LIVE", str(live))
+    monkeypatch.setattr(poll, "HANDSHAKES", str(dest))
+    monkeypatch.setattr(poll, "hcx_counts", lambda p: (0, 0))  # no handshake, no PMKID
+
+    cap = live / "Box_001122334455.pcap"
+    cap.write_bytes(b"xxxx")
+    settle, published, cache = {}, {}, {}
+    poll.scan_and_publish({}, cache, settle, published, None)
+    poll.scan_and_publish({}, cache, settle, published, None)
+    assert not (dest / "Box_001122334455.pcap").exists()
+
+
+def test_publish_waits_while_file_grows(tmp_path, monkeypatch):
+    poll = _load_poller()
+    live = tmp_path / "live"; live.mkdir()
+    dest = tmp_path / "hs"; dest.mkdir()
+    monkeypatch.setattr(poll, "LIVE", str(live))
+    monkeypatch.setattr(poll, "HANDSHAKES", str(dest))
+    monkeypatch.setattr(poll, "hcx_counts", lambda p: (1, 0))
+
+    cap = live / "Box_001122334455.pcap"
+    cap.write_bytes(b"xxxx")
+    settle, published, cache = {}, {}, {}
+    poll.scan_and_publish({}, cache, settle, published, None)
+    cap.write_bytes(b"xxxxyyyy")   # bettercap appended -> size changed
+    poll.scan_and_publish({}, cache, settle, published, None)
+    assert not (dest / "Box_001122334455.pcap").exists()  # still not settled
+
+
+def test_publish_writes_gps_sidecar_when_located(tmp_path, monkeypatch):
+    poll = _load_poller()
+    live = tmp_path / "live"; live.mkdir()
+    dest = tmp_path / "hs"; dest.mkdir()
+    monkeypatch.setattr(poll, "LIVE", str(live))
+    monkeypatch.setattr(poll, "HANDSHAKES", str(dest))
+    monkeypatch.setattr(poll, "hcx_counts", lambda p: (1, 0))
+
+    cap = live / "Box_001122334455.pcap"
+    cap.write_bytes(b"xxxx")
+    settle, published, cache = {}, {}, {}
+    fix = (48.85, 2.35, 7, "1")
+    poll.scan_and_publish({}, cache, settle, published, fix)
+    poll.scan_and_publish({}, cache, settle, published, fix)
+    sidecar = dest / "Box_001122334455.gps.json"
+    assert sidecar.exists()
+    assert json.loads(sidecar.read_text())["Latitude"] == 48.85

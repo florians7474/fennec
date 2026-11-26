@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 """Scoutchi stats poller.
 
-Reads bettercap's REST API (the access points it sees and the current GPS fix)
-and the handshakes directory (what has actually been captured this session), and
+Reads bettercap's REST API (the access points it sees and the current GPS fix) and
+bettercap's working capture dir (what has actually been captured this session), and
 writes a compact state file for the Scoutchi screen. Modelled on fennec-wardrive,
 which reads the same API.
 
-It also carries the GPS work Pwnagotchi used to do, so Echo works with Scoutchi
-on its own:
-  - writes a <capture>.gps.json next to each new handshake (the position where it
-    was captured), which Echo plots as a located handshake point;
+Capture handoff to Sly is made safe here. bettercap keeps re-appending to a per-AP
+file in its working dir (LIVE) as it re-captures an AP each deauth cycle, so Sly
+must never read straight from there. The poller publishes a stable copy into the
+handshakes dir Sly reads only once a file has settled (unchanged for one interval)
+and actually holds a handshake or PMKID, copying it atomically (temp + rename) so a
+partial file is never exposed and a later, larger capture replaces it in place.
+
+It also carries the GPS work Pwnagotchi used to do, so Echo works with Scoutchi on
+its own:
+  - writes a <capture>.gps.json next to each published handshake (its capture
+    position), which Echo plots as a located handshake point;
   - maintains /etc/pwnagotchi/wardrive.json, the signal-weighted centroid of every
     AP seen with a fix, which Echo plots as grey "seen" points.
 
 Output:
   - /tmp/fennec-scoutchi/stats.json, consumed by scoutchi_engine.snapshot()
+  - /etc/pwnagotchi/handshakes/<name>_<bssid>.pcap, stable copies for Sly
   - /etc/pwnagotchi/handshakes/<name>_<bssid>.gps.json, one per located capture
   - /etc/pwnagotchi/wardrive.json, shared with Echo (same format as fennec-wardrive)
 """
@@ -23,15 +31,17 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 import urllib.request
 
 RUN_DIR = "/tmp/fennec-scoutchi"
 STATS = os.path.join(RUN_DIR, "stats.json")
+LIVE = os.path.join(RUN_DIR, "live")       # bettercap's churning working dir
 CAPLET = "/etc/pwnagotchi/pwnagotchi-auto.cap"
 API = "http://127.0.0.1:8081/api/session"
-HANDSHAKES = "/etc/pwnagotchi/handshakes"
+HANDSHAKES = "/etc/pwnagotchi/handshakes"  # stable captures Sly reads
 WARDRIVE = "/etc/pwnagotchi/wardrive.json"
 INTERVAL = 5
 START = time.time()
@@ -64,25 +74,60 @@ def clean_name(name):
     return n
 
 
-def classify(path):
-    """'HS' if the capture holds a 4-way handshake, else 'PMKID'."""
+# ---- capture inspection -----------------------------------------------------
+
+def hcx_counts(path):
+    """(eapol_pairs, pmkid) from hcxpcapngtool, or None if it couldn't be read."""
     try:
         r = subprocess.run(["hcxpcapngtool", path], capture_output=True,
                            text=True, timeout=20)
         txt = (r.stdout or "") + (r.stderr or "")
     except Exception:
-        return "HS"
+        return None
     def num(pats):
         for p in pats:
             m = re.search(p, txt, re.I)
             if m:
                 return int(m.group(1))
         return 0
-    if num([r"EAPOL pairs[^\n]*?:\s*(\d+)"]) > 0:
+    return (num([r"EAPOL pairs[^\n]*?:\s*(\d+)"]),
+            num([r"PMKID\(s\)[^\n]*?:\s*(\d+)", r"PMKID[^\n]*?:\s*(\d+)"]))
+
+
+def counts_cached(path, key, cache):
+    """hcx_counts(path), memoised while the file's (mtime, size) is unchanged."""
+    hit = cache.get(path)
+    if hit and hit[0] == key:
+        return hit[1]
+    c = hcx_counts(path)
+    cache[path] = (key, c)
+    return c
+
+
+def kind_from_counts(counts):
+    """'HS' for a 4-way handshake, 'PMKID' for a PMKID only, None for neither. An
+    unreadable file (bettercap mid-write) is assumed HS so it still shows in stats."""
+    if counts is None:
         return "HS"
-    if num([r"PMKID\(s\)[^\n]*?:\s*(\d+)", r"PMKID[^\n]*?:\s*(\d+)"]) > 0:
+    eapol, pmkid = counts
+    if eapol > 0:
+        return "HS"
+    if pmkid > 0:
         return "PMKID"
-    return "HS"
+    return None
+
+
+def bssid_from_name(base):
+    """(clean_name, BSSID) from a '<name>_<bssid>' capture stem, or (None, None)."""
+    if "_" not in base:
+        return None, None
+    name, _, raw = base.rpartition("_")
+    raw = raw.lower()
+    if len(raw) == 12 and all(c in "0123456789abcdef" for c in raw):
+        bssid = ":".join(raw[i:i + 2] for i in range(0, 12, 2)).upper()
+    else:
+        bssid = raw.upper()
+    return clean_name(name), bssid
 
 
 # ---- GPS / wardrive ---------------------------------------------------------
@@ -202,46 +247,57 @@ def wardrive_update(store, aps, lat, lon, now):
     return changed
 
 
-# ---- capture scan -----------------------------------------------------------
+# ---- scan + publish ---------------------------------------------------------
 
-def captured(status, hs_cache, fix):
-    """Networks with a capture file written this session -> HS / PMKID. When a
-    reliable fix is available, tag each new capture with a .gps.json so Echo can
-    plot it as a located handshake."""
-    for f in glob.glob(os.path.join(HANDSHAKES, "*.pcap")):
+def scan_and_publish(status, counts_cache, settle_seen, published, fix):
+    """Walk bettercap's working dir once. For every capture: record it in the live
+    stats, and publish a stable copy to Sly's dir when it has settled and holds a
+    real capture. Writing the .gps.json next to the published copy keeps Echo's
+    points in the dir it already reads."""
+    for src in sorted(glob.glob(os.path.join(LIVE, "*.pcap"))):
         try:
-            st = os.stat(f)
+            st = os.stat(src)
         except OSError:
             continue
-        if st.st_mtime < START - 2:        # only this session's captures
-            continue
-        if fix:
-            write_gps_json(f, *fix)
-        base = os.path.basename(f)[:-5]
-        if "_" not in base:
-            continue
-        name, _, raw = base.rpartition("_")
-        raw = raw.lower()
         key = (st.st_mtime, st.st_size)
-        hit = hs_cache.get(f)
-        typ = hit[1] if hit and hit[0] == key else classify(f)
-        hs_cache[f] = (key, typ)
-        nm = clean_name(name)
-        if not nm:
+        counts = counts_cached(src, key, counts_cache)
+
+        # Live stats: this capture's network -> HS / PMKID.
+        nm, bssid = bssid_from_name(os.path.basename(src)[:-5])
+        if nm:
+            typ = kind_from_counts(counts) or "HS"
+            rank = 3 if typ == "HS" else 2
+            if status.get(nm, (0,))[0] < rank:
+                status[nm] = (rank, typ, bssid)
+
+        # Publish a stable copy once the file stops changing and is crackable.
+        prev = settle_seen.get(src)
+        settle_seen[src] = key
+        if prev != key:
+            continue                              # still being written -> wait
+        if published.get(src) == key:
+            continue                              # this content already published
+        if not counts or (counts[0] == 0 and counts[1] == 0):
+            continue                              # nothing crackable yet
+        dest = os.path.join(HANDSHAKES, os.path.basename(src))
+        try:
+            tmp = dest + ".fennectmp"
+            shutil.copyfile(src, tmp)
+            os.replace(tmp, dest)                 # atomic for Sly's reader
+            os.chmod(dest, 0o644)
+        except OSError:
             continue
-        if len(raw) == 12 and all(c in "0123456789abcdef" for c in raw):
-            bssid = ":".join(raw[i:i + 2] for i in range(0, 12, 2)).upper()
-        else:
-            bssid = raw.upper()
-        rank = 3 if typ == "HS" else 2
-        if status.get(nm, (0,))[0] < rank:
-            status[nm] = (rank, typ, bssid)
+        published[src] = key
+        if fix:
+            write_gps_json(dest, *fix)
 
 
 def main():
     user, pw = creds()
     auth = base64.b64encode(f"{user}:{pw}".encode()).decode()
-    hs_cache = {}
+    counts_cache = {}
+    settle_seen = {}
+    published = {}
     deauth_total = 0
     wardrive = load_wardrive()
 
@@ -259,7 +315,7 @@ def main():
         aps = (data.get("wifi") or {}).get("aps") or []
         fix = fix_from_session(data)
 
-        captured(status, hs_cache, fix)
+        scan_and_publish(status, counts_cache, settle_seen, published, fix)
 
         for ap in aps:
             nm = clean_name(ap.get("hostname") or "")
