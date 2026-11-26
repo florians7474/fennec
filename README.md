@@ -73,9 +73,23 @@ The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapt
 
 ## Installation
 
-Install on a freshly flashed Pi:
+### Option A — Ready-to-flash image (recommended)
 
-    git clone --branch v1.2 --depth 1 https://github.com/florians7474/fennec.git
+Download the latest `fennec.img.xz` from the [Releases](https://github.com/florians7474/fennec/releases) page and flash it to a 32 GB (or larger) microSD card with Raspberry Pi Imager or balenaEtcher. Insert the card, power the Pi, and Fennec starts on its own.
+
+First boot:
+
+- Default login: `fennec` / `fennec` (SSH is enabled).
+- Change the password immediately with `passwd`.
+- Set a remote-access PIN from the on-screen power menu before reaching the web UI from another device.
+
+The image ships with the Waveshare 3.5-inch display profile. For a different display, install from source below.
+
+### Option B — Install from source
+
+Install on a freshly flashed Raspberry Pi OS (64-bit) card:
+
+    git clone --branch v1.3 --depth 1 https://github.com/florians7474/fennec.git
     cd fennec
     ./install.sh
 
