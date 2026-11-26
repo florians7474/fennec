@@ -42,7 +42,7 @@ Fennec :5000 · Bjorn :8000 · bettercap API (Scoutchi) :8081
 | Mirage | Evil-twin AP + captive portal, takes over when Sly's offline crack fails | Done (SSID clone of a whitelisted target, DHCP + DNS catch-all, captive-portal web layer with a built-in theme library + custom-ZIP upload, live client view, `iw`-based WPA2/WPA3/PMF detection, deauth via bettercap gated on PMF + a second monitor adapter, handshake capture handed to Sly) |
 | Connexion | Join a whitelisted network | Done (real nmcli connect/disconnect on the built-in interface; key from the whitelist or a saved profile; multi-band matched by SSID) |
 | Sentry | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
-| Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (phase 1 GPS geolocation of handshakes, tested outdoors; phase 2 wardriving, offline tiles, on-screen GPS badge) |
+| Echo | Map of geolocated captures + wardriving (WiGLE-style) | Done (GPS geolocation of handshakes and wardriving, both validated outdoors; offline tiles, on-screen GPS badge, Sly verdict overlay) |
 | Hugin | Bjorn companion: surfaces Bjorn's results, Metasploit correlation (by CVE and by service), deported execution via RPC with live sessions | Phases 1-2-3 done and validated end to end |
 | Mole | Wired drop box: capture + crack LAN credentials over Ethernet, plus active relay | Phase 1 done and tested on the Pi (Responder capture + nmap map + John jumbo crack + report). Phase 2 (mitm6 + ntlmrelayx relay) built, untested — home net is a workgroup, needs a lab domain |
 | Scoutchi | Wide handshake harvester (bettercap): PMKID + 4-way capture with continuous deauth, one or two adapters, plus GPS tagging and wardriving | Done, the sole capture module. Replaced Pwnagotchi, which is archived in archive/pwnagotchi/ |
@@ -461,14 +461,18 @@ together on a single adapter (two if present).
   longer hides the real one from Sly.
 - Sly reads the real ESSID from the capture (not the filename), so the factory-key
   and ESSID stages match even when bettercap drops the hyphen from the filename.
+- GPS and wardriving validated outdoors with the VK-162: a roaming run logged
+  thousands of networks at real positions that tracked the route, wrote a .gps.json
+  next to each captured handshake, and populated the wardrive map Echo reads — so Echo
+  works from Scoutchi alone, with no Pwnagotchi.
 
 ### To do
 - Stable per-session captures: done. bettercap now writes to a working dir only it
   touches; the poller publishes a settled, atomic copy into Sly's dir, so Sly never
   reads a file mid-write (removed the old race on the shared handshake file).
-- GPS tagging and Echo wardriving are now native to Scoutchi (bettercap GPS on card 1,
-  .gps.json sidecars and wardrive.json written by the poller). Still to validate
-  outdoors on the Pi with the VK-162 fix. Pwnagotchi has been removed and archived.
+- GPS tagging and Echo wardriving are native to Scoutchi (bettercap GPS on card 1,
+  .gps.json sidecars and wardrive.json written by the poller), validated outdoors on
+  the Pi with the VK-162 fix. Pwnagotchi has been removed and archived.
 - Sly's verdict is surfaced where it matters (Echo and the Sly list), not in
   Scoutchi: Scoutchi only harvests, so a crackable/robust tag there would be noise.
 - Replace the estimated deauth count with bettercap's real deauth event count.
@@ -540,7 +544,9 @@ Notes:
 
 ## Dev loop
 Changes are committed to this repository; the Pi pulls them with
-`cd ~/console && git pull && sudo systemctl restart fennec`.
+`cd ~/console && git pull && sudo systemctl restart fennec`. Changes under system/
+(helpers installed to /usr/local/bin, udev rules, service units) are not picked up by a
+restart alone and need `sudo ./install.sh`.
 Continuous integration (.github/workflows/ci.yml) runs on every push: it
 compiles all Python, runs tests/smoke.py (imports the app and checks the main
 routes return 200 plus the risk-level logic), and runs the pytest unit suite

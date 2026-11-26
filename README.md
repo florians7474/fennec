@@ -69,7 +69,7 @@ Only use this tool on networks you own or have written permission to test. Any o
 - Optional: VK-162 USB GPS module (for the Echo / wardriving module)
 - microSD card, 32 GB or more, Raspberry Pi OS 64-bit (desktop)
 
-The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapter is required. The interface is detected automatically, no adapter name is hardcoded.
+The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapter is required. The interface is detected automatically, no adapter name is hardcoded. One adapter is stable on the Pi 5's USB once the current cap is lifted (done by the installer); running two power-hungry adapters at once needs a powered USB hub.
 
 ## Installation
 
