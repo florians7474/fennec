@@ -130,9 +130,9 @@
       lastCount = count;
     }
 
-    function chip(a){
+    function chip(a, idx){
       if(a) return '<span class="chip on"><span class="d"></span>'+esc(a.label)+' · '+esc(a.iface)+' · '+esc(a.bands)+'GHz</span>';
-      return '<span class="chip add">+ 2nd adapter</span>';
+      return '<span class="chip add">+ '+(idx === 0 ? '1st' : '2nd')+' adapter</span>';
     }
 
     function render(s){
@@ -148,7 +148,7 @@
         : 'Start the sweep to harvest handshakes and PMKIDs.';
 
       var ads = s.adapters || [];
-      document.getElementById('slots').innerHTML = chip(ads[0]||null) + chip(ads[1]||null);
+      document.getElementById('slots').innerHTML = chip(ads[0]||null, 0) + chip(ads[1]||null, 1);
       document.getElementById('c-hs').textContent = s.handshakes||0;
       document.getElementById('c-pm').textContent = s.pmkid||0;
       document.getElementById('c-ap').textContent = s.aps||0;
