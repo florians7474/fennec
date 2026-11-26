@@ -2,11 +2,13 @@
 
 import os
 import sys
+import re
 import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import scoutchi_engine
+import app
 
 
 def test_supports_monitor_true():
@@ -73,3 +75,80 @@ def test_snapshot_reads_stats(monkeypatch, tmp_path):
     assert s["pmkid"] == 5
     assert s["aps"] == 20
     assert len(s["recent"]) == 1
+
+
+# --- GPS / wardrive integration (Scoutchi feeds Echo, as Pwnagotchi used to) ---
+
+import importlib.util
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _load_poller():
+    """Load the standalone poller script as a module (its name has hyphens)."""
+    path = os.path.join(ROOT, "system", "fennec-scoutchi-poll.py")
+    spec = importlib.util.spec_from_file_location("scoutchi_poll", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_fix_from_session_rejects_weak_fix():
+    poll = _load_poller()
+    assert poll.fix_from_session({}) is None
+    # No fix quality / too few satellites / null island -> no position.
+    assert poll.fix_from_session({"gps": {"Latitude": 48.8, "Longitude": 2.3,
+                                          "NumSatellites": 2, "FixQuality": "1"}}) is None
+    assert poll.fix_from_session({"gps": {"Latitude": 48.8, "Longitude": 2.3,
+                                          "NumSatellites": 7, "FixQuality": "0"}}) is None
+    assert poll.fix_from_session({"gps": {"Latitude": 0, "Longitude": 0,
+                                          "NumSatellites": 7, "FixQuality": "1"}}) is None
+
+
+def test_fix_from_session_accepts_good_fix():
+    poll = _load_poller()
+    fix = poll.fix_from_session({"gps": {"Latitude": 48.85, "Longitude": 2.35,
+                                         "NumSatellites": 7, "FixQuality": "1"}})
+    assert fix == (48.85, 2.35, 7, "1")
+
+
+def test_write_gps_json_shape_and_once(tmp_path):
+    poll = _load_poller()
+    pcap = tmp_path / "Box_001122334455.pcap"
+    pcap.write_bytes(b"")
+    poll.write_gps_json(str(pcap), 48.85, 2.35, 7, "1")
+    sidecar = tmp_path / "Box_001122334455.gps.json"
+    assert sidecar.exists()
+    data = json.loads(sidecar.read_text())
+    # Echo reads Latitude/Longitude from the sidecar: the keys must match exactly.
+    assert data["Latitude"] == 48.85 and data["Longitude"] == 2.35
+    # Existing sidecar is never overwritten (keeps the capture-time position).
+    sidecar.write_text(json.dumps({"Latitude": 1.0, "Longitude": 1.0}))
+    poll.write_gps_json(str(pcap), 48.85, 2.35, 7, "1")
+    assert json.loads(sidecar.read_text())["Latitude"] == 1.0
+
+
+def test_wardrive_update_centroid():
+    poll = _load_poller()
+    store = {}
+    aps = [{"mac": "aa:bb:cc:dd:ee:ff", "rssi": -40, "hostname": "Box",
+            "channel": 6, "encryption": "WPA2", "wps": False}]
+    assert poll.wardrive_update(store, aps, 48.0, 2.0, 1000) is True
+    key = "AA:BB:CC:DD:EE:FF"
+    assert key in store and store[key]["lat"] == 48.0
+    # A second pass refines the weighted centroid and bumps the sample count.
+    poll.wardrive_update(store, aps, 50.0, 4.0, 1005)
+    assert store[key]["n"] == 2
+    assert 48.0 < store[key]["lat"] < 50.0
+
+
+def test_poller_contract_matches_echo():
+    # Regression: Echo (app.py) reads wardrive.json and the .gps.json sidecars;
+    # the poller must write the same path and the same sidecar naming, or the
+    # captures stay invisible on the map.
+    with open(os.path.join(ROOT, "system", "fennec-scoutchi-poll.py")) as f:
+        script = f.read()
+    m = re.search(r'WARDRIVE\s*=\s*"([^"]+)"', script)
+    assert m and app.WARDRIVE_FILE == m.group(1)
+    poll = _load_poller()
+    assert poll.gps_json_path("/x/Box_00.pcap") == "/x/Box_00.gps.json"

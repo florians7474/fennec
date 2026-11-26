@@ -1776,8 +1776,9 @@ def _bettercap_creds():
 
 @app.route("/gps")
 def gps_state():
-    # Live GPS status read from bettercap (only up while Pwnagotchi runs), so the
-    # Echo can show a fix indicator on the device — no SSH needed in the car.
+    # Live GPS status read from bettercap (up while a capture harvester runs,
+    # Pwnagotchi or Scoutchi, both on the same API port), so the Echo can show a
+    # fix indicator on the device — no SSH needed in the car.
     import base64
     user, pw = _bettercap_creds()
     try:

@@ -416,10 +416,17 @@ together on a single adapter (two if present).
   (adapters), sets the interfaces to monitor, and runs bettercap per adapter with:
   wifi.recon on (channel hopping), handshakes written per-AP to the handshakes dir
   Sly reads (aggregate false), and a ticker firing wifi.deauth ff:ff:ff:ff:ff:ff
-  every 10 s (continuous deauth of every AP). Card 1 carries bettercap's REST API.
-- fennec-scoutchi-poll (root) reads that REST API (APs seen) plus the handshakes dir
-  (what was captured this session, classified HS vs PMKID with hcxpcapngtool) and
-  writes /tmp/fennec-scoutchi/stats.json, including a climbing deauth count.
+  every 10 s (continuous deauth of every AP). Card 1 carries bettercap's REST API,
+  and (when a GPS receiver is wired) bettercap's GPS module, enabled on that card
+  from the gps section of config.toml so position is available on the same API.
+- fennec-scoutchi-poll (root) reads that REST API (APs seen plus the GPS fix) plus
+  the handshakes dir (what was captured this session, classified HS vs PMKID with
+  hcxpcapngtool) and writes /tmp/fennec-scoutchi/stats.json, including a climbing
+  deauth count. It also carries the GPS work Pwnagotchi used to do, so Echo works
+  with Scoutchi alone: it writes a <capture>.gps.json next to each new handshake
+  (its capture position) and maintains /etc/pwnagotchi/wardrive.json, the
+  signal-weighted centroid of every AP seen with a fix — the same file and format
+  Echo already reads, so the map needs no change.
 - scoutchi_engine.py detects the adapters, starts/stops the service and reads the stats.
 - app.py routes: /scoutchi (page), /scoutchi/toggle (start/stop the sweep, takes over the
   radio from the other modes), /scoutchi/state (live JSON).
@@ -439,8 +446,10 @@ together on a single adapter (two if present).
 - Scoutchi should not write to a handshake file while Sly reads it; deposit stable,
   per-session captures (the long-lived aggregate file also ends up with a corrupt
   record that slows aircrack's read).
-- Absorb the GPS tagging and Echo wardriving that Pwnagotchi currently provides, then
-  remove Pwnagotchi (Scoutchi already uses the same bettercap engine).
+- GPS tagging and Echo wardriving are now native to Scoutchi (bettercap GPS on card 1,
+  .gps.json sidecars and wardrive.json written by the poller). Validate outdoors on the
+  Pi with the VK-162 fix, then remove Pwnagotchi (Scoutchi already uses the same
+  bettercap engine).
 - Feed Sly's per-file verdict back into the live list (crackable / robust tags).
 - Replace the estimated deauth count with bettercap's real deauth event count.
 

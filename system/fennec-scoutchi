@@ -77,8 +77,24 @@ EVAL="$EVAL set wifi.deauth.silent true; set wifi.deauth.open true;"
 EVAL="$EVAL wifi.recon on;"
 EVAL="$EVAL set ticker.period 10; set ticker.commands \"wifi.deauth ff:ff:ff:ff:ff:ff\"; ticker on"
 
+# GPS: if a GPS receiver is present, enable bettercap's GPS module on card 1 (the
+# card carrying the REST API the poller reads). The poller then tags each capture
+# with a .gps.json and feeds the wardrive map, so Echo works with Scoutchi alone,
+# the way it used to depend on Pwnagotchi. Device and baudrate come from the gps
+# section of config.toml, with sane defaults; skipped when no receiver is wired.
+GPS_SECTION=$(sed -n '/^\[main.plugins.gps\]/,/^\[/p' /etc/pwnagotchi/config.toml 2>/dev/null)
+GPS_DEV=$(printf '%s\n' "$GPS_SECTION" | sed -n 's/^[[:space:]]*device[[:space:]]*=[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}.*/\1/p' | head -1)
+GPS_SPEED=$(printf '%s\n' "$GPS_SECTION" | sed -n 's/^[[:space:]]*speed[[:space:]]*=[[:space:]]*\([0-9]*\).*/\1/p' | head -1)
+[ -n "$GPS_DEV" ] || GPS_DEV=/dev/ttyACM0
+[ -n "$GPS_SPEED" ] || GPS_SPEED=9600
+EVAL1="$EVAL"
+if [ -e "$GPS_DEV" ]; then
+    EVAL1="set gps.device $GPS_DEV; set gps.baudrate $GPS_SPEED; gps on; $EVAL"
+    echo "gps enabled on $GPS_DEV @ $GPS_SPEED" >> "$RUN_DIR/run.log"
+fi
+
 # Card 1 carries the REST API (via the caplet) that the poller reads for stats.
-bettercap -no-colors -caplet "$CAPLET" -iface "$IFACE1" -eval "$EVAL" \
+bettercap -no-colors -caplet "$CAPLET" -iface "$IFACE1" -eval "$EVAL1" \
     >> "$RUN_DIR/run.log" 2>&1 &
 pids+=($!)
 
