@@ -182,6 +182,11 @@
     function popupContent(p, i) {
       let html = '<div class="pop"><b>' + p.name + '</b><br>'
                + '<span class="mono">' + p.bssid + '</span>';
+      if (p.verdict === 'cracked') {
+        html += '<br><span class="ko">key cracked (weak)</span>';
+      } else if (p.verdict === 'robust') {
+        html += '<br><span class="ok">robust (Sly tested)</span>';
+      }
       if (p.autorise) {
         html += '<br><span class="ok">in whitelist</span>';
       } else {

@@ -1054,6 +1054,10 @@ def mode(name):
         seen = {r["bssid"] for r in load_whitelist()}
         captures = read_handshakes()
         wd_up = {k.upper(): v for k, v in load_wardrive().items()}
+        try:
+            verdicts = raton_engine.load_verdicts()
+        except Exception:
+            verdicts = {}
         for cap in captures:
             # Only check for a handshake on allowed networks (the only ones that
             # show a Test button), to avoid useless scans.
@@ -1061,6 +1065,9 @@ def mode(name):
             # WPS seen for this BSSID (recorded by the wardrive logger).
             w = wd_up.get(cap["bssid"].upper())
             cap["wps"] = bool(w and w.get("wps"))
+            # Sly's own stored outcome for this network, so a tested capture is
+            # flagged (cracked = weak key found, robust = survived all stages).
+            cap["verdict"] = (verdicts.get(cap["bssid"].upper()) or {}).get("result")
         # Testable captures first (allowed + handshake), then allowed without a
         # handshake, then locked ones; alphabetical within each group.
         captures.sort(key=lambda c: (
@@ -1851,6 +1858,7 @@ def map_view():
                 "autorise": key in seen,
                 "handshake": True,
                 "risk": risk_for(key, w.get("enc"), w.get("wps"), c["name"], True),
+                "verdict": (verdicts.get(key) or {}).get("result"),
             }
         else:
             sans_position += 1
@@ -1870,6 +1878,7 @@ def map_view():
                 "autorise": key in seen,
                 "handshake": False,
                 "risk": risk_for(key, w.get("enc"), w.get("wps"), w.get("name"), False),
+                "verdict": (verdicts.get(key) or {}).get("result"),
             }
     log_echo_health(len(wd), sans_position)
     return render_template("map.html", points=list(pts.values()),

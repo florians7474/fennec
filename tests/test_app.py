@@ -146,3 +146,43 @@ def test_installer_deploys_mirage_ap_runtime():
         installer = f.read()
     assert 'sudo cp "$SYS/fennec-mirage-ap" /usr/local/bin/fennec-mirage-ap' in installer
     assert 'sudo cp "$SYS/fennec-mirage.service" /etc/systemd/system/fennec-mirage.service' in installer
+
+
+def test_cracking_page_shows_sly_verdict(monkeypatch):
+    # Sly's stored outcome must surface on the cracking list so a tested capture
+    # is not re-run blindly.
+    cap = {"name": "Box", "bssid": "AA:BB:CC:DD:EE:FF", "file": "Box_aabbccddeeff.pcap"}
+    monkeypatch.setattr(app, "read_handshakes", lambda: [dict(cap)])
+    monkeypatch.setattr(app, "load_whitelist", lambda: [{"bssid": "AA:BB:CC:DD:EE:FF"}])
+    monkeypatch.setattr(app, "load_wardrive", lambda: {})
+    monkeypatch.setattr(app, "capture_has_handshake", lambda f: True)
+    monkeypatch.setattr(app, "detect_monitor_iface", lambda: None)
+    monkeypatch.setattr(app.raton_engine, "load_verdicts",
+                        lambda: {"AA:BB:CC:DD:EE:FF": {"result": "cracked"}})
+    html = app.app.test_client().get("/mode/cracking").get_data(as_text=True)
+    assert "cracked" in html
+
+
+def test_map_exposes_verdict_on_points(monkeypatch):
+    # Echo must carry Sly's verdict to the point so the popup can label it.
+    cap = {"name": "Box", "bssid": "AA:BB:CC:DD:EE:FF", "file": "Box_aabbccddeeff.pcap"}
+    monkeypatch.setattr(app, "read_handshakes", lambda: [dict(cap)])
+    monkeypatch.setattr(app, "load_whitelist", lambda: [])
+    monkeypatch.setattr(app, "load_wardrive", lambda: {})
+
+    def fake_gps(path, *a, **k):
+        import io
+        return io.StringIO('{"Latitude": 48.8, "Longitude": 2.3}')
+    # Provide a .gps.json for the capture via a patched open path.
+    monkeypatch.setattr(app.raton_engine, "load_verdicts",
+                        lambda: {"AA:BB:CC:DD:EE:FF": {"result": "robust"}})
+    real_open = open
+
+    def open_patch(path, *a, **k):
+        if str(path).endswith("Box_aabbccddeeff.gps.json"):
+            import io
+            return io.StringIO('{"Latitude": 48.8, "Longitude": 2.3}')
+        return real_open(path, *a, **k)
+    monkeypatch.setattr("builtins.open", open_patch)
+    html = app.app.test_client().get("/map").get_data(as_text=True)
+    assert "robust" in html

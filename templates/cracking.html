@@ -39,6 +39,8 @@
     }
     .wps.off { background:#30363d; color:#6e7681; cursor:default; }
     .rbssid .nohs { color:#6e7681; }
+    .rbssid .vcracked { color:#f85149; font-weight:600; }
+    .rbssid .vrobust { color:#3fb950; font-weight:600; }
     .exporter {
       border:1px solid #f0883e; border-radius:8px; background:none; color:#f0883e;
       text-decoration:none; font-size:13px; font-weight:600; padding:7px 12px; white-space:nowrap;
@@ -64,7 +66,7 @@
     <div class="line {{ '' if r.bssid in seen else 'verrou' }}">
       <div class="info">
         <div class="rnom">{{ r.name }}</div>
-        <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
+        <div class="rbssid">{{ r.bssid }}{% if r.bssid in seen and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}{% if r.verdict == 'cracked' %} <span class="vcracked">· cracked</span>{% elif r.verdict == 'robust' %} <span class="vrobust">· robust</span>{% endif %}</div>
       </div>
       {% if r.bssid in seen %}
         {% if r.wps %}

@@ -455,7 +455,8 @@ together on a single adapter (two if present).
   .gps.json sidecars and wardrive.json written by the poller). Validate outdoors on the
   Pi with the VK-162 fix, then remove Pwnagotchi (Scoutchi already uses the same
   bettercap engine).
-- Feed Sly's per-file verdict back into the live list (crackable / robust tags).
+- Sly's verdict is surfaced where it matters (Echo and the Sly list), not in
+  Scoutchi: Scoutchi only harvests, so a crackable/robust tag there would be noise.
 - Replace the estimated deauth count with bettercap's real deauth event count.
 
 ## Install (showcase)
@@ -571,7 +572,10 @@ console -> fennec, the folder was not).
   crackability overrides the heuristic: Raton persists its outcome per BSSID
   (raton_verdicts.json, robust/cracked), and the risk view shows that verdict
   first (robust = solid, cracked = critical), falling back to the heuristic only
-  for untested networks; a captured handshake is treated as WPA2. Offline tiles:
+  for untested networks; a captured handshake is treated as WPA2. A point's popup
+  also spells the verdict out in words (key cracked / robust), and the Sly list
+  tags each capture the same way, so a tested network is never re-run blindly.
+  Offline tiles:
   Fennec serves map tiles from a local cache (tiles/ dir) through a /tiles proxy
   that reads from disk, else fetches from OSM and caches when online, else
   returns a light placeholder; Leaflet is vendored in static/ so the map needs no
