@@ -406,6 +406,14 @@ hint when only one is present. Compatibility depends on the kernel driver suppor
 monitor + injection (MediaTek MT76xx, Realtek RTL88xxAU via the DKMS driver, Ralink
 RT2800/RT3070, Atheros AR9271).
 
+MT7921U quirk: these combo Wi-Fi/Bluetooth adapters (0e8d:7961, e.g. Alfa AWUS036AXM)
+reset-loop on the Pi because their Bluetooth function fails HCI_Reset (opcode 0x0c03
+times out), resetting the whole USB device every few seconds, so the Wi-Fi never stays
+up and the adapter slot flickers. install.sh ships a udev rule
+(system/99-fennec-mt7921-no-bt.rules) that disables only that device's Bluetooth
+interface (bInterfaceClass e0), targeted by VID:PID: the Wi-Fi works, and no other
+adapter's Bluetooth nor the Pi's onboard Bluetooth is affected.
+
 ### Architecture
 Built on bettercap, the same engine Pwnagotchi used, so capture and deauth run
 together on a single adapter (two if present).

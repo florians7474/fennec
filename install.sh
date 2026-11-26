@@ -183,6 +183,14 @@ sudo systemctl disable --now dnsmasq 2>/dev/null || true
 echo "==> Enabling SPI..."
 sudo raspi-config nonint do_spi 0 || true
 
+# --- 4b. USB quirks ---
+# MT7921U combo adapters (0e8d:7961) reset-loop because their Bluetooth function
+# fails HCI_Reset; disable only that device's Bluetooth interface so its Wi-Fi is
+# stable. Targeted by VID:PID, so no other adapter's Bluetooth is touched.
+echo "==> Installing USB quirk rules..."
+sudo cp "$SYS/99-fennec-mt7921-no-bt.rules" /etc/udev/rules.d/99-fennec-mt7921-no-bt.rules
+sudo udevadm control --reload-rules 2>/dev/null || true
+
 # --- 5. bettercap caplet + GPS config ---
 # The bettercap password is NOT generated here: the files keep the
 # __BETTERCAP_PASS__ placeholder and the fennec-firstboot service fills it with a

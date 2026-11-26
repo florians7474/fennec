@@ -1,0 +1,7 @@
+# MT7921U combo Wi-Fi/Bluetooth USB adapters (0e8d:7961, e.g. Alfa AWUS036AXM)
+# reset-loop on the Pi: the Bluetooth function's HCI_Reset (opcode 0x0c03) times
+# out and resets the whole USB device every few seconds, so its Wi-Fi never stays
+# up. Disable ONLY that device's Bluetooth interface (bInterfaceClass e0 =
+# wireless controller); its Wi-Fi interface is left untouched. Other adapters'
+# Bluetooth and the Pi's onboard Bluetooth are not affected by this rule.
+ACTION=="add", SUBSYSTEM=="usb", DEVTYPE=="usb_interface", ATTRS{idVendor}=="0e8d", ATTRS{idProduct}=="7961", ATTR{bInterfaceClass}=="e0", ATTR{authorized}="0"
