@@ -264,13 +264,11 @@
         <button class="pwr-act pwr-pass" onclick="location.href='/settings/password'">Password</button>
       </div>
       <div class="pwr-btns">
-        <button class="pwr-act pwr-access" onclick="location.href='/access'">Access (SSH / web)</button>
-      </div>
-      {% if local %}
-      <div class="pwr-btns">
+        <button class="pwr-act pwr-access" onclick="location.href='/access'">Access</button>
+        {% if local %}
         <button class="pwr-act pwr-pin" onclick="location.href='/pin'">PIN code</button>
+        {% endif %}
       </div>
-      {% endif %}
       <div class="pwr-btns">
         <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
         <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>
