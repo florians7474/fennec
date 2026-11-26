@@ -2637,6 +2637,30 @@ _PASSWD_ERRORS = {
 }
 
 
+@app.route("/access")
+def access():
+    """Remote-access reminder: the SSH command and web URL for this device, with the
+    Pi's current IPs filled in dynamically."""
+    import pwd
+    try:
+        user = pwd.getpwuid(os.getuid()).pw_name
+    except Exception:
+        user = os.environ.get("USER", "pi")
+    host = socket.gethostname()
+    nets = []
+    try:
+        out = subprocess.run(["ip", "-4", "-o", "addr", "show", "scope", "global"],
+                            capture_output=True, text=True, timeout=5).stdout
+        for line in out.splitlines():
+            p = line.split()
+            if len(p) >= 4 and p[2] == "inet":
+                nets.append({"iface": p[1], "ip": p[3].split("/")[0]})
+    except Exception:
+        pass
+    return render_template("settings_access.html", user=user, host=host,
+                           port=5000, nets=nets)
+
+
 @app.route("/settings/password")
 def settings_password():
     return render_template("settings_password.html")

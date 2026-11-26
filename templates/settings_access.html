@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Fennec — Remote access</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; min-height:320px;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .topbar { flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:8px 12px;
+              background:#161b22; border-bottom:1px solid #30363d; }
+    .back { color:#e6edf3; text-decoration:none; font-size:22px; line-height:1; padding:0 4px; }
+    .title { font-size:15px; font-weight:600; }
+    .sub { font-size:11px; color:#8b949e; }
+
+    .barbody { flex:1 1 auto; overflow-y:auto; padding:10px 12px 14px; }
+
+    .card { background:#161b22; border:1px solid #30363d; border-radius:10px;
+            padding:9px 10px; margin-bottom:9px; }
+    .card .head { font-size:11px; color:#8b949e; margin-bottom:7px; text-transform:uppercase;
+                  letter-spacing:.04em; }
+    .row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+    .row:last-child { margin-bottom:0; }
+    .row .k { font-size:10px; color:#6e7681; width:30px; flex:0 0 auto; }
+    .row code { flex:1 1 auto; background:#0d1117; border:1px solid #21262d; border-radius:7px;
+                padding:7px 9px; font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;
+                font-size:13px; color:#bfe9c9; overflow-x:auto; white-space:nowrap; }
+    .row button { flex:0 0 auto; background:#21262d; border:1px solid #30363d; color:#e6edf3;
+                  border-radius:7px; padding:7px 10px; font-size:12px; }
+    .row button:active { background:#30363d; }
+    .row button.done { border-color:#2ea043; color:#7ee2a8; }
+    .note { font-size:11px; color:#8b949e; margin-top:2px; }
+    .empty { background:#3d1d1d; border:1px solid #f85149; color:#ffb3ad;
+             font-size:12px; padding:8px 10px; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="/">&larr;</a>
+    <div>
+      <div class="title">Remote access</div>
+      <div class="sub">Connect to this device from your computer.</div>
+    </div>
+  </div>
+
+  <div class="barbody">
+    <div class="card">
+      <div class="head">By name (mDNS)</div>
+      <div class="row">
+        <span class="k">SSH</span>
+        <code>ssh {{ user }}@{{ host }}.local</code>
+        <button onclick="cp(this)">Copy</button>
+      </div>
+      <div class="row">
+        <span class="k">Web</span>
+        <code>http://{{ host }}.local:{{ port }}</code>
+        <button onclick="cp(this)">Copy</button>
+      </div>
+      <div class="note">Works from most computers on the same network, even if the IP changes.</div>
+    </div>
+
+    {% for n in nets %}
+    <div class="card">
+      <div class="head">{{ n.iface }} &middot; {{ n.ip }}</div>
+      <div class="row">
+        <span class="k">SSH</span>
+        <code>ssh {{ user }}@{{ n.ip }}</code>
+        <button onclick="cp(this)">Copy</button>
+      </div>
+      <div class="row">
+        <span class="k">Web</span>
+        <code>http://{{ n.ip }}:{{ port }}</code>
+        <button onclick="cp(this)">Copy</button>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if not nets %}
+    <div class="empty">No network address found. Check that the device is on Wi-Fi or Ethernet.</div>
+    {% endif %}
+  </div>
+
+  <script>
+    function cp(btn){
+      var txt = btn.parentNode.querySelector('code').textContent;
+      var ok = function(){ btn.textContent = 'Copied'; btn.classList.add('done');
+                           setTimeout(function(){ btn.textContent='Copy'; btn.classList.remove('done'); }, 1200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(ok, function(){ fallback(txt, ok); });
+      } else { fallback(txt, ok); }
+    }
+    function fallback(txt, ok){
+      var t = document.createElement('textarea');
+      t.value = txt; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); ok(); } catch(e) {}
+      document.body.removeChild(t);
+    }
+  </script>
+</body>
+</html>
