@@ -2060,10 +2060,26 @@ def setup_wifi_connect():
             capture_output=True, text=True, timeout=45,
         )
     except Exception:
-        return redirect(url_for("setup_wifi", err="Connection command failed"))
-    if r.returncode != 0:
-        lines = (r.stderr or r.stdout or "").strip().splitlines()
-        msg = lines[-1].strip() if lines else "Connection failed"
+        r = None
+    # Do not trust nmcli's exit code: after the disconnect + rescan it very often
+    # reports a non-zero "activation timed out" while NetworkManager keeps
+    # retrying and actually associates a second or two later. So verify the real
+    # link state instead — poll wlan0 briefly and treat an actual association as
+    # success. A clean connect reports immediately, so the normal case adds no
+    # delay; only a slow/flaky join waits here.
+    connected = False
+    for _ in range(10):
+        act_ssid, _act_bssid = wifi_active()
+        if act_ssid == ssid or connection_state()["type"] == "wifi":
+            connected = True
+            break
+        time.sleep(1.5)
+    if not connected:
+        if r is None:
+            msg = "Connection command failed"
+        else:
+            lines = (r.stderr or r.stdout or "").strip().splitlines()
+            msg = lines[-1].strip() if lines else "Connection failed"
         return redirect(url_for("setup_wifi", err=msg[:120]))
     session.pop("wifi_setup_skipped", None)
     return redirect(url_for("setup_done"))
