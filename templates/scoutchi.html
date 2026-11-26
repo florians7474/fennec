@@ -28,6 +28,7 @@
                 padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
                 text-decoration:none; }
     .startbtn.stop { border-color:#7a1f1f; background:#2a1414; color:#f0999b; }
+    .startbtn.off { opacity:.4; pointer-events:none; }
 
     .scoutchiband { display:flex; align-items:center; gap:10px; background:#11161d;
                  border:1px solid #23272f; border-radius:8px; padding:6px 10px; margin-top:8px; }
@@ -140,14 +141,20 @@
       st.className = 'pill ' + (s.active?'on':'idle');
       st.textContent = s.active ? 'Sweeping' : 'Idle';
 
+      var ads = s.adapters || [];
+      var noAdapter = !s.active && ads.length === 0;
+
       var btn = document.getElementById('startbtn');
       btn.textContent = s.active ? 'Stop' : 'Start';
-      btn.className = 'startbtn' + (s.active?' stop':'');
+      // No monitor adapter -> nothing to sweep with, so disable Start and say why
+      // (the Pi's built-in chip can't do monitor mode; a USB adapter is required).
+      btn.className = 'startbtn' + (s.active?' stop':'') + (noAdapter?' off':'');
       document.getElementById('lead').textContent = s.active
         ? 'Harvesting — captures drop into Sly automatically.'
-        : 'Start the sweep to harvest handshakes and PMKIDs.';
+        : (noAdapter
+            ? 'Plug a monitor-mode Wi-Fi adapter to start — none detected.'
+            : 'Start the sweep to harvest handshakes and PMKIDs.');
 
-      var ads = s.adapters || [];
       document.getElementById('slots').innerHTML = chip(ads[0]||null, 0) + chip(ads[1]||null, 1);
       document.getElementById('c-hs').textContent = s.handshakes||0;
       document.getElementById('c-pm').textContent = s.pmkid||0;
