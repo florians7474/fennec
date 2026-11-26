@@ -93,10 +93,18 @@ def _bands(info):
     return "2.4+5" if (" 5180" in info or " 5180.0" in info or "5180 MHz" in info) else "2.4"
 
 
-def detect_adapters():
-    """Monitor-capable USB wireless interfaces, built-in station excluded.
-    Returns a list of {iface, driver, label, bands}, at most the first two found."""
-    adapters = []
+# Adapter detection is debounced. A single failed probe (iw busy under load,
+# NetworkManager cycling an idle USB adapter, a brief USB blip) must not drop an
+# adapter that was just there, or the slot flickers and a Start click that lands on
+# a miss fails. An adapter is kept across a few consecutive missed probes before it
+# is treated as really unplugged.
+_adapter_seen = {}          # iface -> {"adapter": {...}, "misses": int}
+_ADAPTER_GRACE = 3          # consecutive missed probes tolerated before dropping
+
+
+def _probe_adapters():
+    """One raw probe of monitor-capable USB interfaces (built-in station excluded)."""
+    found = []
     for path in sorted(glob.glob("/sys/class/net/*")):
         iface = os.path.basename(path)
         if iface == STATION_IFACE:
@@ -107,18 +115,34 @@ def detect_adapters():
         if not phy:
             continue
         info = _phy_info(phy)
-        if not _supports_monitor(info):
+        if not info or not _supports_monitor(info):
             continue
         driver = _driver_of(iface) or "unknown"
-        adapters.append({
+        found.append({
             "iface": iface,
             "driver": driver,
             "label": driver,
             "bands": _bands(info),
         })
-        if len(adapters) >= 2:
-            break
-    return adapters
+    return found
+
+
+def detect_adapters():
+    """Monitor-capable USB wireless interfaces, built-in station excluded, debounced
+    so a transient probe miss doesn't flicker the list. Returns at most two."""
+    found = _probe_adapters()
+    found_ifaces = {a["iface"] for a in found}
+    # Refresh everything seen this probe (misses back to 0).
+    for a in found:
+        _adapter_seen[a["iface"]] = {"adapter": a, "misses": 0}
+    # Age out interfaces missing this probe; drop once past the grace window.
+    for iface in list(_adapter_seen):
+        if iface not in found_ifaces:
+            _adapter_seen[iface]["misses"] += 1
+            if _adapter_seen[iface]["misses"] > _ADAPTER_GRACE:
+                del _adapter_seen[iface]
+    ordered = sorted(_adapter_seen.values(), key=lambda e: e["adapter"]["iface"])
+    return [e["adapter"] for e in ordered[:2]]
 
 
 def is_active():

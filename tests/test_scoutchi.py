@@ -230,3 +230,22 @@ def test_publish_writes_gps_sidecar_when_located(tmp_path, monkeypatch):
     sidecar = dest / "Box_001122334455.gps.json"
     assert sidecar.exists()
     assert json.loads(sidecar.read_text())["Latitude"] == 48.85
+
+
+def test_detect_adapters_debounces_transient_miss(monkeypatch):
+    # A one-off failed probe must not drop an adapter (no UI flicker, no Start race);
+    # a sustained absence past the grace window does drop it.
+    scoutchi_engine._adapter_seen.clear()
+    ad = {"iface": "wlan1", "driver": "mt76", "label": "mt76", "bands": "2.4+5"}
+
+    monkeypatch.setattr(scoutchi_engine, "_probe_adapters", lambda: [ad])
+    assert [a["iface"] for a in scoutchi_engine.detect_adapters()] == ["wlan1"]
+
+    # Single blip: probe returns nothing, adapter is kept.
+    monkeypatch.setattr(scoutchi_engine, "_probe_adapters", lambda: [])
+    assert [a["iface"] for a in scoutchi_engine.detect_adapters()] == ["wlan1"]
+
+    # Sustained absence beyond the grace window: finally dropped.
+    for _ in range(scoutchi_engine._ADAPTER_GRACE + 1):
+        scoutchi_engine.detect_adapters()
+    assert scoutchi_engine.detect_adapters() == []
